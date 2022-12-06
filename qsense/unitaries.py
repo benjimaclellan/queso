@@ -1,6 +1,9 @@
 import jax.numpy as np
 from jax.numpy.linalg import eigh
 
+from qsense.utils import tensor
+from qsense.states import ketz0, ketz1
+
 
 def dagger(array):
     return array.conjugate().T
@@ -26,6 +29,10 @@ def h():
     return np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2)
 
 
+def cnot():
+    return tensor([ketz0() @ ketz0().T, eye()]) + tensor([ketz1() @ ketz1().T, x()])
+
+
 def phase(phi):
     return np.array([[1.0, 0.0], [0.0, np.exp(1j * phi)]])
 
@@ -35,7 +42,7 @@ def rx(theta):
 
 
 def rz(phi):
-    return np.array([[np.exp(-1j * phi), 0.0], [0.0, np.exp(1j * phi)]])
+    return np.array([[np.exp(-1j * phi / 2), 0.0], [0.0, np.exp(1j * phi / 2)]])
 
 
 def u2(theta, phi):
@@ -98,6 +105,8 @@ unitary_info = {
     u2: {"m": 2, "bounds": (-np.pi, np.pi), "initial": [0.0, 0.0]},
     u3: {"m": 3, "bounds": (-np.pi, np.pi), "initial": [0.0, 0.0, 0.0]},
 }
+
+# gates with no parameters
 unitary_info.update(
-    {func: {"m": 0, "bounds": (), "initial": []} for func in (x, y, z, h, eye)}
+    {func: {"m": 0, "bounds": (), "initial": []} for func in (x, y, z, h, eye, cnot)}
 )

@@ -17,8 +17,8 @@ def qfim(params, circuit, ket_i, keys):
     :param keys:
     :return:
     """
-
-    tunable_params = {key: params[key] for key in keys}
+    # parameters to compute QFI for must be complex datatype in order to automatically differentiate
+    tunable_params = {key: np.complex128(params[key]) for key in keys}
 
     def fket(tunable_params):
         params.update(tunable_params)
@@ -28,7 +28,7 @@ def qfim(params, circuit, ket_i, keys):
     fdket = jax.jacrev(fket, holomorphic=True)
     ket = fket(tunable_params)
     dket = fdket(tunable_params)
-
+    print(f"Debug QFIM: total probability {np.sum(np.abs(ket)**2)} ")
     # flatten parameters to a single list
     p = [(key, i) for key in keys for i in range(len(params[key]))]
 

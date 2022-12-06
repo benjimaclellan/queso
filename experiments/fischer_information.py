@@ -1,12 +1,11 @@
 import itertools
-
 import jax
 import jax.numpy as np
 import matplotlib.pyplot as plt
 import uuid
-import functools
-import numpy
+from functools import partial
 import seaborn as sns
+
 from qsense.unitaries import *
 from qsense.states import *
 from qsense.utils import tensor, sum, prod
@@ -34,19 +33,25 @@ if __name__ == "__main__":
     params = initialize(circuit)
     params['phase'] = np.array([(0.25 / 4) * np.pi + 0j])
 
-    u = compile(params, circuit)
+    compile = jax.jit(partial(compile, circuit=circuit))
+    u = compile(params)
 
-    ket_f = u @ ket_i
-    print(circuit)
-    print(params)
-    print(ket_f)
+    for i in range(10):
+        params['phase'] = np.array([(i / 4) * np.pi + 0j])
 
-    keys = ["phase"]
-    # keys = params.keys()
-    # qf = qfim(params, circuit, ket_i, ["phase"])
-    # print(qf)
+        u = compile(params)
+        ket_f = u @ ket_i
 
-    f = qfim(params, circuit, ket_i, keys)
-    print(f)
-    # sns.heatmap(f)
-    # plt.show()
+        # print(circuit)
+        print(params)
+        print(ket_f)
+
+    # keys = ["phase"]
+    # # keys = params.keys()
+    # # qf = qfim(params, circuit, ket_i, ["phase"])
+    # # print(qf)
+    #
+    # f = qfim(params, circuit, ket_i, keys)
+    # print(f)
+    # # sns.heatmap(f)
+    # # plt.show()
