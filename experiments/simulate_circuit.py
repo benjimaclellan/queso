@@ -19,14 +19,14 @@ if __name__ == "__main__":
     n = 2  # number of particles
     d = 2  # local dimensions
 
-    # ket_i = nketx0(n)
-    ket_i = nket_ghz(n)
+    ket_i = nketx0(n)
+    # ket_i = nket_ghz(n)
 
-    # circuit = ghz_circuit(n, d)
-    circuit = []
-    circuit.append([Identity(str(uuid.uuid4())) for i in range(n)])
-    circuit.append([CNOT(str(uuid.uuid4()), n=n, control=0, target=1)])
-    circuit.append([Phase("phase") for i in range(n)])
+    circuit = ghz_circuit(n, d)
+    # circuit = []
+    # circuit.append([Identity(str(uuid.uuid4())) for i in range(n)])
+    # circuit.append([CNOT(str(uuid.uuid4()), n=n, control=0, target=1)])
+    # circuit.append([Phase("phase") for i in range(n)])
 
     params = initialize(circuit)
 

@@ -34,13 +34,10 @@ def qfim(params, circuit, ket_i, keys):
     for i, (key_a, a) in enumerate(p):
         fa = []
         for j, (key_b, b) in enumerate(p):
-            print(f"{i}|{j}")
             da = dket[key_a][:, :, a]
             db = dket[key_b][:, :, b]
             f_ab = 4 * np.real(
-                dagger(da) @ db
-                - (dagger(da) @ ket)
-                * (dagger(ket) @ db)
+                dagger(da) @ db - (dagger(da) @ ket) * (dagger(ket) @ db)
             )
             fa.append(f_ab.squeeze())
         f.append(fa)

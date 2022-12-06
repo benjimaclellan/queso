@@ -13,7 +13,11 @@ class StaticChannel(Channel):
 
 
 class DepolarizingChannel(StaticChannel):
-    def __init__(self, key, p=0.0, ):
+    def __init__(
+        self,
+        key,
+        p=0.0,
+    ):
         super().__init__(key)
         raise NotImplementedError()
 

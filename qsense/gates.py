@@ -2,12 +2,12 @@ from qsense.functions import *
 
 
 class Gate:
-    def __init__(self, key):
+    def __init__(self, key=None):
         self.key = key
 
 
 class StaticGate(Gate):
-    def __init__(self, key):
+    def __init__(self, key=None):
         super().__init__(key)
         self.m, self.bounds, self.initial = None, None, None
 
@@ -44,7 +44,7 @@ class H(StaticGate):
 
 
 class CNOT(StaticGate):
-    def __init__(self, key, n=2, control=0, target=1):
+    def __init__(self, key=None, n=2, control=0, target=1):
         super().__init__(key)
         self.n = n
         self.control = control
@@ -53,7 +53,9 @@ class CNOT(StaticGate):
     def __call__(self):
         d0 = {self.control: ketz0() @ ketz0().T, self.target: eye()}
         d1 = {self.control: ketz1() @ ketz1().T, self.target: x()}
-        return tensor([d0.get(reg, eye()) for reg in range(self.n)]) + tensor([d1.get(reg, eye()) for reg in range(self.n)])
+        return tensor([d0.get(reg, eye()) for reg in range(self.n)]) + tensor(
+            [d1.get(reg, eye()) for reg in range(self.n)]
+        )
 
 
 class Phase(ParameterizedGate):

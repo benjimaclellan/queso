@@ -20,7 +20,7 @@ if __name__ == "__main__":
     circuit.append([(phase, "phase") for i in range(n)])
 
     params = initialize(circuit)
-    params['phase'] = np.array([(0.0 / 4) * np.pi + 0j])
+    params["phase"] = np.array([(0.0 / 4) * np.pi + 0j])
 
     compile = jax.jit(partial(compile, circuit=circuit))
     u = compile(params)
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     keys = ["phase"]
     qfi = lambda params, circuit, ket_i, keys: qfim(params, circuit, ket_i, keys)[0, 0]
-    loss = jax.jit(partial(qfi,  circuit=circuit, ket_i=ket_i, keys=keys))
+    loss = jax.jit(partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys))
     # loss = jax.jit(partial(qfim,  circuit=circuit, ket_i=ket_i, keys=keys))
 
     ell = loss(params)
@@ -46,7 +46,6 @@ if __name__ == "__main__":
     # progress = False
     # optimizer = optax.adagrad(learning_rate)
     # opt_state = optimizer.init(params)
-
 
     # losses = []
     # grad = jax.grad(loss)

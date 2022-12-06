@@ -23,13 +23,13 @@ if __name__ == "__main__":
     # circuit = [layer1, layer2]
 
     params = initialize(circuit)
-    params['phase'] = np.array([(0.25 / 4) * np.pi + 0j])
+    params["phase"] = np.array([(0.25 / 4) * np.pi + 0j])
 
     compile = jax.jit(partial(compile, circuit=circuit))
     u = compile(params)
 
     for i in range(10):
-        params['phase'] = np.array([(i / 4) * np.pi + 0j])
+        params["phase"] = np.array([(i / 4) * np.pi + 0j])
 
         u = compile(params)
         ket_f = u @ ket_i

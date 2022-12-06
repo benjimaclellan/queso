@@ -1,4 +1,4 @@
-from qsense.functions import *
+from qsense.gates import *
 
 
 def ghz_circuit(n=2, d=2):
@@ -10,9 +10,9 @@ def ghz_circuit(n=2, d=2):
     :return:
     """
     circuit = list()
-    circuit.append([(h, None) if i == 0 else (eye, None) for i in range(n)])
+    circuit.append([H() if i == 0 else Identity() for i in range(n)])
     for i in range(1, n):
-        circuit.append([(cnot(n=n, control=0, target=i), None)])
+        circuit.append([CNOT(n=n, control=0, target=i)])
 
-    circuit.append([(phase, "phase") for _ in range(n)])
+    circuit.append([Phase("phase") for _ in range(n)])
     return circuit
