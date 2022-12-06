@@ -26,7 +26,7 @@ def qfim(params, circuit, ket_i, keys):
     fdket = jax.jacrev(fket, holomorphic=True)
     ket = fket(tunable_params)
     dket = fdket(tunable_params)
-    print(f"Debug QFIM: total probability {np.sum(np.abs(ket)**2)} ")
+
     # flatten parameters to a single list
     p = [(key, i) for key in keys for i in range(len(params[key]))]
 

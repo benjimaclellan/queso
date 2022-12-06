@@ -12,28 +12,28 @@ from qsense.utils import tensor, sum, prod
 from qsense.functions import initialize, compile
 from qsense.qfi import qfim
 
-from examples.circuits import ghz_circuit
+from examples.circuits import *
 
 
 if __name__ == "__main__":
-    n = 2  # number of particles
-    d = 2  # local dimensions
+    n = 4  # number of particles
 
-    ket_i = nketx0(n)
+    ket_i = nketz0(n)
     # ket_i = nket_ghz(n)
 
-    circuit = ghz_circuit(n, d)
-    # circuit = []
-    # circuit.append([Identity(str(uuid.uuid4())) for i in range(n)])
-    # circuit.append([CNOT(str(uuid.uuid4()), n=n, control=0, target=1)])
-    # circuit.append([Phase("phase") for i in range(n)])
+    # circuit = ghz_circuit(n)
+    circuit = local_entangling_circuit(n)
+    circuit.append([Phase("phase") for i in range(n)])
 
     params = initialize(circuit)
+    params['phase'] = np.array([0.0])
 
     compile = jax.jit(partial(compile, circuit=circuit))
     # compile = partial(compile, circuit=circuit)
     u = compile(params)
-    print(u)
+    ket_f = u @ ket_i
+    # print(ket_f)
+    # print(norm(ket_f))
 
     keys = ["phase"]
     qfi = lambda params, circuit, ket_i, keys: qfim(params, circuit, ket_i, keys)[0, 0]
@@ -43,10 +43,7 @@ if __name__ == "__main__":
     ell = qfi(params)
     print(ell)
 
-    # for _ in range(10):
-    #     params = initialize(circuit)
-    #     print(params)
-    #     u = compile(params)
-    #     ell = qfi(params)
-    #     print(ell)
-    #
+    for _ in range(100):
+        params = initialize(circuit)
+        ell = qfi(params)
+        print(ell, params)

@@ -9,8 +9,16 @@ def nketz0(n):
     return tensor(n * [ketz0()])
 
 
+def nketz1(n):
+    return tensor(n * [ketz1()])
+
+
 def nketx0(n):
     return tensor(n * [ketx0()])
+
+
+def nketx1(n):
+    return tensor(n * [ketx1()])
 
 
 def nket_ghz(n):
@@ -105,8 +113,12 @@ def u3(theta, phi, lam):
     return u
 
 
+def norm(ket):
+    return np.sum(np.abs(ket) ** 2)
+
+
 def is_norm(ket):
-    return np.isclose(np.sum(np.abs(ket) ** 2), 1.0)
+    return np.isclose(norm(ket), 1.0)
 
 
 def is_hermitian(input_matrix):
@@ -138,5 +150,16 @@ def compile(params, circuit):
                 [u(*params[u.key]) if (u.key in params.keys()) else u() for u in layer]
             )
         )
-    u = prod(us)
+    u = prod(reversed(us))
+    return u
+
+
+def check(params, circuit):
+    us = []
+    for layer in circuit:
+        u = tensor(
+            [gate(*params[gate.key]) if (gate.key in params.keys()) else gate() for gate in layer]
+        )
+        print("total difference", np.sum(np.identity(u.shape[0]) - dagger(u) @ u), layer)
+    u = prod(reversed(us))
     return u
