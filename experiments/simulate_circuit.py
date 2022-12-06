@@ -6,10 +6,10 @@ from functools import partial
 import seaborn as sns
 import optax
 
-from qsense.unitaries import *
-from qsense.states import *
+from qsense.gates import *
+from qsense.functions import *
 from qsense.utils import tensor, sum, prod
-from qsense.simulate import initialize, compile
+from qsense.functions import initialize, compile
 from qsense.qfi import qfim
 
 from examples.circuits import ghz_circuit
@@ -24,9 +24,9 @@ if __name__ == "__main__":
 
     # circuit = ghz_circuit(n, d)
     circuit = []
-    circuit.append([(Identity(), str(uuid.uuid4())) for i in range(n)])
-    circuit.append([(CNOT(n=n, control=0, target=1), str(uuid.uuid4()))])
-    circuit.append([(Phase(), "phase") for i in range(n)])
+    circuit.append([Identity(str(uuid.uuid4())) for i in range(n)])
+    circuit.append([CNOT(str(uuid.uuid4()), n=n, control=0, target=1)])
+    circuit.append([Phase("phase") for i in range(n)])
 
     params = initialize(circuit)
 
@@ -35,14 +35,14 @@ if __name__ == "__main__":
     u = compile(params)
     print(u)
 
-    # keys = ["phase"]
-    # qfi = lambda params, circuit, ket_i, keys: qfim(params, circuit, ket_i, keys)[0, 0]
-    # # qfi = jax.jit(partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys))
+    keys = ["phase"]
+    qfi = lambda params, circuit, ket_i, keys: qfim(params, circuit, ket_i, keys)[0, 0]
+    qfi = jax.jit(partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys))
     # qfi = partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys)
-    #
-    # ell = qfi(params)
-    # print(ell)
-    #
+
+    ell = qfi(params)
+    print(ell)
+
     # for _ in range(10):
     #     params = initialize(circuit)
     #     print(params)
