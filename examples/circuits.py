@@ -14,31 +14,17 @@ from qsense.qfi import qfim
 
 
 def ghz_circuit(n=2, d=2):
-    ket_i = nketx0(n)
+    """
+    Returns the canonical example of a GHZ quantum circuit for an n-partite, d-dimensional system.
 
-    circuit = []
-    circuit.append([(h, str(uuid.uuid4())) for i in range(n)])
-    circuit.append([(cnot, str(uuid.uuid4())) for i in range(0, n, 2)])
-    circuit.append([(phase, "phase") for i in range(n)])
+    :param n:
+    :param d:
+    :return:
+    """
+    circuit = list()
+    circuit.append([(h, None) if i == 0 else (eye, None) for i in range(n)])
+    for i in range(1, n):
+        circuit.append([(cnot(n=n, control=0, target=i), None)])
 
-    params = initialize(circuit)
-
-    # compile = jax.jit(partial(compile, circuit=circuit))
-    compile = partial(compile, circuit=circuit)
-    u = compile(params)
-
-    # keys = ["phase"]
-    # qfi = lambda params, circuit, ket_i, keys: qfim(params, circuit, ket_i, keys)[0, 0]
-    # # qfi = jax.jit(partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys))
-    # qfi = partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys)
-    #
-    # ell = qfi(params)
-    # print(ell)
-    #
-    # for _ in range(10):
-    #     params = initialize(circuit)
-    #     print(params)
-    #     u = compile(params)
-    #     ell = qfi(params)
-    #     print(ell)
-    #
+    circuit.append([(phase, "phase") for _ in range(n)])
+    return circuit

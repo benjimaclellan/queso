@@ -12,6 +12,8 @@ from qsense.utils import tensor, sum, prod
 from qsense.simulate import initialize, compile
 from qsense.qfi import qfim
 
+from examples.circuits import ghz_circuit
+
 
 if __name__ == "__main__":
     n = 2  # number of particles
@@ -20,10 +22,11 @@ if __name__ == "__main__":
     # ket_i = nketx0(n)
     ket_i = nket_ghz(n)
 
-    circuit = []
-    circuit.append([(eye, str(uuid.uuid4())) for i in range(n)])
-    circuit.append([(cnot, str(uuid.uuid4())) for i in range(0, n, 2)])
-    circuit.append([(phase, "phase") for i in range(n)])
+    circuit = ghz_circuit(n, d)
+    # circuit = []
+    # circuit.append([(eye, str(uuid.uuid4())) for i in range(n)])
+    # circuit.append([(cnot, str(uuid.uuid4())) for i in range(0, n, 2)])
+    # circuit.append([(phase, "phase") for i in range(n)])
 
     params = initialize(circuit)
 

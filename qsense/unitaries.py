@@ -29,8 +29,10 @@ def h():
     return np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2)
 
 
-def cnot():
-    return tensor([ketz0() @ ketz0().T, eye()]) + tensor([ketz1() @ ketz1().T, x()])
+def cnot(n=2, control=0, target=1):
+    d0 = {control: ketz0() @ ketz0().T, target: eye()}
+    d1 = {control: ketz1() @ ketz1().T, target: x()}
+    return tensor([d0.get(reg, eye()) for reg in range(n)]) + tensor([d1.get(reg, eye()) for reg in range(n)])
 
 
 def phase(phi):
