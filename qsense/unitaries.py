@@ -9,60 +9,94 @@ def dagger(array):
     return array.conjugate().T
 
 
-def eye():
-    return np.array([[1.0, 0.0], [0.0, 1.0]])
 
 
-def x():
-    return np.array([[0.0, 1.0], [1.0, 0.0]])
 
 
-def y():
-    return np.array([[0.0, -1.0j], [1.0j, 0.0]])
+class FixedUnitary:
+    def __init__(self):
+        self.something = 1
+        return
 
 
-def z():
-    return np.array([[1.0, 0.0], [0.0, -1.0]])
+class ParameterizedUnitary:
+    def __init__(self):
+        self.something = 1
+        return
 
 
-def h():
-    return np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2)
+class Identity(FixedUnitary):
+    def __call__(self):
+        return np.array([[1.0, 0.0], [0.0, 1.0]])
 
 
-def cnot(n=2, control=0, target=1):
-    d0 = {control: ketz0() @ ketz0().T, target: eye()}
-    d1 = {control: ketz1() @ ketz1().T, target: x()}
-    return tensor([d0.get(reg, eye()) for reg in range(n)]) + tensor([d1.get(reg, eye()) for reg in range(n)])
+class X(FixedUnitary):
+    def __call__(self):
+        return np.array([[0.0, 1.0], [1.0, 0.0]])
 
 
-def phase(phi):
-    return np.array([[1.0, 0.0], [0.0, np.exp(1j * phi)]])
+class Y(FixedUnitary):
+    def __call__(self):
+        return np.array([[0.0, -1.0j], [1.0j, 0.0]])
 
 
-def rx(theta):
-    return u3(theta, 0.0, 0.0)
+class Z(FixedUnitary):
+    def __call__(self):
+        return np.array([[1.0, 0.0], [0.0, -1.0]])
 
 
-def rz(phi):
-    return np.array([[np.exp(-1j * phi / 2), 0.0], [0.0, np.exp(1j * phi / 2)]])
+class H(FixedUnitary):
+    def __call__(self):
+        return np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2)
 
 
-def u2(theta, phi):
-    u = rx(theta) @ rz(phi)
-    return u
+class CNOT(FixedUnitary):
+    def __init__(self, n=2, control=0, target=1):
+        super().__init__()
+        self.n = n
+        self.control = control
+        self.target = target
+        self.eye = Identity()
+        self.x = X()
+
+    def __call__(self):
+        d0 = {self.control: ketz0() @ ketz0().T, self.target: self.eye}
+        d1 = {self.control: ketz1() @ ketz1().T, self.target: self.x}
+        return tensor([d0.get(reg, self.eye) for reg in range(self.n)]) + tensor([d1.get(reg, self.eye) for reg in range(self.n)])
 
 
-def u3(theta, phi, lam):
-    u = np.array(
-        [
-            [np.cos(theta / 2), -np.exp(1j * lam) * np.sin(theta / 2)],
-            [
-                np.exp(1j * phi) * np.sin(theta / 2),
-                np.exp(1j * (phi + lam)) * np.cos(theta / 2),
-            ],
-        ]
-    )
-    return u
+class Phase(FixedUnitary):
+    def __call__(self, phi):
+        return np.array([[1.0, 0.0], [0.0, np.exp(1j * phi)]])
+
+
+class RX(FixedUnitary):
+    def __call__(self, theta):
+        return u3(theta, 0.0, 0.0)
+
+
+class RZ(FixedUnitary):
+    def __call__(self, phi):
+        return np.array([[np.exp(-1j * phi / 2), 0.0], [0.0, np.exp(1j * phi / 2)]])
+
+
+# class U2(FixedUnitary):
+#     def __call__(self, theta, phi):
+#         u = rx(theta) @ rz(phi)
+#         return u
+#
+#
+# def u3(theta, phi, lam):
+#     u = np.array(
+#         [
+#             [np.cos(theta / 2), -np.exp(1j * lam) * np.sin(theta / 2)],
+#             [
+#                 np.exp(1j * phi) * np.sin(theta / 2),
+#                 np.exp(1j * (phi + lam)) * np.cos(theta / 2),
+#             ],
+#         ]
+#     )
+#     return u
 
 
 def is_norm(ket):
@@ -101,14 +135,14 @@ initial: starting parameter vector, if not sampled
 """
 
 unitary_info = {
-    phase: {"m": 1, "bounds": (-np.pi, np.pi), "initial": [0.0]},
-    rx: {"m": 1, "bounds": (-np.pi, np.pi), "initial": [0.0]},
-    rz: {"m": 1, "bounds": (-np.pi, np.pi), "initial": [0.0]},
-    u2: {"m": 2, "bounds": (-np.pi, np.pi), "initial": [0.0, 0.0]},
-    u3: {"m": 3, "bounds": (-np.pi, np.pi), "initial": [0.0, 0.0, 0.0]},
+    Phase: {"m": 1, "bounds": (-np.pi, np.pi), "initial": [0.0]},
+    RX: {"m": 1, "bounds": (-np.pi, np.pi), "initial": [0.0]},
+    RZ: {"m": 1, "bounds": (-np.pi, np.pi), "initial": [0.0]},
+    # u2: {"m": 2, "bounds": (-np.pi, np.pi), "initial": [0.0, 0.0]},
+    # u3: {"m": 3, "bounds": (-np.pi, np.pi), "initial": [0.0, 0.0, 0.0]},
 }
 
 # gates with no parameters
 unitary_info.update(
-    {func: {"m": 0, "bounds": (), "initial": []} for func in (x, y, z, h, eye, cnot)}
+    {func: {"m": 0, "bounds": (), "initial": []} for func in (X, Y, Z, CNOT, H, Identity)}
 )

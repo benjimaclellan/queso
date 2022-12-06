@@ -22,17 +22,18 @@ if __name__ == "__main__":
     # ket_i = nketx0(n)
     ket_i = nket_ghz(n)
 
-    circuit = ghz_circuit(n, d)
-    # circuit = []
-    # circuit.append([(eye, str(uuid.uuid4())) for i in range(n)])
-    # circuit.append([(cnot, str(uuid.uuid4())) for i in range(0, n, 2)])
-    # circuit.append([(phase, "phase") for i in range(n)])
+    # circuit = ghz_circuit(n, d)
+    circuit = []
+    circuit.append([(Identity(), str(uuid.uuid4())) for i in range(n)])
+    circuit.append([(CNOT(n=n, control=0, target=1), str(uuid.uuid4()))])
+    circuit.append([(Phase(), "phase") for i in range(n)])
 
     params = initialize(circuit)
 
-    # compile = jax.jit(partial(compile, circuit=circuit))
-    compile = partial(compile, circuit=circuit)
+    compile = jax.jit(partial(compile, circuit=circuit))
+    # compile = partial(compile, circuit=circuit)
     u = compile(params)
+    print(u)
 
     # keys = ["phase"]
     # qfi = lambda params, circuit, ket_i, keys: qfim(params, circuit, ket_i, keys)[0, 0]

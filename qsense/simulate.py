@@ -17,9 +17,9 @@ def initialize(circuit):
     rng_key = jax.random.PRNGKey(time.time_ns())
     for layer in circuit:
         for (u, key) in layer:
-            if (unitary_info[u]["bounds"] is not None) and (unitary_info[u]["m"] != 0):
-                m = unitary_info[u]["m"]
-                (low, high) = unitary_info[u]["bounds"]
+            if (unitary_info[u.__class__]["bounds"] is not None) and (unitary_info[u.__class__]["m"] != 0):
+                m = unitary_info[u.__class__]["m"]
+                (low, high) = unitary_info[u.__class__]["bounds"]
                 if key not in params.keys():
                     rng_key, rng_subkey = jax.random.split(rng_key)
                     params[key] = jax.random.uniform(key=rng_subkey, shape=[m], minval=low, maxval=high)
