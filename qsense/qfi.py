@@ -2,9 +2,7 @@ import jax
 import jax.numpy as np
 from jax.config import config
 
-from qsense.simulate import compile
-from qsense.unitaries import dagger
-
+from qsense.functions import dagger, compile
 
 config.update("jax_enable_x64", True)
 

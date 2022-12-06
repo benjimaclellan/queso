@@ -1,8 +1,44 @@
-import jax.numpy as np
-from jax.numpy.linalg import eigh
+import time
 
-from qsense.utils import tensor
-from qsense.states import ketz0, ketz1
+import jax
+from jax import numpy as np
+from qsense.utils import tensor, prod
+
+
+def nketz0(n):
+    return tensor(n * [ketz0()])
+
+
+def nketx0(n):
+    return tensor(n * [ketx0()])
+
+
+def nket_ghz(n):
+    return (1/np.sqrt(2)) * (tensor(n * [np.array([[1.0, 0.0]]).T]) + tensor(n * [np.array([[0.0, 1.0]]).T]))
+
+
+def ketx0():
+    return 1 / np.sqrt(2) * np.array([[1.0], [1.0]])
+
+
+def ketx1():
+    return 1 / np.sqrt(2) * np.array([[1.0], [-1.0]])
+
+
+def ketz0():
+    return np.array([[1.0], [0.0]])
+
+
+def ketz1():
+    return np.array([[0.0], [1.0]])
+
+
+def kety0():
+    return 1 / np.sqrt(2) * np.array([[1.0], [1.0j]])
+
+
+def kety1():
+    return 1 / np.sqrt(2) * np.array([[1.0], [-1.0j]])
 
 
 def dagger(array):
@@ -93,22 +129,37 @@ def is_hermitian(input_matrix):
 #
 # def is_pure(rho):
 #     return np.allclose(np.real(np.trace(rho @ rho)), 1.0)
+def initialize(circuit):
+    params = {}
+    rng_key = jax.random.PRNGKey(time.time_ns())
+    # for layer in circuit:
+    #     for (u, key) in layer:
+    #         if (unitary_info[u.__class__]["bounds"] is not None) and (unitary_info[u.__class__]["m"] != 0):
+    #             m = unitary_info[u.__class__]["m"]
+    #             (low, high) = unitary_info[u.__class__]["bounds"]
+    #             if key not in params.keys():
+    #                 rng_key, rng_subkey = jax.random.split(rng_key)
+    #                 params[key] = jax.random.uniform(key=rng_subkey, shape=[m], minval=low, maxval=high)
+    #
+    for layer in circuit:
+        for u in layer:
+            if u.bounds is not None and u.m is not None:
+                if u.key not in params.keys():
+                    rng_key, rng_subkey = jax.random.split(rng_key)
+                    params[u.key] = jax.random.uniform(key=rng_subkey, shape=[u.m], minval=u.bounds[0], maxval=u.bounds[1])
+    return params
 
-"""
-m: number of parameters
-bounds: (low, high) bounds that the parameter must fall within
-initial: starting parameter vector, if not sampled
-"""
 
-unitary_info = {
-    phase: {"m": 1, "bounds": (-np.pi, np.pi), "initial": [0.0]},
-    rx: {"m": 1, "bounds": (-np.pi, np.pi), "initial": [0.0]},
-    rz: {"m": 1, "bounds": (-np.pi, np.pi), "initial": [0.0]},
-    u2: {"m": 2, "bounds": (-np.pi, np.pi), "initial": [0.0, 0.0]},
-    u3: {"m": 3, "bounds": (-np.pi, np.pi), "initial": [0.0, 0.0, 0.0]},
-}
-
-# gates with no parameters
-unitary_info.update(
-    {func: {"m": 0, "bounds": (), "initial": []} for func in (x, y, z, h, eye, cnot)}
-)
+def compile(params, circuit):
+    us = []
+    for layer in circuit:
+        us.append(
+            tensor(
+                [
+                    u(*params[u.key]) if (u.key in params.keys()) else u()
+                    for u in layer
+                ]
+            )
+        )
+    u = prod(us)
+    return u
