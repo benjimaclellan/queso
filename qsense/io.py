@@ -36,30 +36,7 @@ class IO:
     # default save path always points to `data/` no matter where this repository is located
     default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
 
-    def __init__(self, path=None, verbose=True):
-        """
-        Create an IO object
-
-        :param path: path to the data folder
-        :type path: str
-        :param verbose: if True, IO actions are is printed to the terminal. If False, the prints are omitted
-        :type verbose: bool
-        :return: function returns nothing
-        :rtype: None
-        """
-        self.verbose = verbose
-
-        # set default path to a 'data' folder
-        if path is None:
-            path = self.default_path
-        if type(path) is str:
-            path = pathlib.Path(path)
-
-        self.path = pathlib.Path(path)
-
-    @classmethod
-    def new_directory(
-        cls,
+    def __init__(self,
         path=None,
         folder="",
         include_date=False,
@@ -85,7 +62,7 @@ class IO:
         :rtype: IO
         """
         if path is None:
-            path = cls.default_path
+            path = self.default_path
 
         if type(path) is str:
             path = pathlib.Path(path)
@@ -112,8 +89,9 @@ class IO:
                 _str + "_" + "".join(random.choice(string.hexdigits) for _ in range(4))
             )
 
-        path = path.joinpath(_str)
-        return cls(path=path, verbose=verbose)
+        self.path = path.joinpath(_str)
+        self.verbose = verbose
+        return
 
     def save_json(self, variable, filename):
         """
