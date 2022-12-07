@@ -26,7 +26,7 @@ if __name__ == "__main__":
     circuit.append([Phase("phase") for i in range(n)])
 
     params = initialize(circuit)
-    params['phase'] = np.array([0.0])
+    params["phase"] = np.array([0.0])
 
     compile = jax.jit(partial(compile, circuit=circuit))
     # compile = partial(compile, circuit=circuit)

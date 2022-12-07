@@ -1,106 +1,133 @@
 import time
+import itertools
 
 import jax
 from jax import numpy as np
 from qsense.utils import tensor, prod
 
 
-def nketz0(n):
-    return tensor(n * [ketz0()])
-
-
-def nketz1(n):
-    return tensor(n * [ketz1()])
-
-
-def nketx0(n):
-    return tensor(n * [ketx0()])
-
-
-def nketx1(n):
-    return tensor(n * [ketx1()])
-
-
-def nket_ghz(n):
-    return (1 / np.sqrt(2)) * (
-        tensor(n * [np.array([[1.0, 0.0]]).T]) + tensor(n * [np.array([[0.0, 1.0]]).T])
-    )
-
-
-def ketx0():
-    return 1 / np.sqrt(2) * np.array([[1.0], [1.0]])
-
-
-def ketx1():
-    return 1 / np.sqrt(2) * np.array([[1.0], [-1.0]])
-
-
-def ketz0():
-    return np.array([[1.0], [0.0]])
-
-
-def ketz1():
-    return np.array([[0.0], [1.0]])
-
-
-def kety0():
-    return 1 / np.sqrt(2) * np.array([[1.0], [1.0j]])
-
-
-def kety1():
-    return 1 / np.sqrt(2) * np.array([[1.0], [-1.0j]])
+def basis(k, d):
+    ket = np.zeros([d, 1])
+    return ket.at[k].set(1.0)
 
 
 def dagger(array):
     return array.conjugate().T
 
 
-def eye():
-    return np.array([[1.0, 0.0], [0.0, 1.0]])
+def ketz0(d=2):
+    return basis(0, d)
 
 
-def x():
-    return np.array([[0.0, 1.0], [1.0, 0.0]])
+def ketz1(d=2):
+    return basis(1, d)
 
 
-def y():
-    return np.array([[0.0, -1.0j], [1.0j, 0.0]])
+def ketx0(d=2):
+    return 1 / np.sqrt(2) * np.array([[1.0], [1.0]])
 
 
-def z():
-    return np.array([[1.0, 0.0], [0.0, -1.0]])
+def ketx1(d=2):
+    return 1 / np.sqrt(2) * np.array([[1.0], [-1.0]])
 
 
-def h():
-    return np.array([[1.0, 1.0], [1.0, -1.0]]) / np.sqrt(2)
+def kety0(d=2):
+    return 1 / np.sqrt(2) * np.array([[1.0], [1.0j]])
 
 
-def cnot(n=2, control=0, target=1):
-    d0 = {control: ketz0() @ ketz0().T, target: eye()}
-    d1 = {control: ketz1() @ ketz1().T, target: x()}
-    return tensor([d0.get(reg, eye()) for reg in range(n)]) + tensor(
-        [d1.get(reg, eye()) for reg in range(n)]
+def kety1(d=2):
+    return 1 / np.sqrt(2) * np.array([[1.0], [-1.0j]])
+
+
+def nketz0(n, d=2):
+    return tensor(n * [ketz0()])
+
+
+def nketz1(n, d=2):
+    return tensor(n * [ketz1()])
+
+
+def nketx0(n, d=2):
+    return tensor(n * [ketx0()])
+
+
+def nketx1(n, d=2):
+    return tensor(n * [ketx1()])
+
+
+def nket_ghz(n, d=2):
+    return (1 / np.sqrt(2)) * (
+        tensor(n * [np.array([[1.0, 0.0]]).T]) + tensor(n * [np.array([[0.0, 1.0]]).T])
     )
 
 
-def phase(phi):
-    return np.array([[1.0, 0.0], [0.0, np.exp(1j * phi)]])
+def eye(d=2):
+    return np.identity(d)
 
 
-def rx(theta):
+def x(d=2):
+    return sum([basis((ell + 1) % d, d) @ dagger(basis(ell, d)) for ell in range(d)])
+
+
+def y(d=2):
+    return x(d) @ z(d)
+
+
+def z(d=2):
+    return sum(
+        [
+            np.exp(2j * np.pi * ell / d) * basis(ell, d) @ dagger(basis(ell, d))
+            for ell in range(d)
+        ]
+    )
+
+
+def h(d=2):
+    return sum(
+        [
+            np.exp(2j * np.pi / d) ** (i * j) * basis(i, d) @ dagger(basis(j, d))
+            for (i, j) in itertools.product(range(d), range(d))
+        ]
+    )
+
+
+def cnot(n=2, control=0, target=1, d=2):
+    ds = [
+        {
+            control: basis(i, d) @ dagger(basis(i, d)),
+            target: sum(
+                [basis((i + j) % d, d) @ dagger(basis(j, d)) for j in range(d)]
+            ),
+        }
+        for i in range(d)
+    ]
+    u = sum([tensor([ds[i].get(reg, eye(d)) for reg in range(n)]) for i in range(d)])
+    return u
+
+
+def phase(phi, d=2):
+    return sum(
+        [
+            np.exp(1j * phi * ell / d) * basis(ell, d) @ dagger(basis(ell, d))
+            for ell in range(d)
+        ]
+    )
+
+
+def rx(theta, d=2):
     return u3(theta, 0.0, 0.0)
 
 
-def rz(phi):
+def rz(phi, d=2):
     return np.array([[np.exp(-1j * phi / 2), 0.0], [0.0, np.exp(1j * phi / 2)]])
 
 
-def u2(theta, phi):
+def u2(theta, phi, d=2):
     u = rx(theta) @ rz(phi)
     return u
 
 
-def u3(theta, phi, lam):
+def u3(theta, phi, lam, d=2):
     u = np.array(
         [
             [np.cos(theta / 2), -np.exp(1j * lam) * np.sin(theta / 2)],
@@ -158,8 +185,13 @@ def check(params, circuit):
     us = []
     for layer in circuit:
         u = tensor(
-            [gate(*params[gate.key]) if (gate.key in params.keys()) else gate() for gate in layer]
+            [
+                gate(*params[gate.key]) if (gate.key in params.keys()) else gate()
+                for gate in layer
+            ]
         )
-        print("total difference", np.sum(np.identity(u.shape[0]) - dagger(u) @ u), layer)
+        print(
+            "total difference", np.sum(np.identity(u.shape[0]) - dagger(u) @ u), layer
+        )
     u = prod(reversed(us))
     return u

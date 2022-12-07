@@ -23,7 +23,7 @@ if __name__ == "__main__":
     circuit.append([Phase("phase") for i in range(n)])
 
     params = initialize(circuit)
-    params['phase'] = np.array([0.0])
+    params["phase"] = np.array([0.0])
 
     compile = jax.jit(partial(compile, circuit=circuit))
     keys = ["phase"]
@@ -42,9 +42,7 @@ if __name__ == "__main__":
     grad = jax.jit(jax.grad(qfi))
     print(grad(params))
 
-    for step in (
-            pbar := tqdm.tqdm(range(n_step), disable=(not progress))
-    ):
+    for step in (pbar := tqdm.tqdm(range(n_step), disable=(not progress))):
         ell = qfi(params)
         gradient = grad(params)
         updates, opt_state = optimizer.update(gradient, opt_state)
@@ -62,8 +60,11 @@ if __name__ == "__main__":
     #%%
     fig, axs = plt.subplots(1, 1)
     axs.axhline(n**2, **dict(color="teal", ls="--"))
-    axs.plot(-losses, **dict(color="salmon", ls='-'))
-    axs.set(xlabel="Optimization step", ylabel=r"Quantum Fischer Information: $\mathcal{F}_\phi$")
+    axs.plot(-losses, **dict(color="salmon", ls="-"))
+    axs.set(
+        xlabel="Optimization step",
+        ylabel=r"Quantum Fischer Information: $\mathcal{F}_\phi$",
+    )
 
     plt.show()
 
