@@ -12,7 +12,7 @@ from qsense.utils import tensor, sum, prod
 from qsense.functions import initialize, compile
 from qsense.qfi import qfim
 
-from examples.circuits import *
+from experiments.circuits import *
 
 
 if __name__ == "__main__":

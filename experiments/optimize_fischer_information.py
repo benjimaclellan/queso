@@ -9,7 +9,7 @@ from qsense.functions import *
 from qsense.functions import initialize, compile
 from qsense.qfi import qfim
 from qsense.io import IO
-from examples.circuits import *
+from experiments.circuits import *
 
 
 if __name__ == "__main__":
