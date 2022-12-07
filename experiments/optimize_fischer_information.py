@@ -8,15 +8,18 @@ import matplotlib.pyplot as plt
 from qsense.functions import *
 from qsense.functions import initialize, compile
 from qsense.qfi import qfim
+from qsense.io import IO
 from examples.circuits import *
 
 
 if __name__ == "__main__":
-    n = 6  # number of particles
+    io = IO(folder="qfi-optimization", include_date=True)
+
+    n = 4  # number of particles
 
     ket_i = nketz0(n)
-    # circuit = local_entangling_circuit(n)
-    circuit = nonlocal_entangling_circuit(n)
+    circuit = local_entangling_circuit(n, n_layers=8)
+    # circuit = nonlocal_entangling_circuit(n)
     circuit.append([Phase("phase") for i in range(n)])
 
     params = initialize(circuit)
@@ -29,15 +32,16 @@ if __name__ == "__main__":
     qfi = lambda params, circuit, ket_i, keys: -qfim(params, circuit, ket_i, keys)[0, 0]
     qfi = jax.jit(partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys))
 
-    learning_rate = 0.4
+    learning_rate = 0.2
     n_step = 100
     progress = True
     optimizer = optax.adagrad(learning_rate)
     opt_state = optimizer.init(params)
 
     losses = []
-    grad = jax.grad(qfi)
-    grad(params)
+    grad = jax.jit(jax.grad(qfi))
+    print(grad(params))
+
     for step in (
             pbar := tqdm.tqdm(range(n_step), disable=(not progress))
     ):
@@ -59,7 +63,8 @@ if __name__ == "__main__":
     fig, axs = plt.subplots(1, 1)
     axs.axhline(n**2, **dict(color="teal", ls="--"))
     axs.plot(-losses, **dict(color="salmon", ls='-'))
-    axs.set(xlabel="Optimization step", ylabel="Quantum Fischer Information: $\phi$")
+    axs.set(xlabel="Optimization step", ylabel=r"Quantum Fischer Information: $\mathcal{F}_\phi$")
 
     plt.show()
 
+    # io.save_figure(fig, filename=f"qfi_n={n}")
