@@ -1,8 +1,8 @@
 import time
 import itertools
-
 import jax
 from jax import numpy as np
+
 from qsense.utils import tensor, prod
 
 
