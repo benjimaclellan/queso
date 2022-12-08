@@ -40,11 +40,11 @@ def kety1(d=2):
 
 
 def nketz0(n, d=2):
-    return tensor(n * [ketz0()])
+    return tensor(n * [ketz0(d=d)])
 
 
 def nketz1(n, d=2):
-    return tensor(n * [ketz1()])
+    return tensor(n * [ketz1(d=d)])
 
 
 def nketx0(n, d=2):
@@ -56,8 +56,8 @@ def nketx1(n, d=2):
 
 
 def nket_ghz(n, d=2):
-    return (1 / np.sqrt(2)) * (
-        tensor(n * [np.array([[1.0, 0.0]]).T]) + tensor(n * [np.array([[0.0, 1.0]]).T])
+    return (1 / np.sqrt(d)) * (
+        sum([tensor(n * [basis(i, d).T]) for i in range(d)])
     )
 
 
@@ -83,7 +83,7 @@ def z(d=2):
 
 
 def h(d=2):
-    return sum(
+    return 1 / np.sqrt(d) * sum(
         [
             np.exp(2j * np.pi / d) ** (i * j) * basis(i, d) @ dagger(basis(j, d))
             for (i, j) in itertools.product(range(d), range(d))
@@ -91,7 +91,7 @@ def h(d=2):
     )
 
 
-def cnot(n=2, control=0, target=1, d=2):
+def cnot(d=2, n=2, control=0, target=1):
     ds = [
         {
             control: basis(i, d) @ dagger(basis(i, d)),
@@ -106,12 +106,34 @@ def cnot(n=2, control=0, target=1, d=2):
 
 
 def phase(phi, d=2):
+    # return sum(
+    #     [
+    #         np.exp(1j * phi * ell) * basis(ell, d) @ dagger(basis(ell, d))
+    #         for ell in range(d)
+    #     ]
+    # )
     return sum(
         [
-            np.exp(1j * phi * ell / d) * basis(ell, d) @ dagger(basis(ell, d))
+            np.exp(1j * phi * ell) * basis(ell, d) @ dagger(basis(ell, d)) if ell == (d-1)
+            else basis(ell, d) @ dagger(basis(ell, d))
             for ell in range(d)
         ]
     )
+    # u = np.identity(d, dtype=np.complex128)
+    # u.at[-1].set(np.exp(1j * phi))
+    # return u
+
+
+def rdx(*args, d=2):
+    u = np.identity(d)
+    for (i, j), param in zip(itertools.combinations(range(d), 2), args):
+        rot = np.identity(d)
+        rot = rot.at[i, j].set(-np.sin(param))
+        rot = rot.at[j, i].set(np.sin(param))
+        rot = rot.at[i, i].set(np.cos(param))
+        rot = rot.at[j, j].set(np.cos(param))
+        u = rot @ u
+    return u
 
 
 def rx(theta, d=2):
@@ -123,7 +145,7 @@ def rz(phi, d=2):
 
 
 def u2(theta, phi, d=2):
-    u = rx(theta) @ rz(phi)
+    u = rx(theta, d=d) @ rz(phi, d=d)
     return u
 
 
@@ -177,6 +199,7 @@ def compile(params, circuit):
                 [u(*params[u.key]) if (u.key in params.keys()) else u() for u in layer]
             )
         )
+
     u = prod(reversed(us))
     return u
 

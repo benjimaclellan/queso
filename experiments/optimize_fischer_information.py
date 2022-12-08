@@ -12,37 +12,28 @@ from qsense.io import IO
 from experiments.circuits import *
 
 
-if __name__ == "__main__":
-    io = IO(folder="qfi-optimization", include_date=True)
+def optimize_qfi(n, d, n_layers=1, lr=0.2, n_steps=100):
+    ket_i = nketz0(n=n, d=d)
 
-    n = 4  # number of particles
-
-    ket_i = nketz0(n)
-    circuit = local_entangling_circuit(n, n_layers=8)
-    # circuit = nonlocal_entangling_circuit(n)
-    circuit.append([Phase("phase") for i in range(n)])
+    circuit = local_entangling_circuit(n, d, n_layers=n_layers)
+    circuit.append([Phase("phase", d=d) for _ in range(n)])
 
     params = initialize(circuit)
     params["phase"] = np.array([0.0])
-
-    compile = jax.jit(partial(compile, circuit=circuit))
     keys = ["phase"]
 
     # note the negative for minimizing
     qfi = lambda params, circuit, ket_i, keys: -qfim(params, circuit, ket_i, keys)[0, 0]
     qfi = jax.jit(partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys))
 
-    learning_rate = 0.2
-    n_step = 100
     progress = True
-    optimizer = optax.adagrad(learning_rate)
+    optimizer = optax.adagrad(learning_rate=lr)
     opt_state = optimizer.init(params)
 
     losses = []
     grad = jax.jit(jax.grad(qfi))
-    print(grad(params))
 
-    for step in (pbar := tqdm.tqdm(range(n_step), disable=(not progress))):
+    for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
         ell = qfi(params)
         gradient = grad(params)
         updates, opt_state = optimizer.update(gradient, opt_state)
@@ -54,13 +45,24 @@ if __name__ == "__main__":
         else:
             print(step, ell, params)
 
-    losses = np.array(losses)
-    print(losses)
+    losses = -np.array(losses)
+    return circuit, params, losses
+
+
+if __name__ == "__main__":
+    io = IO(folder="qfi-optimization", include_date=True)
+
+    n = 2  # number of particles
+    d = 4
+    n_layers = 2
+    lr = 0.2
+    n_steps = 100
+    circuit, params, losses = optimize_qfi(n, d, n_layers=1, lr=lr, n_steps=n_steps)
 
     #%%
     fig, axs = plt.subplots(1, 1)
-    axs.axhline(n**2, **dict(color="teal", ls="--"))
-    axs.plot(-losses, **dict(color="salmon", ls="-"))
+    axs.axhline(n**d, **dict(color="teal", ls="--"))
+    axs.plot(losses, **dict(color="salmon", ls="-"))
     axs.set(
         xlabel="Optimization step",
         ylabel=r"Quantum Fischer Information: $\mathcal{F}_\phi$",
