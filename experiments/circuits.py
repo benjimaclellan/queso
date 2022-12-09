@@ -27,7 +27,8 @@ def local_entangling_circuit(n=2, d=2, n_layers=1):
     """
     circuit = list()
     for layer in range(n_layers):
-        circuit.append([RDX(str(uuid.uuid4()), d=d) for _ in range(n)])
+        # circuit.append([RDX(str(uuid.uuid4()), d=d) for _ in range(n)])
+        circuit.append([U2(str(uuid.uuid4()), d=2) for _ in range(n)])
         circuit.append([CNOT(d=d, n=2, control=0, target=1) for _ in range(1, n, 2)])
         circuit.append(
             [Identity(d=d)]

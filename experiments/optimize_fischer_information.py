@@ -15,7 +15,8 @@ from experiments.circuits import *
 def optimize_qfi(n, d, n_layers=1, lr=0.2, n_steps=100):
     ket_i = nketz0(n=n, d=d)
 
-    circuit = local_entangling_circuit(n, d, n_layers=n_layers)
+    # circuit = local_entangling_circuit(n, d, n_layers=n_layers)
+    circuit = nonlocal_entangling_circuit(n, d)
     circuit.append([Phase("phase", d=d) for _ in range(n)])
 
     params = initialize(circuit)
@@ -52,9 +53,9 @@ def optimize_qfi(n, d, n_layers=1, lr=0.2, n_steps=100):
 if __name__ == "__main__":
     io = IO(folder="qfi-optimization", include_date=True)
 
-    n = 2  # number of particles
-    d = 4
-    n_layers = 2
+    n = 6  # number of particles
+    d = 2
+    n_layers = 1
     lr = 0.2
     n_steps = 100
     circuit, params, losses = optimize_qfi(n, d, n_layers=1, lr=lr, n_steps=n_steps)
