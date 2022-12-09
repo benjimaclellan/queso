@@ -1,0 +1,7 @@
+jax
+tqdm
+matplotlib
+optax
+pandas
+seaborn
+jax[cpu]
