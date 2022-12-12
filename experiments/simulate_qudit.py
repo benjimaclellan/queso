@@ -17,7 +17,7 @@ from experiments.circuits import *
 
 if __name__ == "__main__":
     n = 4  # number of particles
-    d = 3
+    d = 2
 
     ket_i = nketz0(n, d=d)
     # ket_i = nket_ghz(n)
@@ -28,11 +28,11 @@ if __name__ == "__main__":
         circuit.append([RDX(str(uuid.uuid4()), d=d) for _ in range(n)])
         # circuit.append([H(d=d) for _ in range(n)])
         circuit.append([CNOT(d=d, n=2, control=0, target=1) for _ in range(1, n, 2)])
-        circuit.append(
-            [Identity(d=d)]
-            + [CNOT(d=d, n=2, control=0, target=1) for i in range(2, n - 1, 2)]
-            + [Identity(d=d)]
-        )
+        # circuit.append(
+        #     [Identity(d=d)]
+        #     + [CNOT(d=d, n=2, control=0, target=1) for i in range(2, n - 1, 2)]
+        #     + [Identity(d=d)]
+        # )
     circuit.append([Phase("phase", d=d) for i in range(n)])
 
     params = initialize(circuit)
