@@ -36,7 +36,8 @@ class IO:
     # default save path always points to `data/` no matter where this repository is located
     default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
 
-    def __init__(self,
+    def __init__(
+        self,
         path=None,
         folder="",
         include_date=False,
@@ -167,9 +168,11 @@ class IO:
         :return: the function returns nothing
         :rtype: None
         """
-        full_path = self.path.joinpath(filename)
+        ext = ".pkl"
+        full_path = self.path.joinpath(filename + ext)
         os.makedirs(full_path.parent, exist_ok=True)
-        df.to_csv(str(full_path), sep=",", index=False, header=True)
+        # df.to_csv(str(full_path), sep=",", index=False, header=True)
+        df.to_pickle(str(full_path))
         if self.verbose:
             print(f"{current_time()} | Saved to {full_path} successfully.")
 
@@ -182,8 +185,10 @@ class IO:
         :return: dataframe data
         :rtype: panda dataframe
         """
-        full_path = self.path.joinpath(filename)
-        df = pd.read_csv(str(full_path), sep=",", header=0)
+        ext = ".pkl"
+        full_path = self.path.joinpath(filename + ext)
+        # df = pd.read_csv(str(full_path), sep=",", header=0)
+        df = pd.read_pickle(str(full_path))
         if self.verbose:
             print(f"{current_time()} | Loaded from {full_path} successfully.")
         return df
