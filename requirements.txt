@@ -5,3 +5,5 @@ optax
 pandas
 seaborn
 jax[cpu]
+networkx
+qutip
