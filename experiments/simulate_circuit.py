@@ -1,7 +1,7 @@
 from functools import partial
 from qsense.qfi import qfim
 
-from experiments.circuits import *
+from benchmarks.circuits import *
 
 
 if __name__ == "__main__":

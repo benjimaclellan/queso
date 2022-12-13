@@ -57,20 +57,20 @@ def qfim_rho(params, circuit, ket_i, keys):
     def feigh(tunable_params):
         rho = frho(tunable_params)
         eigvals, eigvecs = np.linalg.eigh(rho)
+        # return eigvals, eigvecs
         return np.complex128(eigvals), eigvecs
 
-    fdrho = jax.jacrev(frho, holomorphic=True)
+    # fdrho = jax.jacrev(frho, holomorphic=True)
     fdeigh = jax.jacrev(feigh, holomorphic=True)
 
-    drho = fdrho(tunable_params)
-    eigvals, eigvecs = np.linalg.eigh(frho(tunable_params))
+    # drho = fdrho(tunable_params)
+    eigvals, eigvecs = feigh(tunable_params)
     deigvals, deigvecs = fdeigh(tunable_params)
-    # print(drho)
-    # print(deigvals)
+    print('deigvals', deigvals)
+    print('eigvals', eigvals)
+
     # flatten parameters to a single list
     p = [(key, i) for key in keys for i in range(len(params[key]))]
-    # print(deigvals)
-    # f = [[1]]
     f = []
     for key_a, a in p:
         fa = []
@@ -78,26 +78,38 @@ def qfim_rho(params, circuit, ket_i, keys):
             f_ab = 0.0
             for i in range(len(eigvals)):
                 if eigvals[i] < 1e-9:
+                    print('skipping ', i)
                     continue
                 deval_ai = deigvals[key_a][i, a]
                 deval_bi = deigvals[key_b][i, b]
-                devec_ai = deigvecs[key_a][:, None, i, a]
-                devec_bi = deigvecs[key_b][:, None, i, b]
-
-                f_ab += deval_ai * deval_bi + 4 * eigvals[i] * np.real(dagger(devec_ai) @ devec_bi)
+                devec_ai = deigvecs[key_a][:, i, None, a]
+                devec_bi = deigvecs[key_b][:, i, None, b]
+                print("total eigen sum", np.sum(np.abs(eigvecs[:, i])**2))
+                print("deval_ai",deval_ai)
+                print("real part shapes", dagger(devec_ai).shape, devec_bi.shape, np.real(dagger(devec_ai) @ devec_bi))
+                term1 = deval_ai * deval_bi / eigvals[i]
+                term2 = 4 * eigvals[i] * np.real(dagger(devec_ai) @ devec_bi)
+                print("term1", term1)
+                print("term2", term2)
+                # f_ab += deval_ai * deval_bi / eigvals[i]
+                f_ab += 4 * eigvals[i] * np.real(dagger(devec_ai) @ devec_bi)
                 print("f_ab", f_ab)
                 # print(deval_ai.shape, deval_bi, devec_ai)
-
+                t = 0.0
                 for j in range(len(eigvals)):
                     if eigvals[j] < 1e-9:
                         continue
-                    print(dagger(devec_ai).shape, eigvecs[:, None,  j].shape)
-                    t = -8 * eigvals[i] * eigvals[j] / (eigvals[i] + eigvals[j])
+                    print(dagger(devec_ai).shape, eigvecs[:, j, None].shape)
+                    t += -8 * eigvals[i] * eigvals[j] / (eigvals[i] + eigvals[j]) * np.real((dagger(devec_ai) @ eigvecs[:, j, None]) * (dagger(eigvecs[:, j, None]) @ devec_bi))
                     print("t", t)
-                    t *= np.real((dagger(devec_ai) @ eigvecs[:, None, j]) * (dagger(eigvecs[:, None, j]) @ devec_bi))
-                    f_ab += t
-                    print(f_ab)
+                    # t *= np.real((dagger(devec_ai) @ eigvecs[:, j, None]) * (dagger(eigvecs[:, j, None]) @ devec_bi))
+                print(t)
+                f_ab += t
+                print(f_ab)
             fa.append(f_ab.squeeze())
         f.append(fa)
+
+    # f = [[1]]
+
     f = np.array(f)
     return f

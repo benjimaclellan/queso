@@ -1,15 +1,11 @@
-import jax
 import optax
-import uuid
 import tqdm
 from functools import partial
 import matplotlib.pyplot as plt
 
-from qsense.functions import *
-from qsense.functions import initialize, compile
 from qsense.qfi import qfim
 from qsense.io import IO
-from experiments.circuits import *
+from benchmarks.circuits import *
 
 
 def optimize_qfi(n, d, n_layers=1, lr=0.2, n_steps=100):
@@ -53,11 +49,11 @@ def optimize_qfi(n, d, n_layers=1, lr=0.2, n_steps=100):
 if __name__ == "__main__":
     io = IO(folder="qfi-optimization", include_date=True)
 
-    n = 6  # number of particles
+    n = 4  # number of particles
     d = 2
     n_layers = 1
     lr = 0.2
-    n_steps = 100
+    n_steps = 50
     circuit, params, losses = optimize_qfi(n, d, n_layers=1, lr=lr, n_steps=n_steps)
 
     #%%

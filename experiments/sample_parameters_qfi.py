@@ -3,10 +3,9 @@ from functools import partial
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from qsense.functions import *
 from qsense.qfi import qfim
 from qsense.io import IO
-from experiments.circuits import *
+from benchmarks.circuits import *
 
 
 if __name__ == "__main__":
