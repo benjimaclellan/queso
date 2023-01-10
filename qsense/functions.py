@@ -204,6 +204,11 @@ def compile(params, circuit):
     return u
 
 
+# def measure(params, povm):
+#     u = compile(params, povm)
+#     return u
+
+
 def check(params, circuit):
     us = []
     for layer in circuit:
