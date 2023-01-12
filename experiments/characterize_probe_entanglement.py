@@ -7,7 +7,7 @@ import numpy as np
 from qsense.io import IO
 from benchmarks.circuits import nketz0
 from qsense.entanglement import genuine_multipartite_entanglement
-from optimize_fischer_information import optimize_qfi, initialize
+from optimize_qfi import optimize_qfi, initialize
 
 
 if __name__ == "__main__":

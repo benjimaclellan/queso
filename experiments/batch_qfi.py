@@ -1,7 +1,7 @@
 import pandas as pd
 from qsense.io import IO
 
-from optimize_fischer_information import optimize_qfi
+from optimize_qfi import optimize_qfi
 
 
 if __name__ == "__main__":
@@ -26,7 +26,7 @@ if __name__ == "__main__":
             print(f"n = {n}, d = {d} | run = {run}")
             lr = 0.2
             n_steps = 50
-            circuit, params, losses = optimize_qfi(n, d, n_layers=n_layers, lr=lr, n_steps=n_steps)
+            losses = optimize_qfi(n, d, n_layers=n_layers, lr=lr, n_steps=n_steps)
 
             df.append(dict(
                 n=n,

@@ -7,7 +7,7 @@ from qsense.functions import dagger, compile
 config.update("jax_enable_x64", True)
 
 
-def cfim(params, probe_circ, interaction_circ, measure_circ, ket_i, proj_mu, keys):
+def cfim(params, probe_circ, interaction_circ, measure_circ, ket_i, keys):
     # parameters to compute CFI for must be complex datatype in order to automatically differentiate
     # tunable_params = {key: np.complex128(params[key]) for key in keys}
     tunable_params = {key: params[key] for key in keys}
