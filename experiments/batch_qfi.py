@@ -1,3 +1,4 @@
+import jax
 import pandas as pd
 from qsense.io import IO
 
@@ -12,14 +13,14 @@ if __name__ == "__main__":
     n_layers = 1
     r = [
         (2, 2),
-        (2, 3),
-        (2, 4),
-        (4, 2),
-        (4, 3),
-        (4, 4),
-        (6, 2),
-        (6, 2),
-        (8, 2),
+        # (2, 3),
+        # (2, 4),
+        # (4, 2),
+        # (4, 3),
+        # (4, 4),
+        # (6, 2),
+        # (6, 2),
+        # (8, 2),
     ]
     for (n, d) in r:
         for run in range(n_runs):
