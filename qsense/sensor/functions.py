@@ -56,9 +56,7 @@ def nketx1(n, d=2):
 
 
 def nket_ghz(n, d=2):
-    return (1 / np.sqrt(d)) * (
-        sum([tensor(n * [basis(i, d).T]) for i in range(d)])
-    )
+    return (1 / np.sqrt(d)) * (sum([tensor(n * [basis(i, d).T]) for i in range(d)]))
 
 
 def eye(d=2):
@@ -83,11 +81,15 @@ def z(d=2):
 
 
 def h(d=2):
-    return 1 / np.sqrt(d) * sum(
-        [
-            np.exp(2j * np.pi / d) ** (i * j) * basis(i, d) @ dagger(basis(j, d))
-            for (i, j) in itertools.product(range(d), range(d))
-        ]
+    return (
+        1
+        / np.sqrt(d)
+        * sum(
+            [
+                np.exp(2j * np.pi / d) ** (i * j) * basis(i, d) @ dagger(basis(j, d))
+                for (i, j) in itertools.product(range(d), range(d))
+            ]
+        )
     )
 
 
@@ -114,7 +116,8 @@ def phase(phi, d=2):
     # )
     return sum(
         [
-            np.exp(1j * phi * ell) * basis(ell, d) @ dagger(basis(ell, d)) if ell == (d-1)
+            np.exp(1j * phi * ell) * basis(ell, d) @ dagger(basis(ell, d))
+            if ell == (d - 1)
             else basis(ell, d) @ dagger(basis(ell, d))
             for ell in range(d)
         ]
@@ -174,38 +177,33 @@ def is_hermitian(input_matrix):
     return np.allclose(input_matrix, np.conjugate(input_matrix.T))
 
 
-def initialize(circuit):
-    params = {}
-    rng_key = jax.random.PRNGKey(time.time_ns())
-    for layer in circuit:
-        for u in layer:
-            if u.bounds is not None and u.m is not None:
-                if u.key not in params.keys():
-                    rng_key, rng_subkey = jax.random.split(rng_key)
-                    params[u.key] = jax.random.uniform(
-                        key=rng_subkey,
-                        shape=[u.m],
-                        minval=u.bounds[0],
-                        maxval=u.bounds[1],
-                    )
-    return params
+# def initialize(circuit):
+#     params = {}
+#     rng_key = jax.random.PRNGKey(time.time_ns())
+#     for layer in circuit:
+#         for u in layer:
+#             if u.bounds is not None and u.m is not None:
+#                 if u.key not in params.keys():
+#                     rng_key, rng_subkey = jax.random.split(rng_key)
+#                     params[u.key] = jax.random.uniform(
+#                         key=rng_subkey,
+#                         shape=[u.m],
+#                         minval=u.bounds[0],
+#                         maxval=u.bounds[1],
+#                     )
+#     return params
 
 
-def compile(params, circuit):
-    us = []
-    for layer in circuit:
-        us.append(
-            tensor(
-                [u(*params[u.key]) if (u.key in params.keys()) else u() for u in layer]
-            )
-        )
-
-    u = prod(reversed(us))
-    return u
-
-
-# def measure(params, povm):
-#     u = compile(params, povm)
+# def compile(params, circuit):
+#     us = []
+#     for layer in circuit:
+#         us.append(
+#             tensor(
+#                 [u(*params[u.key]) if (u.key in params.keys()) else u() for u in layer]
+#             )
+#         )
+#
+#     u = prod(reversed(us))
 #     return u
 
 

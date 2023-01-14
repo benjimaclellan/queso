@@ -37,7 +37,7 @@ def local_entangling_circuit(n=2, d=2, n_layers=1):
 
         circuit.append(
             [Identity(d=d)]
-            + [CNOT(d=d, n=2, control=0, target=1) for i in range(1, (n+1) // 2)]
+            + [CNOT(d=d, n=2, control=0, target=1) for i in range(1, (n + 1) // 2)]
         )
         if n % 2 == 0:
             circuit[-1].append(Identity(d=d))

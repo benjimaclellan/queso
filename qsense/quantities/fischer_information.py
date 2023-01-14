@@ -1,7 +1,7 @@
 import jax
 from jax import numpy as np
 
-from qsense.sensor.functions import compile, dagger
+from qsense.sensor.functions import dagger
 
 
 def qfim(params, circuit, ket_i, keys):
@@ -63,8 +63,8 @@ def qfim_rho(params, circuit, ket_i, keys):
     # drho = fdrho(tunable_params)
     eigvals, eigvecs = feigh(tunable_params)
     deigvals, deigvecs = fdeigh(tunable_params)
-    print('deigvals', deigvals)
-    print('eigvals', eigvals)
+    print("deigvals", deigvals)
+    print("eigvals", eigvals)
 
     # flatten parameters to a single list
     p = [(key, i) for key in keys for i in range(len(params[key]))]
@@ -75,15 +75,20 @@ def qfim_rho(params, circuit, ket_i, keys):
             f_ab = 0.0
             for i in range(len(eigvals)):
                 if eigvals[i] < 1e-9:
-                    print('skipping ', i)
+                    print("skipping ", i)
                     continue
                 deval_ai = deigvals[key_a][i, a]
                 deval_bi = deigvals[key_b][i, b]
                 devec_ai = deigvecs[key_a][:, i, None, a]
                 devec_bi = deigvecs[key_b][:, i, None, b]
-                print("total eigen sum", np.sum(np.abs(eigvecs[:, i])**2))
-                print("deval_ai",deval_ai)
-                print("real part shapes", dagger(devec_ai).shape, devec_bi.shape, np.real(dagger(devec_ai) @ devec_bi))
+                print("total eigen sum", np.sum(np.abs(eigvecs[:, i]) ** 2))
+                print("deval_ai", deval_ai)
+                print(
+                    "real part shapes",
+                    dagger(devec_ai).shape,
+                    devec_bi.shape,
+                    np.real(dagger(devec_ai) @ devec_bi),
+                )
                 term1 = deval_ai * deval_bi / eigvals[i]
                 term2 = 4 * eigvals[i] * np.real(dagger(devec_ai) @ devec_bi)
                 print("term1", term1)
@@ -97,7 +102,16 @@ def qfim_rho(params, circuit, ket_i, keys):
                     if eigvals[j] < 1e-9:
                         continue
                     print(dagger(devec_ai).shape, eigvecs[:, j, None].shape)
-                    t += -8 * eigvals[i] * eigvals[j] / (eigvals[i] + eigvals[j]) * np.real((dagger(devec_ai) @ eigvecs[:, j, None]) * (dagger(eigvecs[:, j, None]) @ devec_bi))
+                    t += (
+                        -8
+                        * eigvals[i]
+                        * eigvals[j]
+                        / (eigvals[i] + eigvals[j])
+                        * np.real(
+                            (dagger(devec_ai) @ eigvecs[:, j, None])
+                            * (dagger(eigvecs[:, j, None]) @ devec_bi)
+                        )
+                    )
                     print("t", t)
                     # t *= np.real((dagger(devec_ai) @ eigvecs[:, j, None]) * (dagger(eigvecs[:, j, None]) @ devec_bi))
                 print(t)
@@ -112,33 +126,28 @@ def qfim_rho(params, circuit, ket_i, keys):
     return f
 
 
-def cfim(params, probe_circ, interaction_circ, measure_circ, ket_i, keys):
-    # tunable_params = {key: np.complex128(params[key]) for key in keys}
-    tunable_params = {key: params[key] for key in keys}
+def cfim(params, sensor, keys):
 
-    def fp(tunable_params):
-        params.update(tunable_params)
-        ket = ket_i
-        ket = compile(params, probe_circ) @ ket
-        ket = compile(params, interaction_circ) @ ket
-        ket = compile(params, measure_circ) @ ket
-        povm = np.abs(ket) ** 2
-        return povm
+    def pr_func(params_est):
+        params.update(params_est)
+        return np.abs(sensor(params)) ** 2
 
-    fdp = jax.jacrev(fp, holomorphic=False)
-    p = fp(tunable_params)
-    dp = fdp(tunable_params)
+    params_est = {key: params[key] for key in keys}
+
+    dpr_func = jax.jacrev(pr_func, holomorphic=False)
+    pr = pr_func(params_est)
+    dpr = dpr_func(params_est)
 
     # flatten parameters to a single list
-    plist = [(key, i) for key in keys for i in range(len(params[key]))]
+    params_lst = [(key, i) for key in keys for i in range(len(params[key]))]
 
     f = []
-    for i, (key_a, a) in enumerate(plist):
+    for i, (key_a, a) in enumerate(params_lst):
         fa = []
-        for j, (key_b, b) in enumerate(plist):
-            da = dp[key_a][:, 0, a]
-            db = dp[key_b][:, 0, b]
-            f_ab = np.sum(da * db / p[:, 0])
+        for j, (key_b, b) in enumerate(params_lst):
+            da = dpr[key_a][:, 0, a]
+            db = dpr[key_b][:, 0, b]
+            f_ab = np.sum(da * db / pr[:, 0])
             fa.append(f_ab.squeeze())
         f.append(fa)
     f = np.array(f)

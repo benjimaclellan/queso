@@ -17,15 +17,17 @@ def genuine_multipartite_entanglement(rho):
         # for inds in (inds_a, inds_b):
         prho = qt.ptrace(rho, inds_a)
         entropy = qt.entropy_vn(prho)
-        print(f"Partition {i} of {len(partitions)} | partial trace keeping {inds_a}, entropy of {entropy}.")
+        print(
+            f"Partition {i} of {len(partitions)} | partial trace keeping {inds_a}, entropy of {entropy}."
+        )
 
     return
 
 
 def kbits(n):
-    """ Returns a binary list of length n, where exactly half  """
+    """Returns a binary list of length n, where exactly half"""
     result = []
-    for bits in itertools.combinations(range(n), n//2):
+    for bits in itertools.combinations(range(n), n // 2):
         s = [0] * n
         for bit in bits:
             s[bit] = 1
