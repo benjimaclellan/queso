@@ -1,4 +1,4 @@
-from qsense.functions import *
+from qsense.sensor.functions import *
 
 
 class Gate:

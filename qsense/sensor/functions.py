@@ -1,9 +1,9 @@
+import functools
+import operator
 import time
 import itertools
 import jax
 from jax import numpy as np
-
-from qsense.utils import tensor, prod
 
 
 def basis(k, d):
@@ -223,3 +223,15 @@ def check(params, circuit):
         )
     u = prod(reversed(us))
     return u
+
+
+def sum(args):
+    return functools.reduce(operator.add, args)
+
+
+def prod(args):
+    return functools.reduce(operator.matmul, args)
+
+
+def tensor(args):
+    return functools.reduce(np.kron, args)

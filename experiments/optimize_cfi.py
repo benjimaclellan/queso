@@ -5,17 +5,16 @@ import jax
 import optax
 from functools import partial
 
-from benchmarks.circuits import nketz0, local_unitary_circuit, nonlocal_entangling_circuit, \
-    local_phase_interaction_circuit
-from qsense.functions import initialize
-from qsense.gates import Phase
-from qsense.cfi import cfim
+from qsense.sensor.examples import local_entangling_circuit, local_unitary_circuit
+from qsense.sensor.functions import initialize, nketz0
+from qsense.sensor.unitaries import Phase
+from qsense.quantities.fischer_information import cfim
 
 
-def optimize_cfi(n, d, lr=0.15, n_steps=300, n_runs=1, progress=True):
+def optimize_cfi(n, d, n_layers=1, lr=0.15, n_steps=300, n_runs=1, progress=True):
     ket_i = nketz0(n=n, d=d)
 
-    probe_circ = nonlocal_entangling_circuit(n, d)
+    probe_circ = local_entangling_circuit(n, d, n_layers=n_layers)
     interaction_circ = [[Phase("phase", d=d) for _ in range(n)]]
     measure_circ = local_unitary_circuit(n, d)
 
@@ -70,7 +69,7 @@ def optimize_cfi(n, d, lr=0.15, n_steps=300, n_runs=1, progress=True):
 
 if __name__ == "__main__":
 
-    _losses = optimize_cfi(n=4, d=2, lr=0.15, n_steps=300, n_runs=5)
+    _losses = optimize_cfi(n=4, d=2, n_layers=4, lr=0.15, n_steps=100, n_runs=4)
 
     fig, ax = plt.subplots(1, 1)
     for losses in _losses:

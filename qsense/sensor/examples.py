@@ -1,5 +1,6 @@
 import uuid
-from qsense.gates import *
+
+from qsense.sensor.unitaries import H, Identity, CNOT, U3, Phase
 
 
 def ghz_circuit(n=2, d=2):

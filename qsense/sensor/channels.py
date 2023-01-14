@@ -1,6 +1,3 @@
-from qsense.functions import *
-
-
 class Channel:
     def __init__(self, key):
         self.key = key

@@ -1,14 +1,16 @@
-import optax
-import tqdm
-from functools import partial
-import matplotlib.pyplot as plt
+import jax
 import jax.numpy as np
+import tqdm
+import matplotlib.pyplot as plt
+import optax
+from functools import partial
 
-from qsense.qfi import qfim
-from qsense.io import IO
-from benchmarks.circuits import *
+from qsense.sensor.examples import local_entangling_circuit
+from qsense.sensor.functions import *
+from qsense.sensor.unitaries import Phase
+from qsense.utils.io import IO
 
-device = jax.devices('cpu')[0]
+from qsense.quantities.fischer_information import qfim
 
 
 def optimize_qfi(n, d, n_layers=1, lr=0.2, n_steps=100, progress=True):
@@ -22,41 +24,40 @@ def optimize_qfi(n, d, n_layers=1, lr=0.2, n_steps=100, progress=True):
     params = initialize(circuit)
     params["phase"] = np.array([0.0])
     keys = ["phase"]
-    #
-    # # note the negative for minimizing
-    # qfi = lambda params, circuit, ket_i, keys: -qfim(params, circuit, ket_i, keys)[0, 0]
-    # qfi = jax.jit(partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys), device=device)
-    #
-    # optimizer = optax.adagrad(learning_rate=lr)
-    # opt_state = optimizer.init(params)
-    #
-    # losses = []
-    # grad = jax.jit(jax.grad(qfi), device=device)
-    # gradient = grad(params)
-    #
-    # print(qfi(params).device())
-    #
-    # for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
-    #     ell = qfi(params)
-    #     gradient = grad(params)
-    #     updates, opt_state = optimizer.update(gradient, opt_state)
-    #     params = optax.apply_updates(params, updates)
-    #     losses.append(ell)
-    #
-    #     if progress:
-    #         pbar.set_description(f"Cost: {-ell:.10f}")
-    #     # else:
-    #     #     print(step, ell, params)
-    #
-    # losses = -np.array(losses)
-    # return circuit, params, losses
-    return circuit, params, []
+
+    # note the negative for minimizing
+    qfi = lambda params, circuit, ket_i, keys: -qfim(params, circuit, ket_i, keys)[0, 0]
+    qfi = jax.jit(partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys))
+
+    optimizer = optax.adagrad(learning_rate=lr)
+    opt_state = optimizer.init(params)
+
+    losses = []
+    grad = jax.jit(jax.grad(qfi))
+    gradient = grad(params)
+
+    print(qfi(params).device())
+
+    for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
+        ell = qfi(params)
+        gradient = grad(params)
+        updates, opt_state = optimizer.update(gradient, opt_state)
+        params = optax.apply_updates(params, updates)
+        losses.append(ell)
+
+        if progress:
+            pbar.set_description(f"Cost: {-ell:.10f}")
+        # else:
+        #     print(step, ell, params)
+
+    losses = -np.array(losses)
+    return circuit, params, losses
 
 
 if __name__ == "__main__":
     io = IO(folder="qfi-optimization", include_date=True)
 
-    n = 7  # number of particles
+    n = 4  # number of particles
     d = 2
     n_layers = 4
     lr = 0.1

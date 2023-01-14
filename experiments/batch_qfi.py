@@ -1,6 +1,6 @@
 import jax
 import pandas as pd
-from qsense.io import IO
+from qsense.utils.io import IO
 
 from optimize_qfi import optimize_qfi
 

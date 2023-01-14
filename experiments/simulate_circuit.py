@@ -1,8 +1,7 @@
 from functools import partial
-from qsense.qfi import qfim
+from qsense.quantities.fischer_information import qfim
 
-from benchmarks.circuits import *
-
+from qsense.sensor.examples import local_entangling_circuit
 
 if __name__ == "__main__":
     n = 4  # number of particles

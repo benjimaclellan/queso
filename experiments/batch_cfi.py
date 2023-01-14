@@ -1,5 +1,5 @@
 import pandas as pd
-from qsense.io import IO
+from qsense.utils.io import IO
 
 from optimize_cfi import optimize_cfi
 

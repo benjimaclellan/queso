@@ -3,10 +3,9 @@ from functools import partial
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from qsense.qfi import qfim
-from qsense.io import IO
-from benchmarks.circuits import *
-
+from qsense.quantities.fischer_information import qfim
+from qsense.sensor.examples import nonlocal_entangling_circuit
+from qsense.utils.io import IO
 
 if __name__ == "__main__":
     io = IO(folder="qfi-sample-parameters", include_date=True, include_id=False)

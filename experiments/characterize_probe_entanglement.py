@@ -1,12 +1,10 @@
-import pandas as pd
 import tqdm
 import qutip as qt
-import jax.numpy as jnp
 import numpy as np
 
-from qsense.io import IO
+from qsense.utils.io import IO
 from benchmarks.circuits import nketz0
-from qsense.entanglement import genuine_multipartite_entanglement
+from qsense.quantities.entanglement import genuine_multipartite_entanglement
 from optimize_qfi import optimize_qfi, initialize
 
 
