@@ -1,53 +1,55 @@
-import matplotlib.pyplot as plt
-import tqdm
-import jax.numpy as np
 import jax
+import jax.numpy as np
+import tqdm
+import matplotlib.pyplot as plt
 import optax
 from functools import partial
+import uuid
 
-from qsense.sensor.examples import local_entangling_circuit, local_unitary_circuit
-from qsense.sensor.functions import initialize, nketz0
-from qsense.sensor.unitaries import Phase
-from qsense.quantities.fischer_information import cfim
+from qsense.sensor.examples import local_entangling_circuit
+from qsense.utils.io import IO
+from qsense.sensor.blocks import Probe, Interaction, Measurement
+from qsense.sensor.sensor import Sensor
+from qsense.sensor.unitaries import U3, CNOT, Identity, Phase
+from qsense.quantities.fischer_information import cfim, cfi, qfim, qfi, neg_cfi
 
 
-def optimize_cfi(n, d, n_layers=1, lr=0.15, n_steps=300, n_runs=1, progress=True):
-    ket_i = nketz0(n=n, d=d)
+if __name__ == "__main__":
+    # io = IO(folder="qfi-optimization", include_date=True)
 
-    probe_circ = local_entangling_circuit(n, d, n_layers=n_layers)
-    interaction_circ = [[Phase("phase", d=d) for _ in range(n)]]
-    measure_circ = local_unitary_circuit(n, d)
+    n = 4  # number of particles
+    d = 2
+    n_layers = 4
+    lr = 0.1
+    n_steps = 300
+    progress = True
 
-    keys = ["phase"]
+    probe = Probe(n=n)
+    for i in range(n_layers):
+        probe.add([U3(str(uuid.uuid4())) for _ in range(n)])
+        probe.add([CNOT(str(uuid.uuid4())) for _ in range(0, n, 2)])
+        probe.add([Identity()] + [CNOT(str(uuid.uuid4())) for _ in range(1, n-1, 2)] + [Identity()])
 
-    def initialize_params():
-        probe_params = initialize(probe_circ)
-        interaction_params = initialize(interaction_circ)
-        interaction_params["phase"] = np.array([0.0])
-        measure_params = initialize(measure_circ)
+    interaction = Interaction(n=n)
+    interaction.add([Phase("phi") for _ in range(n)])
 
-        params = probe_params | interaction_params | measure_params
-        return params
+    measurement = Measurement(n=n)
+    measurement.add([U3(str(uuid.uuid4())) for _ in range(n)])
 
-    def cfi(params, probe_circ, interaction_circ, measure_circ, ket_i, keys):
-        return -cfim(params, probe_circ, interaction_circ, measure_circ, ket_i, keys)[0, 0]
+    sensor = Sensor(probe, interaction, measurement)
+    params = sensor.initialize()
 
-    cfi = jax.jit(
-        partial(cfi, probe_circ=probe_circ, interaction_circ=interaction_circ, measure_circ=measure_circ, ket_i=ket_i,
-                keys=keys))
-
+    cfi = jax.jit(partial(neg_cfi, sensor=sensor, key="phi"))
 
     optimizer = optax.adagrad(learning_rate=lr)
     grad = jax.jit(jax.grad(cfi))
-
-    params = initialize_params()
     _ = grad(params)
 
     _losses, _params = [], []
-    for run in range(n_runs):
+    for run in range(3):
         losses = []
 
-        params = initialize_params()
+        params = sensor.initialize()
         opt_state = optimizer.init(params)
 
         for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
@@ -64,14 +66,13 @@ def optimize_cfi(n, d, n_layers=1, lr=0.15, n_steps=300, n_runs=1, progress=True
 
         _losses.append(losses)
         _params.append(params)
-    return _losses
 
-
-if __name__ == "__main__":
-
-    _losses = optimize_cfi(n=4, d=2, n_layers=4, lr=0.15, n_steps=100, n_runs=4)
-
-    fig, ax = plt.subplots(1, 1)
+    fig, axs = plt.subplots(1, 1)
+    axs.axhline(n**d, **dict(color="teal", ls="--"))
     for losses in _losses:
-        ax.plot(losses)
+        axs.plot(losses, **dict(color="salmon", ls="-"))
+    axs.set(
+        xlabel="Optimization step",
+        ylabel=r"Quantum Fischer Information: $\mathcal{F}_\phi$",
+    )
     plt.show()

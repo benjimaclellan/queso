@@ -13,6 +13,8 @@ class Sensor:
         self.interaction = interaction
         self.measurement = measurement
 
+        self.state_i = nketz0(n=self.probe.n, d=self.probe.d)
+
     def initialize(self):
         params = {}
         for block in [self.probe, self.interaction, self.measurement]:
@@ -24,5 +26,5 @@ class Sensor:
             self.measurement(params)
             @ self.interaction(params)
             @ self.probe(params)
-            @ nketz0(n=self.probe.n, d=self.probe.d)
+            @ self.state_i
         )
