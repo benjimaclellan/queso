@@ -1,7 +1,7 @@
 from functools import partial
 from qsense.quantities.fischer_information import qfim
 
-from qsense.sensor.examples import local_entangling_circuit
+from qsense.sensor.examples import local_entangling_probe
 
 if __name__ == "__main__":
     n = 4  # number of particles
@@ -10,7 +10,7 @@ if __name__ == "__main__":
     # ket_i = nket_ghz(n)
 
     # circuit = ghz_circuit(n)
-    circuit = local_entangling_circuit(n)
+    circuit = local_entangling_probe(n)
     circuit.append([Phase("phase") for i in range(n)])
 
     params = initialize(circuit)

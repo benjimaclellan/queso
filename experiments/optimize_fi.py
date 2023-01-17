@@ -6,24 +6,26 @@ import optax
 from functools import partial
 import uuid
 
-from qsense.sensor.examples import local_entangling_circuit
+from qsense.sensor.examples import local_entangling_probe
 from qsense.utils.io import IO
 from qsense.sensor.blocks import Probe, Interaction, Measurement
 from qsense.sensor.sensor import Sensor
 from qsense.sensor.unitaries import U3, CNOT, Identity, Phase
 from qsense.quantities.fischer_information import neg_qfi, neg_cfi
+from qsense.sensor.examples import local_entangling_probe
 
 
 def optimize_fi(n, fi, n_layers=4, n_runs=1, n_steps=300, lr=0.05, progress=True):
     probe = Probe(n=n)
-    for i in range(n_layers):
-        probe.add([U3(str(uuid.uuid4())) for _ in range(n)])
-        probe.add([CNOT(str(uuid.uuid4())) for _ in range(0, n, 2)])
-        probe.add(
-            [Identity()]
-            + [CNOT(str(uuid.uuid4())) for _ in range(1, n - 1, 2)]
-            + [Identity()]
-        )
+    probe = local_entangling_probe(n=n, d=2, n_layers=n_layers)
+    # for i in range(n_layers):
+    #     probe.add([U3(str(uuid.uuid4())) for _ in range(n)])
+    #     probe.add([CNOT(str(uuid.uuid4())) for _ in range(0, n, 2)])
+    #     probe.add(
+    #         [Identity()]
+    #         + [CNOT(str(uuid.uuid4())) for _ in range(1, n - 1, 2)]
+    #         + [Identity()]
+    #     )
 
     interaction = Interaction(n=n)
     interaction.add([Phase("phi") for _ in range(n)])
@@ -36,12 +38,12 @@ def optimize_fi(n, fi, n_layers=4, n_runs=1, n_steps=300, lr=0.05, progress=True
 
     fi = jax.jit(partial(fi, sensor=sensor, key="phi"))
 
-    optimizer = optax.adam(learning_rate=lr)
+    optimizer = optax.adagrad(learning_rate=lr)
     grad = jax.jit(jax.grad(fi))
     _ = grad(params)
-    _losses, _params = [], []
+    losses, _params = [], []
     for run in range(n_runs):
-        losses = []
+        loss = []
 
         params = sensor.initialize()
         opt_state = optimizer.init(params)
@@ -51,24 +53,24 @@ def optimize_fi(n, fi, n_layers=4, n_runs=1, n_steps=300, lr=0.05, progress=True
             gradient = grad(params)
             updates, opt_state = optimizer.update(gradient, opt_state)
             params = optax.apply_updates(params, updates)
-            losses.append(ell)
+            loss.append(ell)
 
             if progress:
                 pbar.set_description(f"Cost: {-ell:.10f}")
 
-        losses = -np.array(losses)
+        loss = -np.array(loss)
 
-        _losses.append(losses)
+        losses.append(loss)
         _params.append(params)
-    return _losses, _params
+    return losses, _params
 
 
 if __name__ == "__main__":
-    n = 2
+    n = 3
     lr = 0.025
-    n_steps = 3#00
+    n_steps = 300
     n_runs = 1
-    n_layers = 4
+    n_layers = 8
 
     losses_cfi, _ = optimize_fi(
         n=n,
