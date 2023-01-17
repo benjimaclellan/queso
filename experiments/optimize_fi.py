@@ -38,7 +38,7 @@ def optimize_fi(n, fi, n_layers=4, n_runs=1, n_steps=300, lr=0.05, progress=True
 
     fi = jax.jit(partial(fi, sensor=sensor, key="phi"))
 
-    optimizer = optax.adagrad(learning_rate=lr)
+    optimizer = optax.adam(learning_rate=lr)
     grad = jax.jit(jax.grad(fi))
     _ = grad(params)
     losses, _params = [], []
@@ -67,8 +67,8 @@ def optimize_fi(n, fi, n_layers=4, n_runs=1, n_steps=300, lr=0.05, progress=True
 
 if __name__ == "__main__":
     n = 3
-    lr = 0.025
-    n_steps = 300
+    lr = 0.05
+    n_steps = 500
     n_runs = 1
     n_layers = 8
 
