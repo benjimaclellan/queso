@@ -12,9 +12,9 @@ if __name__ == "__main__":
     n_runs = 3
     r = [
         (2, 2),
-        (4, 2),
-        (6, 2),
-        (8, 2),
+        # (4, 2),
+        # (6, 2),
+        # (8, 2),
     ]
     lr = 0.025
     n_steps = 400
@@ -42,6 +42,8 @@ if __name__ == "__main__":
                         lr=lr,
                         n_steps=n_steps,
                         loss=loss,
+                        max=loss[-1],
+                        device=loss.device().device_kind,
                         fi=name,
                     )
                 )
