@@ -34,7 +34,7 @@ class IO:
     """
 
     # default save path always points to `data/` no matter where this repository is located
-    default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
+    default_path = pathlib.Path(__file__).parent.parent.parent.joinpath("data")
 
     def __init__(
         self,
