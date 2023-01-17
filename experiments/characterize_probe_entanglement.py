@@ -9,7 +9,9 @@ from optimize_qfi import optimize_qfi, initialize
 
 
 if __name__ == "__main__":
-    io = IO(folder="qfi_entanglement_characteristics", include_date=True, include_id=True)
+    io = IO(
+        folder="qfi_entanglement_characteristics", include_date=True, include_id=True
+    )
 
     df = []
     n_runs = 1
@@ -25,7 +27,9 @@ if __name__ == "__main__":
 
             lr = 0.2
             n_steps = 1
-            circuit, params, losses = optimize_qfi(n, d, n_layers=1, lr=lr, n_steps=n_steps, progress=True)
+            circuit, params, losses = optimize_qfi(
+                n, d, n_layers=1, lr=lr, n_steps=n_steps, progress=True
+            )
             params = initialize(circuit)
             # final state
             ket_i = nketz0(n=n, d=d)

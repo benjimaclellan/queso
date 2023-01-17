@@ -21,7 +21,9 @@ if __name__ == "__main__":
     keys = ["phase"]
 
     # qfi = lambda params, circuit, ket_i, keys: qfim_rho(params, circuit, ket_i, keys)[0, 0]
-    qfi = lambda params, circuit, ket_i, keys: qfim_rho(params, circuit, ket_i, keys)[0, 0]
+    qfi = lambda params, circuit, ket_i, keys: qfim_rho(params, circuit, ket_i, keys)[
+        0, 0
+    ]
     # qfi = jax.jit(partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys))
     qfi = partial(qfi, circuit=circuit, ket_i=ket_i, keys=keys)
     qq = qfi(copy.deepcopy(params))

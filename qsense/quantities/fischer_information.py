@@ -128,7 +128,6 @@ def qfim(params, sensor, keys):
 
 
 def cfim(params, sensor, keys):
-
     def pr_func(params_est):
         params.update(params_est)
         return np.abs(sensor(params)) ** 2
@@ -165,3 +164,7 @@ def neg_cfi(params, sensor, key: str):
 
 def qfi(params, sensor, key: str):
     return qfim(params, sensor, keys=[key])[0, 0]
+
+
+def neg_qfi(params, sensor, key: str):
+    return -cfi(params, sensor, key)

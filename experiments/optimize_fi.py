@@ -11,24 +11,19 @@ from qsense.utils.io import IO
 from qsense.sensor.blocks import Probe, Interaction, Measurement
 from qsense.sensor.sensor import Sensor
 from qsense.sensor.unitaries import U3, CNOT, Identity, Phase
-from qsense.quantities.fischer_information import cfim, cfi, qfim, qfi, neg_cfi
+from qsense.quantities.fischer_information import neg_qfi, neg_cfi
 
 
-if __name__ == "__main__":
-    # io = IO(folder="qfi-optimization", include_date=True)
-
-    n = 4  # number of particles
-    d = 2
-    n_layers = 4
-    lr = 0.1
-    n_steps = 300
-    progress = True
-
+def optimize_fi(n, fi, n_layers=4, n_runs=1, n_steps=300, lr=0.05, progress=True):
     probe = Probe(n=n)
     for i in range(n_layers):
         probe.add([U3(str(uuid.uuid4())) for _ in range(n)])
         probe.add([CNOT(str(uuid.uuid4())) for _ in range(0, n, 2)])
-        probe.add([Identity()] + [CNOT(str(uuid.uuid4())) for _ in range(1, n-1, 2)] + [Identity()])
+        probe.add(
+            [Identity()]
+            + [CNOT(str(uuid.uuid4())) for _ in range(1, n - 1, 2)]
+            + [Identity()]
+        )
 
     interaction = Interaction(n=n)
     interaction.add([Phase("phi") for _ in range(n)])
@@ -39,21 +34,20 @@ if __name__ == "__main__":
     sensor = Sensor(probe, interaction, measurement)
     params = sensor.initialize()
 
-    cfi = jax.jit(partial(neg_cfi, sensor=sensor, key="phi"))
+    fi = jax.jit(partial(fi, sensor=sensor, key="phi"))
 
-    optimizer = optax.adagrad(learning_rate=lr)
-    grad = jax.jit(jax.grad(cfi))
+    optimizer = optax.adam(learning_rate=lr)
+    grad = jax.jit(jax.grad(fi))
     _ = grad(params)
-
     _losses, _params = [], []
-    for run in range(3):
+    for run in range(n_runs):
         losses = []
 
         params = sensor.initialize()
         opt_state = optimizer.init(params)
 
         for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
-            ell = cfi(params)
+            ell = fi(params)
             gradient = grad(params)
             updates, opt_state = optimizer.update(gradient, opt_state)
             params = optax.apply_updates(params, updates)
@@ -66,13 +60,43 @@ if __name__ == "__main__":
 
         _losses.append(losses)
         _params.append(params)
+    return _losses, _params
+
+
+if __name__ == "__main__":
+    n = 2
+    lr = 0.025
+    n_steps = 3#00
+    n_runs = 1
+    n_layers = 4
+
+    losses_cfi, _ = optimize_fi(
+        n=n,
+        fi=neg_cfi,
+        n_layers=n_layers,
+        n_runs=n_runs,
+        n_steps=n_steps,
+        lr=lr,
+        progress=True,
+    )
+    losses_qfi, _ = optimize_fi(
+        n=n,
+        fi=neg_qfi,
+        n_layers=n_layers,
+        n_runs=n_runs,
+        n_steps=n_steps,
+        lr=lr,
+        progress=True,
+    )
 
     fig, axs = plt.subplots(1, 1)
-    axs.axhline(n**d, **dict(color="teal", ls="--"))
-    for losses in _losses:
-        axs.plot(losses, **dict(color="salmon", ls="-"))
+    axs.axhline(n**2, **dict(color="gray", ls="--"))
+    for loss in losses_cfi:
+        axs.plot(loss, label="Classical FI", **dict(color="salmon", ls="-"))
+    for loss in losses_qfi:
+        axs.plot(loss, label="Quantum FI", **dict(color="teal", ls="-"))
     axs.set(
         xlabel="Optimization step",
-        ylabel=r"Quantum Fischer Information: $\mathcal{F}_\phi$",
+        ylabel=r"Fischer Information: $\mathcal{F}_\phi$",
     )
     plt.show()
