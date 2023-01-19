@@ -127,3 +127,4 @@ dmypy.json
 data/
 .scratch/
 jobs/
+.DS_Store
