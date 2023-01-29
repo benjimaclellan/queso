@@ -1,5 +1,5 @@
-from qsense.sensor.blocks import Probe, Interaction, Measurement
-from qsense.sensor.functions import nketz0
+from queso.sensor.blocks import Probe, Interaction, Measurement
+from queso.sensor.functions import nketz0
 
 
 class Sensor:

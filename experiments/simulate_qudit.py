@@ -1,6 +1,6 @@
 from functools import partial
 
-from qsense.quantities.fischer_information import qfim
+from queso.quantities.fischer_information import qfim
 
 from benchmarks.circuits import *
 

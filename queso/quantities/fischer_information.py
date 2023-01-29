@@ -1,7 +1,7 @@
 import jax
 from jax import numpy as np
 
-from qsense.sensor.functions import dagger
+from queso.sensor.functions import dagger
 
 
 def qfim(params, sensor, keys):

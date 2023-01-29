@@ -1,7 +1,7 @@
 import pandas as pd
-from qsense.utils.io import IO
+from queso.utils.io import IO
 
-from qsense.quantities.fischer_information import neg_qfi, neg_cfi
+from queso.quantities.fischer_information import neg_qfi, neg_cfi
 from optimize_fi import optimize_fi
 
 

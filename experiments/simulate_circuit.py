@@ -1,7 +1,7 @@
 from functools import partial
-from qsense.quantities.fischer_information import qfim
+from queso.quantities.fischer_information import qfim
 
-from qsense.sensor.examples import local_entangling_probe
+from queso.sensor.examples import local_entangling_probe
 
 if __name__ == "__main__":
     n = 4  # number of particles

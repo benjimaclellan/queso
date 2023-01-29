@@ -1,7 +1,7 @@
 import uuid
 
-from qsense.sensor.unitaries import H, Identity, CNOT, U3, Phase
-from qsense.sensor.blocks import Probe
+from queso.sensor.unitaries import H, Identity, CNOT, U3, Phase
+from queso.sensor.blocks import Probe
 
 
 def ghz_circuit(n=2, d=2):

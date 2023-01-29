@@ -1,4 +1,4 @@
-from qsense.utils import *
+from queso.utils import *
 import qutip as qt
 
 # n = 6

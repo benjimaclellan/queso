@@ -1,7 +1,7 @@
 import copy
 from functools import partial
 
-from qsense.quantities.fischer_information import qfim, qfim_rho
+from queso.quantities.fischer_information import qfim, qfim_rho
 from benchmarks.circuits import *
 
 

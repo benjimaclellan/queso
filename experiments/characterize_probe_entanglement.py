@@ -2,9 +2,9 @@ import tqdm
 import qutip as qt
 import numpy as np
 
-from qsense.utils.io import IO
+from queso.utils.io import IO
 from benchmarks.circuits import nketz0
-from qsense.quantities.entanglement import genuine_multipartite_entanglement
+from queso.quantities.entanglement import genuine_multipartite_entanglement
 from optimize_qfi import optimize_qfi, initialize
 
 

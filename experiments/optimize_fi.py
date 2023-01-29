@@ -6,13 +6,13 @@ import optax
 from functools import partial
 import uuid
 
-from qsense.sensor.examples import local_entangling_probe
-from qsense.utils.io import IO
-from qsense.sensor.blocks import Probe, Interaction, Measurement
-from qsense.sensor.sensor import Sensor
-from qsense.sensor.unitaries import U3, CNOT, Identity, Phase
-from qsense.quantities.fischer_information import neg_qfi, neg_cfi
-from qsense.sensor.examples import local_entangling_probe
+from queso.sensor.examples import local_entangling_probe
+from queso.utils.io import IO
+from queso.sensor.blocks import Probe, Interaction, Measurement
+from queso.sensor.sensor import Sensor
+from queso.sensor.unitaries import U3, CNOT, Identity, Phase
+from queso.quantities.fischer_information import neg_qfi, neg_cfi
+from queso.sensor.examples import local_entangling_probe
 
 
 def optimize_fi(n, fi, n_layers=4, n_runs=1, n_steps=300, lr=0.05, progress=True):

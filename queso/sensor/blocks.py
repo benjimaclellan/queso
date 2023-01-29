@@ -6,7 +6,7 @@ import jax
 import time
 from abc import ABC
 
-from qsense.sensor.functions import tensor, prod, nketz0
+from queso.sensor.functions import tensor, prod, nketz0
 
 
 class BlockBase(ABC):
