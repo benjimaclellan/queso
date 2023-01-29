@@ -1,3 +1,7 @@
+"""
+Blocks which form a quantum sensing/
+"""
+
 import jax
 import time
 from abc import ABC
@@ -32,8 +36,15 @@ class BlockBase(ABC):
     def add(self, layer):
         self._circuit.append(layer)
 
-    def __call__(self, params):
+    def __call__(self, params: dict):
+        """
+        Calculates the unitary matrix of a parameterized circuit block.
+
+        :param params: dictionary of parameters, which are distributed to each gate model
+        :return:
+        """
         us = []
+        # todo: lazy generation of unitaries to reduce memory overhead
         for layer in self._circuit:
             us.append(
                 tensor(
@@ -48,18 +59,27 @@ class BlockBase(ABC):
 
 
 class Probe(BlockBase):
+    """
+    Base class for a probe block of the sensor
+    """
     def __init__(self, n: int, d: int = 2):
         super().__init__(n, d)
         return
 
 
 class Interaction(BlockBase):
+    """
+    Base class for the interaction block of the sensor
+    """
     def __init__(self, n: int, d: int = 2):
         super().__init__(n, d)
         return
 
 
 class Measurement(BlockBase):
+    """
+    Base class for the measurement block of the sensor
+    """
     def __init__(self, n: int, d: int = 2):
         super().__init__(n, d)
         self._povm = []
@@ -67,6 +87,9 @@ class Measurement(BlockBase):
 
 
 class Estimator(BlockBase):
+    """
+    Base class for the estimator block of the sensor
+    """
     def __init__(self):
         super().__init__(n, d)
         return
