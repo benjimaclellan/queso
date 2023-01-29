@@ -4,30 +4,30 @@ from queso.sensor.unitaries import H, Identity, CNOT, U3, Phase
 from queso.sensor.blocks import Probe
 
 
-def ghz_circuit(n=2, d=2):
+def ghz_probe(n=2, d=2):
     """
-    Returns the canonical example of a GHZ quantum circuit for an n-partite, d-dimensional system.
+    Probe state circuit which prepares a GHZ state.
 
-    :param n:
-    :param d:
+    :param n: number of qudits
+    :param d: local dimension, d, of each local Hilbert space
     :return:
     """
-    circuit = list()
-    circuit.append([H() if i == 0 else Identity() for i in range(n)])
+    probe = list()
+    probe.append([H() if i == 0 else Identity() for i in range(n)])
     for i in range(1, n):
-        circuit.append([CNOT(n=n, control=0, target=i)])
+        probe.append([CNOT(n=n, control=0, target=i)])
 
-    return circuit
+    return probe
 
 
-def local_entangling_probe(n=2, d=2, n_layers=1):
+def brick_wall_probe(n=2, d=2, n_layers=1):
     """
+    Brick wall local entangling circuit, with two-local entangling gates and local rotations.
 
-    :param n:
-    :param d:
+    :param n: number of qudits
+    :param d: local dimension, d, of each local Hilbert space
     :return:
     """
-    # probe = list()
     probe = Probe(n=n)
 
     for layer in range(n_layers):
@@ -50,9 +50,10 @@ def local_entangling_probe(n=2, d=2, n_layers=1):
 
 def nonlocal_entangling_circuit(n=2, d=2):
     """
+    Probe state circuit composed of one control qudit connected to all others.
 
-    :param n:
-    :param d:
+    :param n: number of qudits
+    :param d: local dimension, d, of each local Hilbert space
     :return:
     """
     circuit = list()
@@ -63,7 +64,7 @@ def nonlocal_entangling_circuit(n=2, d=2):
     return circuit
 
 
-def local_unitary_circuit(n=2, d=2):
+def local_rotations_circuit(n=2, d=2):
     """
 
     :param n:

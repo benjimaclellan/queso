@@ -6,26 +6,14 @@ import optax
 from functools import partial
 import uuid
 
-from queso.sensor.examples import local_entangling_probe
-from queso.utils.io import IO
-from queso.sensor.blocks import Probe, Interaction, Measurement
-from queso.sensor.sensor import Sensor
-from queso.sensor.unitaries import U3, CNOT, Identity, Phase
-from queso.quantities.fischer_information import neg_qfi, neg_cfi
-from queso.sensor.examples import local_entangling_probe
+from queso.sensor.blocks import Probe, Interaction, Measurement, Sensor
+from queso.sensor.unitaries import U3, Phase
+from queso.quantities.information import neg_qfi, neg_cfi
+from queso.sensor.layers import brick_wall_probe
 
 
 def optimize_fi(n, fi, n_layers=4, n_runs=1, n_steps=300, lr=0.05, progress=True):
-    probe = Probe(n=n)
-    probe = local_entangling_probe(n=n, d=2, n_layers=n_layers)
-    # for i in range(n_layers):
-    #     probe.add([U3(str(uuid.uuid4())) for _ in range(n)])
-    #     probe.add([CNOT(str(uuid.uuid4())) for _ in range(0, n, 2)])
-    #     probe.add(
-    #         [Identity()]
-    #         + [CNOT(str(uuid.uuid4())) for _ in range(1, n - 1, 2)]
-    #         + [Identity()]
-    #     )
+    probe = brick_wall_probe(n=n, d=2, n_layers=n_layers)
 
     interaction = Interaction(n=n)
     interaction.add([Phase("phi") for _ in range(n)])

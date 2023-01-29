@@ -3,9 +3,9 @@ import qutip as qt
 import numpy as np
 
 from queso.utils.io import IO
-from benchmarks.circuits import nketz0
+from queso.sensor.functions import nketz0
 from queso.quantities.entanglement import genuine_multipartite_entanglement
-from optimize_qfi import optimize_qfi, initialize
+from optimize_fi import optimize_fi
 
 
 if __name__ == "__main__":

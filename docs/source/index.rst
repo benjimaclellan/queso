@@ -1,9 +1,7 @@
 Welcome to queso
 ================================================
 
-**Graph State Compiler** is a Python software for optimization of graph state
-generation using either deterministic photon sources or probabilistic fusion gates.
-
+**queso** is a design tool for quantum sensing and parameter estimation protocols.
 .. note::
   This project is under active development.
 

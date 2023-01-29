@@ -3,8 +3,9 @@ from functools import partial
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from queso.quantities.fischer_information import qfim
-from queso.sensor.examples import nonlocal_entangling_circuit
+from queso.quantities.information import qfim
+from queso.sensor.layers import nonlocal_entangling_circuit
+from queso.sensor.functions import nketz0
 from queso.utils.io import IO
 
 if __name__ == "__main__":

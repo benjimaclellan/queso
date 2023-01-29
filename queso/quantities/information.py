@@ -129,8 +129,9 @@ def qfim(params, sensor, keys):
 
 def cfim(params, sensor, keys):
     def pr_func(params_est):
+        # measure the probability distribution corresponding to the measurement POVM
         params.update(params_est)
-        return np.abs(sensor(params)) ** 2
+        return np.abs(sensor(params)) ** 2  # modulo squared of quantum state
 
     params_est = {key: params[key] for key in keys}
 
