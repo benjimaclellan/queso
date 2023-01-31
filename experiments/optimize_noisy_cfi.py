@@ -90,7 +90,7 @@ def optimize_run(n, k, gammas, n_steps=200, contractor="greedy", seed=0, lr=0.25
     cfi_val_grad_jit = jax.jit(jax.value_and_grad(neg_cfi, argnums=0))
     val, grad = cfi_val_grad_jit(params, phi, gamma)
 
-    print(dmc.draw(output="text"))
+    # print(dmc.draw(output="text"))
     # print(val, grad)
 
     def _optimize(gamma, n_steps=250, lr=0.25, progress=True, subkey=None):
@@ -145,10 +145,15 @@ if __name__ == "__main__":
     n = args.n
     k = args.k
     seed = args.seed
+    print(f"Beginning optimization for n={n}, k={k}. Save folder: {folder}")
 
     io = IO(folder=args.folder, include_date=True, include_id=True)
 
+    lr = 0.25
+    repeat = 7
+    progress = True
+    n_steps = 250
     gammas = np.hstack([np.array([0.0]), np.exp(np.linspace(-5, -1, 11))])
 
-    df = optimize_run(n, k, gammas, n_steps=250, contractor="greedy", lr=0.25, repeat=5, progress=True, seed=seed)
+    df = optimize_run(n, k, gammas, n_steps=n_steps, contractor="greedy", lr=lr, repeat=repeat, progress=progress, seed=seed)
     io.save_dataframe(df, filename=f"n={n}_k={k}")
