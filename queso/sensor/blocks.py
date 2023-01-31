@@ -5,6 +5,8 @@ Blocks which form a quantum sensing/
 import jax
 import time
 from abc import ABC
+from functools import reduce, partial
+import jax.numpy as np
 
 from queso.sensor.functions import tensor, prod, nketz0
 
@@ -17,9 +19,9 @@ class BlockBase(ABC):
         self._params = None
         return
 
-    def initialize(self):
+    def initialize(self, seed=None):
         params = {}
-        rng_key = jax.random.PRNGKey(time.time_ns())
+        rng_key = jax.random.PRNGKey(time.time_ns() if seed is None else seed)
         for layer in self._circuit:
             for u in layer:
                 if u.bounds is not None and u.m is not None:
@@ -36,26 +38,41 @@ class BlockBase(ABC):
     def add(self, layer):
         self._circuit.append(layer)
 
-    def __call__(self, params: dict):
+    def __call__(self, params: dict, method="greedy"):
         """
         Calculates the unitary matrix of a parameterized circuit block.
 
         :param params: dictionary of parameters, which are distributed to each gate model
         :return:
         """
-        us = []
-        # todo: lazy generation of unitaries to reduce memory overhead
-        for x in self._circuit:
-            us.append(
-                tensor(
-                    [
-                        u(*params[u.key]) if (u.key in params.keys()) else u()
-                        for u in x
-                    ]
+        print("Method is ", method)
+        if method == "greedy":
+            us = []
+            # todo: lazy generation of unitaries to reduce memory overhead
+            for x in self._circuit:
+                us.append(
+                    tensor(
+                        [
+                            u(*params[u.key]) if (u.key in params.keys()) else u()
+                            for u in x
+                        ]
+                    )
                 )
-            )
-        u = prod(reversed(us))
-        return u
+            unitary = prod(reversed(us))
+
+        elif method == "lazy":
+            def _layer(_x):
+                matrices = map(lambda u: u(*params[u.key]) if (u.key in params.keys()) else u(), _x)
+                _u = reduce(np.kron, matrices)
+                return _u
+
+            layers = map(_layer, reversed(self._circuit))
+            unitary = reduce(np.matmul, layers)
+
+        else:
+            raise NotImplemented("Not a valid method for compiling circuit unitary.")
+
+        return unitary
 
 
 class Probe(BlockBase):
@@ -108,17 +125,17 @@ class Sensor:
 
         self.state_i = nketz0(n=self.probe.n, d=self.probe.d)
 
-    def initialize(self):
+    def initialize(self, seed=None):
         params = {}
         for block in [self.probe, self.interaction, self.measurement]:
-            params.update(block.initialize())
+            params.update(block.initialize(seed=seed))
         return params
 
-    def __call__(self, params):
+    def __call__(self, params, method="lazy"):
         # todo: improved compiler of sensor
         return (
-            self.measurement(params)
-            @ self.interaction(params)
-            @ self.probe(params)
+            self.measurement(params, method=method)
+            @ self.interaction(params, method=method)
+            @ self.probe(params, method=method)
             @ self.state_i
         )

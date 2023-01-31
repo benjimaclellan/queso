@@ -17,7 +17,7 @@ def qfim(params, sensor, keys):
 
     def rho_func(params_est):
         params.update(params_est)
-        return sensor.interaction(params) @ sensor.probe(params) @ sensor.state_i
+        return sensor.interaction(params) @ sensor.sensor(params) @ sensor.state_i
 
     params_est = {key: np.complex128(params[key]) for key in keys}
 
@@ -168,4 +168,4 @@ def qfi(params, sensor, key: str):
 
 
 def neg_qfi(params, sensor, key: str):
-    return -cfi(params, sensor, key)
+    return -qfi(params, sensor, key)

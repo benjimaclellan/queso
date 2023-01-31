@@ -9,11 +9,11 @@ class StaticChannel(Channel):
         self.m, self.bounds, self.initial = None, None, None
 
 
-class DepolarizingChannel(StaticChannel):
+class DephasingChannel(StaticChannel):
     def __init__(
         self,
         key,
-        p=0.0,
+        lam=0.0,
     ):
         super().__init__(key)
         raise NotImplementedError()
