@@ -34,7 +34,7 @@ from queso.utils.io import IO
 #%%
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")
-tc.set_contractor("greedy")  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
+tc.set_contractor("auto")  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
 
 
 def optimize_run(n, k, n_steps=200, seed=0, lr=0.25, repeat=5, progress=True):
@@ -49,23 +49,24 @@ def optimize_run(n, k, n_steps=200, seed=0, lr=0.25, repeat=5, progress=True):
         return -qfi(_params, _phi)
 
     def sensor(params, phi):
-        dmc = tc.Circuit(n)
+        mps = tc.MPSCircuit(n)
+        mps.set_split_rules({"max_singular_values": 2})
 
         for i in range(k):
             for j in range(n):
-                dmc.r(j, theta=params[3 * j, i], alpha=params[3 * j + 1, i], phi=params[3 * j + 2, i])
+                mps.r(j, theta=params[3 * j, i], alpha=params[3 * j + 1, i], phi=params[3 * j + 2, i])
 
             for j in range(1, n, 2):
-                dmc.cnot(j-1, j)
+                mps.cnot(j-1, j)
 
             for j in range(2, n, 2):
-                dmc.cnot(j-1, j)
+                mps.cnot(j-1, j)
 
         # interaction
         for j in range(n):
-            dmc.rz(j, theta=phi[0])
+            mps.rz(j, theta=phi[0])
 
-        return dmc
+        return mps
 
     phi = np.array([0.0])
     gamma = np.array([0.0])
@@ -127,9 +128,9 @@ if __name__ == "__main__":
     folder = args.folder
     n = args.n
     k = args.k
-    seed = args.seed if args.seed is not None else np.random.randint()
+    seed = args.seed if args.seed is not None else time.time_ns()
 
-    io = IO(folder=folder, include_date=True, include_id=True)
+    io = IO(folder=folder, include_date=False, include_id=False)
 
     lr = 0.20
     repeat = 11
