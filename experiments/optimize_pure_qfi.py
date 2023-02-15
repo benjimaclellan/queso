@@ -127,9 +127,9 @@ if __name__ == "__main__":
     folder = args.folder
     n = args.n
     k = args.k
-    seed = args.seed if args.seed is not None else np.random.randint()
+    seed = args.seed if args.seed is not None else time.time_ns()
 
-    io = IO(folder=folder, include_date=True, include_id=True)
+    io = IO(folder=folder, include_date=False, include_id=False)
 
     lr = 0.20
     repeat = 11
