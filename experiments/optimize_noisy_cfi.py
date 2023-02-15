@@ -87,8 +87,10 @@ def optimize_run(n, k, gammas, n_steps=200, contractor="greedy", seed=0, lr=0.25
 
     # %%
     # cfi_val_grad_jit = backend.jit(backend.value_and_grad(neg_cfi, argnums=0))
+    t0 = time.time()
     cfi_val_grad_jit = jax.jit(jax.value_and_grad(neg_cfi, argnums=0))
     val, grad = cfi_val_grad_jit(params, phi, gamma)
+    print(f"Time to compile {time.time() - t0}")
 
     # print(dmc.draw(output="text"))
     # print(val, grad)
@@ -147,7 +149,7 @@ if __name__ == "__main__":
     seed = args.seed
     print(f"Beginning optimization for n={n}, k={k}. Save folder: {folder}")
 
-    io = IO(folder=args.folder, include_date=True, include_id=True)
+    io = IO(folder=args.folder, include_date=True, include_id=False)
 
     lr = 0.25
     repeat = 7
