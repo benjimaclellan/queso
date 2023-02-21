@@ -37,7 +37,7 @@ tc.set_dtype("complex128")
 tc.set_contractor("auto")  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
 
 
-def optimize_run(n, k, n_steps=200, seed=0, lr=0.25, repeat=5, progress=True):
+def optimize_run(n, k, n_samples=200, seed=0, progress=True):
     def qfi(_params, phi):
         psi = sensor(_params, phi).state()[:, None]
         f_dpsi_phi = backend.jacrev(lambda phi: sensor(params=_params, phi=phi).state())
@@ -72,45 +72,45 @@ def optimize_run(n, k, n_steps=200, seed=0, lr=0.25, repeat=5, progress=True):
     gamma = np.array([0.0])
     key = random.PRNGKey(seed)
     params = random.uniform(key, ([3 * n, k]))
-    dmc = sensor(params, phi)
 
     # %%
-    # cfi_val_grad_jit = backend.jit(backend.value_and_grad(neg_cfi, argnums=0))
     cfi_val_grad_jit = jax.jit(jax.value_and_grad(neg_qfi, argnums=0))
-    val, grad = cfi_val_grad_jit(params, phi)
+    _ = cfi_val_grad_jit(params, phi)
 
-    def _optimize(n_steps=250, lr=0.25, progress=True, subkey=None):
-        opt = tc.backend.optimizer(optax.adagrad(learning_rate=lr))
-        params = random.uniform(subkey, ([3 * n, k]))
+    def _sample_circuit(n_samples=250, progress=True, key=None):
 
-        loss = []
         t0 = time.time()
-        for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
+        vals, grads = [], []
+
+        for step in (pbar := tqdm.tqdm(range(n_samples), disable=(not progress))):
+            key, subkey = random.split(key)
+            params = random.uniform(subkey, ([3 * n, k]))
+
             val, grad = cfi_val_grad_jit(params, phi)
-            params = opt.update(grad, params)
-            loss.append(val)
+            vals.append(val)
+            grads.append(grad)
+
             if progress:
                 pbar.set_description(f"Cost: {-val:.10f}")
         t = time.time() - t0
-        return -val, -np.array(loss), t
+        return -np.array(vals), -np.array(grads), t
 
     # %%
     df = []
-    print(f"\nOptimizing circuit: n={n}, k={k}")
-    plt.pause(0.01)
-    _loss = []
-    for j in range(repeat):
-        key, subkey = random.split(key)
-        val, loss, t = _optimize(n_steps=n_steps, lr=lr, progress=progress, subkey=subkey)
+    print(f"\nSampling from circuit: n={n}, k={k}")
 
-        df.append(dict(
-            n=n,
-            k=k,
-            gamma=gamma,
-            cfi=val,
-            loss=loss,
-            time=t,
-        ))
+    key, subkey = random.split(key)
+    vals, grads, t = _sample_circuit(n_samples=n_samples, progress=progress, key=key)
+
+    df.append(dict(
+        n=n,
+        k=k,
+        gamma=gamma,
+        fi_type=qfi.__name__,
+        fi_vals=vals,
+        fi_grad_vals=grads,
+        time=t,
+    ))
 
     return pd.DataFrame(df)
 
@@ -132,10 +132,8 @@ if __name__ == "__main__":
 
     io = IO(folder=folder, include_date=False, include_id=False)
 
-    lr = 0.20
-    repeat = 11
     progress = True
-    n_steps = 250
+    n_samples = 500
 
-    df = optimize_run(n, k, n_steps=n_steps, lr=lr, repeat=repeat, progress=progress, seed=seed)
+    df = optimize_run(n, k, n_samples=n_samples, progress=progress, seed=seed)
     io.save_dataframe(df, filename=f"n={n}_k={k}")

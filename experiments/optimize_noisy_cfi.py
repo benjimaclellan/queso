@@ -118,7 +118,6 @@ def optimize_run(n, k, gammas, n_steps=200, contractor="greedy", seed=0, lr=0.25
         plt.pause(0.01)
         _loss = []
         for j in range(repeat):
-            key, subkey = random.split(key)
             val, loss, t = _optimize(np.array([gamma]), n_steps=n_steps, lr=lr, progress=progress, subkey=subkey)
 
             df.append(dict(
