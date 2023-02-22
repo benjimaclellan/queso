@@ -1,5 +1,5 @@
 import pandas as pd
-from queso.utils.io import IO
+from queso.io import IO
 
 from queso.quantities.information import neg_qfi, neg_cfi
 from optimize_fi import optimize_fi

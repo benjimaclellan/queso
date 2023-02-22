@@ -12,26 +12,21 @@ Data to save:
 
 """
 
-import itertools
 import tensorcircuit as tc
-import jax.numpy as jnp
 import argparse
 import jax
 from jax import random
 import tqdm
-import seaborn as sns
 import numpy as np
-import optax
 import pandas as pd
-import matplotlib.pyplot as plt
 import time
 import sys
 
 sys.path.append(".")
 
-from queso.utils.io import IO
+from queso.io import IO
 
-#%%
+# %%
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")
 tc.set_contractor("auto")  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
@@ -42,7 +37,9 @@ def optimize_run(n, k, n_samples=200, seed=0, progress=True):
         psi = sensor(_params, phi).state()[:, None]
         f_dpsi_phi = backend.jacrev(lambda phi: sensor(params=_params, phi=phi).state())
         d_psi = f_dpsi_phi(phi)
-        fi = 4 * backend.real((backend.conj(d_psi.T) @ d_psi) + (backend.conj(d_psi.T) @ psi) ** 2)
+        fi = 4 * backend.real(
+            (backend.conj(d_psi.T) @ d_psi) + (backend.conj(d_psi.T) @ psi) ** 2
+        )
         return fi[0, 0]
 
     def neg_qfi(_params, _phi):
@@ -54,13 +51,18 @@ def optimize_run(n, k, n_samples=200, seed=0, progress=True):
 
         for i in range(k):
             for j in range(n):
-                mps.r(j, theta=params[3 * j, i], alpha=params[3 * j + 1, i], phi=params[3 * j + 2, i])
+                mps.r(
+                    j,
+                    theta=params[3 * j, i],
+                    alpha=params[3 * j + 1, i],
+                    phi=params[3 * j + 2, i],
+                )
 
             for j in range(1, n, 2):
-                mps.cnot(j-1, j)
+                mps.cnot(j - 1, j)
 
             for j in range(2, n, 2):
-                mps.cnot(j-1, j)
+                mps.cnot(j - 1, j)
 
         # interaction
         for j in range(n):
@@ -78,7 +80,6 @@ def optimize_run(n, k, n_samples=200, seed=0, progress=True):
     _ = cfi_val_grad_jit(params, phi)
 
     def _sample_circuit(n_samples=250, progress=True, key=None):
-
         t0 = time.time()
         vals, grads = [], []
 
@@ -102,27 +103,37 @@ def optimize_run(n, k, n_samples=200, seed=0, progress=True):
     key, subkey = random.split(key)
     vals, grads, t = _sample_circuit(n_samples=n_samples, progress=progress, key=key)
 
-    df.append(dict(
-        n=n,
-        k=k,
-        gamma=gamma,
-        fi_type=qfi.__name__,
-        fi_vals=vals,
-        fi_grad_vals=grads,
-        time=t,
-    ))
+    df.append(
+        dict(
+            n=n,
+            k=k,
+            gamma=gamma,
+            fi_type=qfi.__name__,
+            fi_vals=vals,
+            fi_grad_vals=grads,
+            time=t,
+        )
+    )
 
     return pd.DataFrame(df)
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(description='Parser for starting multiple runs on Graham')
+    parser = argparse.ArgumentParser(
+        description="Parser for starting multiple runs on Graham"
+    )
     # Optional argument
-    parser.add_argument('--folder', type=str, default="qfi-tensor-pure", help='Default save diretoty ')
-    parser.add_argument('--n', type=int, default=2, help='Number of qubits')
-    parser.add_argument('--k', type=int, default=2, help='Number of layers')
-    parser.add_argument('--seed', type=int, default=None, help='An optional integer argument: seed for RNG')
+    parser.add_argument(
+        "--folder", type=str, default="qfi-tensor-pure", help="Default save diretoty "
+    )
+    parser.add_argument("--n", type=int, default=2, help="Number of qubits")
+    parser.add_argument("--k", type=int, default=2, help="Number of layers")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="An optional integer argument: seed for RNG",
+    )
     args = parser.parse_args()
 
     folder = args.folder

@@ -2,7 +2,7 @@ import tqdm
 import qutip as qt
 import numpy as np
 
-from queso.utils.io import IO
+from queso.io import IO
 from queso.sensor.functions import nketz0
 from queso.quantities.entanglement import genuine_multipartite_entanglement
 
@@ -18,7 +18,7 @@ if __name__ == "__main__":
         # (4, 2),
         (6, 2),
     ]
-    for (n, d) in r:
+    for n, d in r:
         # for run in range(n_runs):
         for run in (pbar := tqdm.tqdm(range(n_runs))):
             # pbar.set_description(f"n = {n}, d = {2} | run = {run}")

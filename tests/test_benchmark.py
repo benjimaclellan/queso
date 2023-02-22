@@ -1,6 +1,4 @@
-import pytest
 import uuid
-import jax
 
 from queso.sensor.layers import brick_wall_probe
 from queso.sensor.blocks import Interaction, Measurement, Sensor
