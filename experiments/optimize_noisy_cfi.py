@@ -31,37 +31,33 @@ tc.set_contractor("auto")  # “auto”, “greedy”, “branch”, “plain”
 
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser(
-    #     description="Parser for starting multiple runs on Graham"
-    # )
-    # # Optional argument
-    # parser.add_argument(
-    #     "--folder", type=str, default="qfi-tensor-pure", help="Default save directory "
-    # )
-    # parser.add_argument("--n", type=int, default=2, help="Number of qubits")
-    # parser.add_argument("--k", type=int, default=2, help="Number of layers")
-    # parser.add_argument("--ansatz", type=str, default=None, help="Number of layers")
-    # parser.add_argument(
-    #     "--seed",
-    #     type=int,
-    #     default=None,
-    #     help="An optional integer argument: seed for RNG",
-    # )
-    # args = parser.parse_args()
-    #
-    # if args.ansatz is None:
-    #     raise ValueError("Ansatz is required")
-    #
-    # folder = args.folder
-    # n = args.n
-    # k = args.k
-    # ansatz = args.ansatz
-    # seed = args.seed if args.seed is not None else time.time_ns()
-    n = 4
-    k = 4
-    ansatz = "cnot_2local_dephased_ansatz"
-    seed = 0
-    folder = "noisy_state"
+    parser = argparse.ArgumentParser(
+        description="Parser for starting multiple runs on Graham"
+    )
+    # Optional argument
+    parser.add_argument(
+        "--folder", type=str, default="qfi-tensor-pure", help="Default save directory "
+    )
+    parser.add_argument("--n", type=int, default=2, help="Number of qubits")
+    parser.add_argument("--k", type=int, default=2, help="Number of layers")
+    parser.add_argument("--ansatz", type=str, default=None, help="Number of layers")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="An optional integer argument: seed for RNG",
+    )
+    args = parser.parse_args()
+
+    if args.ansatz is None:
+        raise ValueError("Ansatz is required")
+
+    folder = args.folder
+    n = args.n
+    k = args.k
+    ansatz = args.ansatz
+    seed = args.seed if args.seed is not None else time.time_ns()
+
     io = IO(folder=folder, include_date=False, include_id=False).subpath(ansatz)
 
     lr = 0.20
