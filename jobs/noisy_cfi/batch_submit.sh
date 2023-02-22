@@ -3,9 +3,9 @@
 
 FOLDER="noisy_cfi_batch_sweep"
 ANSATZ="cnot_2local_dephased_ansatz"
-for n in 8;
+for n in 2;
   do
-  for k in 2 3 4 5 6;
+  for k in 2;
     do
       JOB_NAME="n${n}_k${k}_${ANSATZ}"
       echo $JOB_NAME

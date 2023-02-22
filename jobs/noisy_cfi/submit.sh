@@ -5,7 +5,7 @@
 ##SBATCH --gpus-per-node=1
 #SBATCH --time=0:10:00
 #SBATCH --mail-user=bmaclell@uwaterloo.ca
-#SBATCH --mail-type=FAIL,TIME_LIMIT
+#SBATCH --mail-type=ALL
 #SBATCH --output=slurm_%J.out
 
 module purge
