@@ -126,7 +126,4 @@ dmypy.json
 .idea/
 data/
 .scratch/
-jobs/
 .DS_Store
-
-/experiments/.old/
