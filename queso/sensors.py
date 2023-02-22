@@ -27,6 +27,14 @@ def cnot_2local_dephased_ansatz(params, phi, gamma, n, k):
 
     # measurement
     for j in range(n):
-        c.r(j, theta=params[3 * j, k], alpha=params[3 * j + 1, k + 1], phi=params[3 * j + 2, k])
+        c.r(j, theta=params[3 * j, k], alpha=params[3 * j + 1, k], phi=params[3 * j + 2, k])
 
     return c
+
+
+def build(name, n, k):
+    if name == "cnot_2local_dephased_ansatz":
+        circuit, shape = cnot_2local_dephased_ansatz, [3 * n, k + 1]
+    else:
+        raise NotImplementedError("Not a valid probe state name")
+    return circuit, shape

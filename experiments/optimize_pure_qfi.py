@@ -20,11 +20,10 @@ import optax
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
-import sys
 
 from queso.io import IO
 from queso import probes
-from queso.quantities import quantum_fisher_information, classical_fisher_information
+from queso.quantities import quantum_fisher_information
 
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")
@@ -52,6 +51,11 @@ if __name__ == "__main__":
     #
     # if args.ansatz is None:
     #     raise ValueError("Ansatz is required")
+    folder = "pure_state"
+    ansatz = "cnot_2local_ansatz"
+    n = 4
+    k = 4
+    seed = 0
 
     # folder = args.folder
     # n = args.n
@@ -59,26 +63,21 @@ if __name__ == "__main__":
     # ansatz = args.ansatz
     # seed = args.seed if args.seed is not None else time.time_ns()
 
-    folder = "pure_state"
-    n = 4
-    k = 4
-    seed = 0
-    ansatz = "cnot_2local_ansatz"
-
     io = IO(folder=folder, include_date=False, include_id=False).subpath(ansatz)
 
     lr = 0.20
-    repeat = 3
+    repeat = 7
     progress = True
-    n_steps = 250
+    n_steps = 400
     n_samples = 1000
+    fi_name = "qfi"
 
     #%%
     circ, shape = probes.build(ansatz, n, k)
 
     phi = 0.0
     key = random.PRNGKey(seed)
-    theta = random.uniform(key, ([3 * n, k]))
+    theta = random.uniform(key, shape, minval=0, maxval=2*np.pi)
 
     fi_val_grad_jit = backend.jit(
         backend.value_and_grad(
@@ -92,7 +91,7 @@ if __name__ == "__main__":
     #%% optimize the sensor circuit `repeat` times
     def _optimize(n_steps=250, lr=0.25, progress=True, subkey=None):
         opt = tc.backend.optimizer(optax.adagrad(learning_rate=lr))
-        theta = random.uniform(subkey, ([3 * n, k]))
+        theta = random.uniform(subkey, shape, minval=0, maxval=2*np.pi)
         loss = []
         t0 = time.time()
         for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
@@ -106,7 +105,6 @@ if __name__ == "__main__":
 
     df = []
     print(f"\nOptimizing circuit: n={n}, k={k}")
-    plt.pause(0.01)
     for j in range(repeat):
         key, subkey = random.split(key)
         val, loss, t = _optimize(
@@ -122,29 +120,43 @@ if __name__ == "__main__":
                 time=t,
                 lr=lr,
                 n_steps=n_steps,
+                fi_name=fi_name,
             )
         )
 
         # save after each repeat, in case of runtime error
         io.save_dataframe(pd.DataFrame(df), filename=f"optimization/n={n}_k={k}")
+        plt.pause(0.01)
 
     #%% sample FI and gradient vectors
     def _sample(n_samples=250, progress=True, key=None):
-        t0 = time.time()
+        df = []
         vals, grads = [], []
+        t0 = time.time()
         for sample in (pbar := tqdm.tqdm(range(n_samples), disable=(not progress))):
             key, subkey = random.split(key)
-            theta = random.uniform(subkey, shape)
-
+            theta = random.uniform(subkey, shape, minval=0, maxval=2*np.pi)
             val, grad = fi_val_grad_jit(theta)
+
             vals.append(val)
             grads.append(grad)
+
             if progress:
                 pbar.set_description(f"Cost: {-val:.10f}")
+
         t = time.time() - t0
-        return -np.array(vals), -np.array(grads), t
+        df.append(
+            dict(
+                n=n,
+                k=k,
+                vals=-np.array(vals),
+                grads=-np.array(grads),
+                fi_name=fi_name,
+                t=t,
+            )
+        )
+        return pd.DataFrame(df)
 
-    vals, grads, t = _sample(n_samples=n_samples, progress=True, key=key)
-
-    io.save_np_array(vals, filename=f"vals/n={n}_k={k}")
-    io.save_np_array(vals, filename=f"grads/n={n}_k={k}")
+    print("\nSampling FI and gradients.")
+    df = _sample(n_samples=n_samples, progress=True, key=key)
+    io.save_dataframe(df, filename=f"samples/n={n}_k={k}")

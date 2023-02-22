@@ -15,8 +15,7 @@ module load cudnn/8.2.0
 source ~/.bash_profile
 source ~/queso_venv/bin/activate
 
-echo ${NQUBIT} ${KLAYER}
-echo "${FOLDER}"
+echo "${FOLDER}" ${NQUBIT} ${KLAYER} ${ANSATZ}
 
 cd ~/projects/def-rgmelko/bmaclell/queso
-python experiments/optimize_pure_qfi.py --folder "${FOLDER}" --n ${NQUBIT} --k ${KLAYER}
+python experiments/optimize_pure_qfi.py --folder "${FOLDER}" --n ${NQUBIT} --k ${KLAYER} --ansatz ${ANSATZ} -seed 0

@@ -3,158 +3,166 @@ Batch runs for tensor circuit simulations of quantum sensors
 Parameters to vary:
     n: number of qubits
     k: number of layers
-    gamma: dephasing/deploaring coeefficient
-    contractor: tensor contraction algorithm
 
 Data to save:
     machine metadata
     learning curve
-    run parameters (n, k, gamma)
-
+    run parameters (n, k)
 """
 
-import itertools
 import tensorcircuit as tc
-import jax.numpy as jnp
 import argparse
 import jax
 from jax import random
 import tqdm
-import seaborn as sns
 import numpy as np
 import optax
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
-import sys
 
-sys.path.append(".")
+from queso.io import IO
+from queso import sensors
+from queso.quantities import classical_fisher_information
 
-from queso.utils.io import IO
-
-#%%
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")
-tc.set_contractor("greedy")  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
+tc.set_contractor("auto")  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
 
 
-def optimize_run(n, k, gammas, n_steps=200, contractor="greedy", seed=0, lr=0.25, repeat=5, progress=True):
+if __name__ == "__main__":
+    # parser = argparse.ArgumentParser(
+    #     description="Parser for starting multiple runs on Graham"
+    # )
+    # # Optional argument
+    # parser.add_argument(
+    #     "--folder", type=str, default="qfi-tensor-pure", help="Default save directory "
+    # )
+    # parser.add_argument("--n", type=int, default=2, help="Number of qubits")
+    # parser.add_argument("--k", type=int, default=2, help="Number of layers")
+    # parser.add_argument("--ansatz", type=str, default=None, help="Number of layers")
+    # parser.add_argument(
+    #     "--seed",
+    #     type=int,
+    #     default=None,
+    #     help="An optional integer argument: seed for RNG",
+    # )
+    # args = parser.parse_args()
+    #
+    # if args.ansatz is None:
+    #     raise ValueError("Ansatz is required")
+    #
+    # folder = args.folder
+    # n = args.n
+    # k = args.k
+    # ansatz = args.ansatz
+    # seed = args.seed if args.seed is not None else time.time_ns()
+    n = 4
+    k = 4
+    ansatz = "cnot_2local_dephased_ansatz"
+    seed = 0
+    folder = "noisy_state"
+    io = IO(folder=folder, include_date=False, include_id=False).subpath(ansatz)
 
-    def cfi(_params, _phi, _gamma):
-        def probs(_params, _phi, _gamma):
-            return backend.abs(backend.diagonal(sensor(_params, _phi, _gamma).densitymatrix()))
-        pr = probs(_params, _phi, _gamma)
-        dpr_phi = backend.jacrev(lambda _phi: probs(_params=_params, _phi=_phi, _gamma=_gamma))
-        d_pr = dpr_phi(phi).squeeze()
-        fim = backend.sum(d_pr * d_pr / pr)
-        return fim
+    lr = 0.20
+    repeat = 3
+    progress = True
+    n_steps = 400
+    n_samples = 1000
+    fi_name = "cfi"
 
-    def neg_cfi(_params, _phi, _gamma):
-        return -cfi(_params, _phi, _gamma)
+    #%%
+    circ, shape = sensors.build(ansatz, n, k)
 
-    def sensor(params, phi, gamma):
-        dmc = tc.DMCircuit(n)
-
-        for i in range(k):
-            for j in range(n):
-                dmc.r(j, theta=params[3 * j, i], alpha=params[3 * j + 1, i], phi=params[3 * j + 2, i])
-
-            for j in range(1, n, 2):
-                dmc.cnot(j-1, j)
-
-            for j in range(2, n, 2):
-                dmc.cnot(j-1, j)
-
-            for j in range(n):
-                dmc.phasedamping(j, gamma=gamma[0])
-                # dmc.depolarizing(j, px=gamma[0], py=gamma[0], pz=gamma[0])
-
-        # interaction
-        for j in range(n):
-            dmc.rz(j, theta=phi[0])
-
-        # measurement
-        for j in range(n):
-            dmc.u(j, theta=params[3 * j, -1], phi=params[3 * j + 1, -1])
-
-        return dmc
-
-    phi = np.array([0.0])
-    gamma = np.array([0.0])
+    phi = 0.0
     key = random.PRNGKey(seed)
-    params = random.uniform(key, ([3 * n, k + 1]))
-    dmc = sensor(params, phi, gamma)
+    theta = random.uniform(key, shape, minval=0, maxval=2*np.pi)
+    gammas = np.logspace(-5, -0.25, 15)
 
-    # %%
-    # cfi_val_grad_jit = backend.jit(backend.value_and_grad(neg_cfi, argnums=0))
-    t0 = time.time()
-    cfi_val_grad_jit = jax.jit(jax.value_and_grad(neg_cfi, argnums=0))
-    val, grad = cfi_val_grad_jit(params, phi, gamma)
-    print(f"Time to compile {time.time() - t0}")
+    fi_val_grad_jit = backend.jit(
+        backend.value_and_grad(
+            lambda _theta, _gamma: classical_fisher_information(circ=circ, theta=_theta, phi=phi, gamma=_gamma, n=n, k=k),
+            argnums=0,
+        )
+    )
+    val, grad = fi_val_grad_jit(theta, gammas[0])
+    print(-val, -grad)
 
-    # print(dmc.draw(output="text"))
-    # print(val, grad)
-
+    #%% optimize the sensor circuit `repeat` times
     def _optimize(gamma, n_steps=250, lr=0.25, progress=True, subkey=None):
         opt = tc.backend.optimizer(optax.adagrad(learning_rate=lr))
-        # params = backend.implicit_randn([3 * n, k + 1])
-        params = random.uniform(subkey, ([3 * n, k + 1]))
-
+        theta = random.uniform(subkey, shape, minval=0, maxval=2*np.pi)
         loss = []
         t0 = time.time()
         for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
-            val, grad = cfi_val_grad_jit(params, phi, gamma)
-            params = opt.update(grad, params)
+            val, grad = fi_val_grad_jit(theta, gamma)
+            theta = opt.update(grad, theta)
             loss.append(val)
             if progress:
                 pbar.set_description(f"Cost: {-val:.10f}")
         t = time.time() - t0
         return -val, -np.array(loss), t
 
-    # %%
     df = []
-    for gamma in gammas:
-        print(f"\nOptimizing circuit: n={n}, k={k}, gamma={gamma}")
-        plt.pause(0.01)
-        _loss = []
-        for j in range(repeat):
-            val, loss, t = _optimize(np.array([gamma]), n_steps=n_steps, lr=lr, progress=progress, subkey=subkey)
+    for j in range(repeat):
+        key, subkey = random.split(key)
+        for gamma in gammas:
+            print(f"\nOptimizing circuit: n={n}, k={k}, gamma={gamma}, repeat={j}")
+            val, loss, t = _optimize(
+                gamma=gamma, n_steps=n_steps, lr=lr, progress=progress, subkey=subkey
+            )
 
-            df.append(dict(
-                n=n,
-                k=k,
-                gamma=gamma,
-                cfi=val,
-                loss=loss,
-                time=t,
-            ))
+            df.append(
+                dict(
+                    n=n,
+                    k=k,
+                    gamma=gamma,
+                    fi=val,
+                    loss=loss,
+                    time=t,
+                    lr=lr,
+                    n_steps=n_steps,
+                    fi_name=fi_name,
+                )
+            )
 
-    return pd.DataFrame(df)
+            # save after each repeat, in case of runtime error
+            io.save_dataframe(pd.DataFrame(df), filename=f"optimization/n={n}_k={k}")
+            plt.pause(0.01)
 
+    #%% sample FI and gradient vectors
+    def _sample(n_samples=250, progress=True, key=None):
+        df = []
+        for i, gamma in enumerate(gammas):
+            vals, grads = [], []
+            _key = key
+            t0 = time.time()
+            for sample in (pbar := tqdm.tqdm(range(n_samples), disable=(not progress))):
+                _key, subkey = random.split(_key)
+                theta = random.uniform(subkey, shape, minval=0, maxval=2*np.pi)
+                val, grad = fi_val_grad_jit(theta, gamma)
 
-if __name__ == "__main__":
+                vals.append(val)
+                grads.append(grad)
 
-    parser = argparse.ArgumentParser(description='Parser for starting multiple runs on Graham')
-    # Optional argument
-    parser.add_argument('--folder', type=str, default="cfi-tensor-noisy", help='Default save diretoty ')
-    parser.add_argument('--n', type=int, default=2, help='Number of qubits')
-    parser.add_argument('--k', type=int, default=2, help='Number of layers')
-    parser.add_argument('--seed', type=int, default=100, help='An optional integer argument: seed for RNG')
-    args = parser.parse_args()
+                if progress:
+                    pbar.set_description(f"Cost: {-val:.10f} | Gamma = 10e{np.log10(gamma):.5f}")
+            t = time.time() - t0
 
-    folder = args.folder
-    n = args.n
-    k = args.k
-    seed = args.seed
-    print(f"Beginning optimization for n={n}, k={k}. Save folder: {folder}")
+            df.append(
+                dict(
+                    n=n,
+                    k=k,
+                    gamma=gamma,
+                    vals=-np.array(vals),
+                    grads=-np.array(grads),
+                    fi_name=fi_name,
+                    t=t,
+                )
+            )
 
-    io = IO(folder=args.folder, include_date=True, include_id=False)
+        return pd.DataFrame(df)
 
-    lr = 0.25
-    repeat = 7
-    progress = True
-    n_steps = 250
-    gammas = np.hstack([np.array([0.0]), np.exp(np.linspace(-5, -1, 11))])
-
-    df = optimize_run(n, k, gammas, n_steps=n_steps, contractor="greedy", lr=lr, repeat=repeat, progress=progress, seed=seed)
-    io.save_dataframe(df, filename=f"n={n}_k={k}")
+    print("\nSampling FI and gradients.")
+    df = _sample(n_samples=n_samples, progress=True, key=key)
+    io.save_dataframe(df, filename=f"samples/n={n}_k={k}")

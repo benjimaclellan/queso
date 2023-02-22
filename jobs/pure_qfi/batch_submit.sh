@@ -2,6 +2,7 @@
 # Batch submit jobs to Graham
 
 FOLDER="pure_qfi_batch_sweep"
+ANSATZ="cnot_2local_ansatz"
 
 for n in 1;
   do
@@ -10,7 +11,7 @@ for n in 1;
       JOB_NAME="n${n}_k${k}"
       echo $JOB_NAME
       #echo "0:${n}0:00"
-      sbatch --output="slurm_${JOB_NAME}.out" --time="00:${n}0:00" --job-name $JOB_NAME --export=NQUBIT=$n,FOLDER=${FOLDER},KLAYER=$k submit_qfi_pure.sh
+      sbatch --output="slurm_${JOB_NAME}.out" --time="00:${n}0:00" --job-name $JOB_NAME --export=NQUBIT=$n,FOLDER=${FOLDER},KLAYER=$k,ANSATZ=${ANSATZ} submit_qfi_pure.sh
   done
 done
 sleep 0.5s
