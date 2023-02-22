@@ -7,7 +7,7 @@ for n in 2;
   do
   for k in 2;
     do
-      JOB_NAME="n${n}_k${k}_${ANSATZ}"
+      JOB_NAME="noisy_cfi_n${n}_k${k}_${ANSATZ}"
       echo $JOB_NAME
       #echo "0:${n}0:00"
       sbatch --output="slurm_${JOB_NAME}.out" --time="26:00:00" --job-name $JOB_NAME --export=NQUBIT=$n,FOLDER=${FOLDER},KLAYER=$k,ANSATZ=${ANSATZ} submit.sh
