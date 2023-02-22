@@ -18,4 +18,4 @@ source ~/queso_venv/bin/activate
 echo "${FOLDER}" ${NQUBIT} ${KLAYER} ${ANSATZ}
 
 cd ~/projects/def-rgmelko/bmaclell/queso
-python experiments/optimize_noisy_cfi.py --folder "${FOLDER}" --n ${NQUBIT} --k ${KLAYER} --ansatz ${ANSATZ} -seed 0
+python experiments/optimize_noisy_cfi.py --folder "${FOLDER}" --n ${NQUBIT} --k ${KLAYER} --ansatz ${ANSATZ} --seed 0
