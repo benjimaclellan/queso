@@ -15,11 +15,22 @@ def quantum_fisher_information(circ, theta, phi, n, k):
     return -fi
 
 
-def classical_fisher_information(circ, theta, phi, gamma, n, k):
-    pr = circ(theta, phi, gamma, n, k).probability()
+# def classical_fisher_information(circ, theta, phi, gamma, n, k):
+#     pr = circ(theta, phi, gamma, n, k).probability()
+#
+#     dpr_phi = tc.backend.jacrev(
+#         lambda _phi: circ(theta, _phi, gamma, n, k).probability()
+#     )
+#     d_pr = dpr_phi(phi).squeeze()
+#     fi = tc.backend.sum(d_pr * d_pr / pr)
+#     return -fi
+
+
+def classical_fisher_information(circ, theta, phi, n, k):
+    pr = circ(theta, phi, n, k).probability()
 
     dpr_phi = tc.backend.jacrev(
-        lambda _phi: circ(theta, _phi, gamma, n, k).probability()
+        lambda _phi: circ(theta, _phi, n, k).probability()
     )
     d_pr = dpr_phi(phi).squeeze()
     fi = tc.backend.sum(d_pr * d_pr / pr)
