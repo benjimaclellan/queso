@@ -1,9 +1,8 @@
 import tensorcircuit as tc
 from jax import random
 
-from queso.io import IO
-from queso.quantities import quantum_fisher_information, classical_fisher_information
-from queso import probes, sensors
+from queso.old.quantities import quantum_fisher_information
+from queso.old import probes
 
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")

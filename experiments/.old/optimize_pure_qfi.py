@@ -12,7 +12,6 @@ Data to save:
 
 import tensorcircuit as tc
 import argparse
-import jax
 from jax import random
 import tqdm
 import numpy as np
@@ -22,8 +21,8 @@ import matplotlib.pyplot as plt
 import time
 
 from queso.io import IO
-from queso import sensors
-from queso.quantities import classical_fisher_information
+from queso.old import probes
+from queso.old.quantities import quantum_fisher_information
 
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")
@@ -61,37 +60,36 @@ if __name__ == "__main__":
     io = IO(folder=folder, include_date=False, include_id=False).subpath(ansatz)
 
     lr = 0.20
-    repeat = 3
+    repeat = 7
     progress = True
     n_steps = 400
     n_samples = 1000
-    fi_name = "cfi"
+    fi_name = "qfi"
 
     #%%
-    circ, shape = sensors.build(ansatz, n, k)
+    circ, shape = probes.build(ansatz, n, k)
 
     phi = 0.0
     key = random.PRNGKey(seed)
     theta = random.uniform(key, shape, minval=0, maxval=2*np.pi)
-    gammas = np.logspace(-5, -0.25, 15)
 
     fi_val_grad_jit = backend.jit(
         backend.value_and_grad(
-            lambda _theta, _gamma: classical_fisher_information(circ=circ, theta=_theta, phi=phi, gamma=_gamma, n=n, k=k),
+            lambda _theta: quantum_fisher_information(circ=circ, theta=_theta, phi=phi, n=n, k=k),
             argnums=0,
         )
     )
-    val, grad = fi_val_grad_jit(theta, gammas[0])
+    val, grad = fi_val_grad_jit(theta)
     print(-val, -grad)
 
     #%% optimize the sensor circuit `repeat` times
-    def _optimize(gamma, n_steps=250, lr=0.25, progress=True, subkey=None):
+    def _optimize(n_steps=250, lr=0.25, progress=True, subkey=None):
         opt = tc.backend.optimizer(optax.adagrad(learning_rate=lr))
         theta = random.uniform(subkey, shape, minval=0, maxval=2*np.pi)
         loss = []
         t0 = time.time()
         for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
-            val, grad = fi_val_grad_jit(theta, gamma)
+            val, grad = fi_val_grad_jit(theta)
             theta = opt.update(grad, theta)
             loss.append(val)
             if progress:
@@ -100,63 +98,57 @@ if __name__ == "__main__":
         return -val, -np.array(loss), t
 
     df = []
+    print(f"\nOptimizing circuit: n={n}, k={k}")
     for j in range(repeat):
         key, subkey = random.split(key)
-        for gamma in gammas:
-            print(f"\nOptimizing circuit: n={n}, k={k}, gamma={gamma}, repeat={j}")
-            val, loss, t = _optimize(
-                gamma=gamma, n_steps=n_steps, lr=lr, progress=progress, subkey=subkey
-            )
+        val, loss, t = _optimize(
+            n_steps=n_steps, lr=lr, progress=progress, subkey=subkey
+        )
 
-            df.append(
-                dict(
-                    n=n,
-                    k=k,
-                    gamma=gamma,
-                    fi=val,
-                    loss=loss,
-                    time=t,
-                    lr=lr,
-                    n_steps=n_steps,
-                    fi_name=fi_name,
-                )
+        df.append(
+            dict(
+                n=n,
+                k=k,
+                fi=val,
+                loss=loss,
+                time=t,
+                lr=lr,
+                n_steps=n_steps,
+                fi_name=fi_name,
             )
+        )
 
-            # save after each repeat, in case of runtime error
-            io.save_dataframe(pd.DataFrame(df), filename=f"optimization/n={n}_k={k}")
-            plt.pause(0.01)
+        # save after each repeat, in case of runtime error
+        io.save_dataframe(pd.DataFrame(df), filename=f"optimization/n={n}_k={k}")
+        plt.pause(0.01)
 
     #%% sample FI and gradient vectors
     def _sample(n_samples=250, progress=True, key=None):
         df = []
-        for i, gamma in enumerate(gammas):
-            vals, grads = [], []
-            _key = key
-            t0 = time.time()
-            for sample in (pbar := tqdm.tqdm(range(n_samples), disable=(not progress))):
-                _key, subkey = random.split(_key)
-                theta = random.uniform(subkey, shape, minval=0, maxval=2*np.pi)
-                val, grad = fi_val_grad_jit(theta, gamma)
+        vals, grads = [], []
+        t0 = time.time()
+        for sample in (pbar := tqdm.tqdm(range(n_samples), disable=(not progress))):
+            key, subkey = random.split(key)
+            theta = random.uniform(subkey, shape, minval=0, maxval=2*np.pi)
+            val, grad = fi_val_grad_jit(theta)
 
-                vals.append(val)
-                grads.append(grad)
+            vals.append(val)
+            grads.append(grad)
 
-                if progress:
-                    pbar.set_description(f"Cost: {-val:.10f} | Gamma = 10e{np.log10(gamma):.5f}")
-            t = time.time() - t0
+            if progress:
+                pbar.set_description(f"Cost: {-val:.10f}")
 
-            df.append(
-                dict(
-                    n=n,
-                    k=k,
-                    gamma=gamma,
-                    vals=-np.array(vals),
-                    grads=-np.array(grads),
-                    fi_name=fi_name,
-                    t=t,
-                )
+        t = time.time() - t0
+        df.append(
+            dict(
+                n=n,
+                k=k,
+                vals=-np.array(vals),
+                grads=-np.array(grads),
+                fi_name=fi_name,
+                t=t,
             )
-
+        )
         return pd.DataFrame(df)
 
     print("\nSampling FI and gradients.")

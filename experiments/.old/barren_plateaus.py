@@ -22,7 +22,7 @@ import pandas as pd
 import time
 import sys
 
-sys.path.append(".")
+sys.path.append("..")
 
 from queso.io import IO
 
