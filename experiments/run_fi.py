@@ -37,7 +37,7 @@ def detection(mu):
     return qml
 
 
-def qsense(theta, phi):
+def sensor(theta, phi):
     for j in range(k):
         for i in range(n):
             qml.RX(theta[i, 3 * j], wires=i)
@@ -51,45 +51,35 @@ def qsense(theta, phi):
     for i in range(n):
         qml.RZ(phi, wires=i)
 
+
+def state(theta, phi):
+    sensor(theta, phi)
     return qml.state()
 
 
-# def qsense(theta, phi):
-#     probe(theta)
-#     interaction(phi)
-#     return qml.state()
-
-
-def csense(theta, phi, mu):
-    probe(theta)
-    interaction(phi)
-    detection(mu)
-    return qml.probs()
-
-
-n = 2
-k = 2
+n = 4
+k = 6
 interface = "jax"
 device = qml.device("default.qubit", wires=n)
 
 key = jax.random.PRNGKey(time.time_ns())
-theta = jax.random.uniform(key, shape=[n, 3*k])  #.astype("complex64")
-phi = jnp.array(0.0)   #np.zeros([1]).astype("complex64")
-mu = jax.random.uniform(key, shape=[n, 3])  #.astype("complex64")
+theta = jax.random.uniform(key, shape=[n, 3*k])
+phi = jnp.array(0.0)
+mu = jax.random.uniform(key, shape=[n, 3])
 
-sensor = qml.QNode(qsense, device=device, interface=interface)
+qnode = qml.QNode(state, device=device, interface=interface)
 
 #%%
-psi = sensor(theta, phi)
-dpsi = jax.jacrev(sensor, argnums=1, holomorphic=True)(theta.astype("complex64"), phi.astype("complex64"))
+psi = qnode(theta, phi)
+dpsi = jax.jacrev(qnode, argnums=1, holomorphic=True)(theta.astype("complex64"), phi.astype("complex64"))
 print(psi)
 print(jnp.conj(psi[None, :]) @ psi[:, None])
 
 
 #%%
 def qfi(theta, phi):
-    psi = sensor(theta, phi)
-    dpsi = jax.jacrev(sensor, argnums=1, holomorphic=True)(theta.astype("complex64"), phi.astype("complex64"))
+    psi = qnode(theta, phi)
+    dpsi = jax.jacrev(qnode, argnums=1, holomorphic=True)(theta.astype("complex64"), phi.astype("complex64"))
     fi = 4 * (jnp.conj(dpsi[None, :]) @ dpsi[:, None] - jnp.abs(jnp.conj(dpsi[None, :]) @ psi[:, None])).squeeze()
     return fi
 
@@ -141,3 +131,4 @@ fig, ax = plt.subplots()
 ax.plot(losses)
 plt.show()
 
+#%%
