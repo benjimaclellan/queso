@@ -1,4 +1,3 @@
-import itertools
 import time
 import tqdm
 import matplotlib.pyplot as plt
@@ -12,12 +11,17 @@ from queso.io import IO
 import h5py
 
 
-def train_circuit(io: IO, n: int, k: int, key: jax.random.PRNGKey):
+def train_circuit(
+        io: IO,
+        n: int,
+        k: int,
+        key: jax.random.PRNGKey,
+        n_phis: int = 10,
+        n_shots: int = 500,
+):
     sensor = Sensor(n, k)
 
     phi = jnp.array(0.0)
-    theta = jax.random.uniform(key, shape=[n, k, 2])
-    mu = jax.random.uniform(key, shape=[n, 3])
 
     lr = 1e-2
     progress = True
@@ -25,7 +29,6 @@ def train_circuit(io: IO, n: int, k: int, key: jax.random.PRNGKey):
 
     def loss_cfi(params):
         return -sensor.cfi(params['theta'], phi, params['mu'])
-
 
     def loss_qfi(params):
         return -sensor.qfi(params['theta'], phi)
@@ -59,15 +62,15 @@ def train_circuit(io: IO, n: int, k: int, key: jax.random.PRNGKey):
     val, grads = loss_val_grad(params)
 
     #%%
-    losses, entropies = [], []
+    losses, vn_ent = [], []
     for _ in range(1000):
         val, params, updates, opt_state = step(params, opt_state)
         print(val)
         losses.append(-val)
-        entropies.append(sensor.entanglement(params['theta'], phi))
+        vn_ent.append(sensor.entanglement(params['theta'], phi))
 
     losses = jnp.array(losses)
-
+    fi = losses  # set FI to the losses
     theta = params['theta']
     mu = params['mu']
 
@@ -76,27 +79,27 @@ def train_circuit(io: IO, n: int, k: int, key: jax.random.PRNGKey):
     axs[0].plot(losses)
     axs[0].axhline(n**2, ls='--', alpha=0.5)
     axs[0].set(ylabel="Fisher Information")
-    axs[1].plot(entropies)
+    axs[1].plot(vn_ent)
     axs[1].set(ylabel="Entropy of entanglement", xlabel="Optimization Step")
     io.save_figure(fig, filename="fi-entropy-optimization")
 
     # sensor.circuit(theta, phi, mu).draw(output="text")
 
     #%%
-    n_phis = 10
-    n_shots = 500
     phis = jnp.linspace(0, jnp.pi, n_phis)
     shots = sensor.sample_over_phases(theta, phis, mu, n_shots=n_shots)
 
     #%%
-    hf = h5py.File(io.path.joinpath("test.h5"), 'w')
-    hf.create_dataset('n', data=n)
-    hf.create_dataset('k', data=k)
+    metadata = dict(n=n, k=k,)
+    io.save_json(metadata, filename="metadata.json")
+
+    hf = h5py.File(io.path.joinpath("circuit.h5"), 'w+')
     hf.create_dataset('theta', data=theta)
     hf.create_dataset('mu', data=mu)
     hf.create_dataset('phis', data=phis)
     hf.create_dataset('shots', data=shots)
-    hf.create_dataset('losses', data=losses)
+    hf.create_dataset('fi', data=fi)
+    hf.create_dataset('vn_ent', data=vn_ent)
     hf.close()
 
     return

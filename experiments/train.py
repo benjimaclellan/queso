@@ -1,16 +1,9 @@
-import itertools
-import time
-import tqdm
-import matplotlib.pyplot as plt
-
 import jax
 import jax.numpy as jnp
-import optax
 
-from queso.tc.sensor import Sensor
-from queso.estimator import RegressionEstimator
 from queso.io import IO
 from train_circuit import train_circuit
+from train_nn import train_nn
 
 
 n = 6
@@ -20,5 +13,7 @@ io = IO(folder="test_hdf5")
 io.path.mkdir(parents=True, exist_ok=True)
 
 key = jax.random.PRNGKey(1234)
-train_circuit(io, n, k, key)
+train_circuit(io, n, k, key=key, n_phis=10, n_shots=100)
 
+key = jax.random.PRNGKey(4321)
+train_nn(io, key=key, batch_size=4, n_epochs=10)
