@@ -1,14 +1,13 @@
 import itertools
-import time
 import tqdm
 import matplotlib.pyplot as plt
 
 import jax
 import jax.numpy as jnp
 import optax
+from flax import serialization
 
-# from queso.tc.sensor import shots_to_counts, counts_to_list
-from queso.estimator import RegressionEstimator
+from queso.nn import RegressionEstimator
 from queso.io import IO
 import h5py
 
@@ -25,25 +24,25 @@ def shots_to_counts(shots, phis):
     return counts
 
 
+#%%
 def train_nn(
     io: IO,
     key: jax.random.PRNGKey,
     batch_size: int = 10,
     n_epochs: int = 100,
+    lr: float = 1e-2,
+    n_batches: int = 10
 ):
 
     #%% hyperparameters
-    lr = 0.5e-1
     progress = True
 
-
     # %% extract data from H5 file
-    hf = h5py.File(io.path.joinpath("test.h5"), 'r')
+    hf = h5py.File(io.path.joinpath("circuit.h5"), 'r')
     print(hf.keys())
 
     shots = jnp.array(hf.get('shots'))
     phis = jnp.array(hf.get('phis'))
-    n = jnp.array(hf.get('n'))
 
     hf.close()
 
@@ -51,7 +50,7 @@ def train_nn(
     counts = shots_to_counts(shots, phis)
 
     #%%
-    assert counts.shape[1] == 2**n
+    n = shots.shape[1]  # number of qubits
     nn_dims = (2 ** n, 10, 10, 1)
     model = RegressionEstimator(nn_dims)
 
@@ -59,14 +58,15 @@ def train_nn(
     y = phis
 
     #%% create batches
+
     batch_inds = jax.random.shuffle(key, jnp.array(list(range(x.shape[0]))))[:batch_size]
 
     x_batch = x[batch_inds]
     y_batch = y[batch_inds]
 
-    params = model.init(jax.random.PRNGKey(0), x)
-    pred = model.apply(params, x_batch)
-    print(pred)
+    params = model.init(key, x)
+    pred_batch = model.apply(params, x_batch)
+    print(pred_batch)
 
     #%% define mean-squared error as the loss function
     def mse(params, x, y):
@@ -97,10 +97,15 @@ def train_nn(
     #%% run training loop
     losses = []
     for epoch in range(n_epochs):
-        # batches = batch_generator(x, y, batch_size)
-        # for i, batch in enumerate(batch_generator(x, y, batch_size=batch_size)):
-        # val, params, updates, opt_state = step_nn(params, batch[0], batch[1], opt_state)
-        val, params, updates, opt_state = step_nn(params, x, y, opt_state)
+        for batch in range(n_batches):
+            # batch_inds = jax.random.shuffle(key, jnp.array(list(range(x.shape[0]))))[:batch_size]
+            batch_inds = jax.random.randint(key, (batch_size,), minval=0, maxval=x.shape[0]-1)
+
+            x_batch = x[batch_inds]
+            y_batch = y[batch_inds]
+            val, params, updates, opt_state = step_nn(params, x_batch, y_batch, opt_state)
+
+        # val, params, updates, opt_state = step_nn(params, x, y, opt_state)
         print(f"Epoch {epoch} | MSE: {val} | {x.shape}")
         losses.append(val)
 
@@ -123,10 +128,11 @@ def train_nn(
     io.save_figure(fig, filename="ground-truth-phi-to-estimate.png")
 
     # %% save to H5 file
-    metadata = dict(nn_dims=nn_dims)
-    io.save_json(metadata, filename="metadata.json")
+    metadata = dict(n=n, nn_dims=nn_dims, lr=lr, batch_size=batch_size, n_epochs=n_epochs)
+    io.save_json(metadata, filename="nn-metadata.json")
 
-    hf = h5py.File(io.path.joinpath("nn.h5"), 'w+')
+    io.save_json(serialization.to_state_dict(params), filename="nn-params.json")
+
+    hf = h5py.File(io.path.joinpath("nn.h5"), 'w')
     hf.create_dataset('nn_mse', data=nn_mse)
-    hf.create_dataset('nn_dims', data=nn_dims)
     hf.close()

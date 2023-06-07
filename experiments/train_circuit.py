@@ -18,12 +18,12 @@ def train_circuit(
         key: jax.random.PRNGKey,
         n_phis: int = 10,
         n_shots: int = 500,
+        lr: float = 1e-2,
 ):
     sensor = Sensor(n, k)
 
     phi = jnp.array(0.0)
 
-    lr = 1e-2
     progress = True
     optimizer = optax.adam(learning_rate=lr)
 
@@ -86,14 +86,15 @@ def train_circuit(
     # sensor.circuit(theta, phi, mu).draw(output="text")
 
     #%%
+    print(f"Sampling {n_shots} shots for {n_phis} phase value between 0 and pi.")
     phis = jnp.linspace(0, jnp.pi, n_phis)
     shots = sensor.sample_over_phases(theta, phis, mu, n_shots=n_shots)
 
     #%%
-    metadata = dict(n=n, k=k,)
-    io.save_json(metadata, filename="metadata.json")
+    metadata = dict(n=n, k=k, lr=lr)
+    io.save_json(metadata, filename="circ-metadata.json")
 
-    hf = h5py.File(io.path.joinpath("circuit.h5"), 'w+')
+    hf = h5py.File(io.path.joinpath("circuit.h5"), 'w')
     hf.create_dataset('theta', data=theta)
     hf.create_dataset('mu', data=mu)
     hf.create_dataset('phis', data=phis)
