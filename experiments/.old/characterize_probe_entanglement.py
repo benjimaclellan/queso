@@ -3,7 +3,7 @@ import qutip as qt
 import numpy as np
 
 from queso.io import IO
-from queso.sensor.functions import nketz0
+from queso.pennylane.sensor import nketz0
 from queso.old.quantities import genuine_multipartite_entanglement
 
 if __name__ == "__main__":

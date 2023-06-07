@@ -1,14 +1,9 @@
-from typing import Sequence
 import itertools
 import time
-import tqdm
-import matplotlib.pyplot as plt
 
 import pennylane as qml
 import jax
 import jax.numpy as jnp
-import optax
-import flax.linen as nn
 
 
 class Sensor:
@@ -121,13 +116,3 @@ class Sensor:
         return fi
 
 
-class RegressionEstimator(nn.Module):
-    # todo: build FF-NN for regression
-    features: Sequence[int]
-
-    @nn.compact
-    def __call__(self, x):
-        for features in self.features[:-1]:
-            x = nn.relu(nn.Dense(features=features)(x))
-        x = nn.Dense(self.features[-1])(x)
-        return x

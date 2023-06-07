@@ -8,6 +8,7 @@ import json
 import string
 import pandas as pd
 import random
+import h5py
 
 
 def current_time():
@@ -251,6 +252,16 @@ class IO:
         if self.verbose:
             print(f"{current_time()} | Loaded from {full_path} successfully.")
         return file
+
+    # def new_h5_file(self, filename):
+    #     """
+    #     :param filename: name of the text file to which we want to save the numpy array
+    #     """
+    #     full_path = self.path.joinpath(filename)
+    #     os.makedirs(full_path.parent, exist_ok=True)
+    #     hf = h5py.File("test.h5", 'w')
+    #     if self.verbose:
+    #         print(f"{current_time()} | New H5 file at {full_path}.")
 
     @staticmethod
     def _save_json(variable, path):
