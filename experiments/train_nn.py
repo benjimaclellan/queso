@@ -1,6 +1,10 @@
 import itertools
 import tqdm
 import matplotlib.pyplot as plt
+from typing import Sequence
+import copy
+
+from flax import linen as nn
 
 import jax
 import jax.numpy as jnp
@@ -28,6 +32,7 @@ def shots_to_counts(shots, phis):
 def train_nn(
     io: IO,
     key: jax.random.PRNGKey,
+    nn_dims: Sequence[int],
     batch_size: int = 10,
     n_epochs: int = 100,
     lr: float = 1e-2,
@@ -50,15 +55,12 @@ def train_nn(
     counts = shots_to_counts(shots, phis)
 
     #%%
-    n = shots.shape[1]  # number of qubits
-    nn_dims = (2 ** n, 10, 10, 1)
     model = RegressionEstimator(nn_dims)
 
     x = counts
     y = phis
 
     #%% create batches
-
     batch_inds = jax.random.shuffle(key, jnp.array(list(range(x.shape[0]))))[:batch_size]
 
     x_batch = x[batch_inds]
@@ -96,18 +98,22 @@ def train_nn(
 
     #%% run training loop
     losses = []
-    for epoch in range(n_epochs):
+    for epoch in (pbar := tqdm.tqdm(range(n_epochs), disable=(not progress))):
         for batch in range(n_batches):
+            key, subkey = jax.random.split(key)
             # batch_inds = jax.random.shuffle(key, jnp.array(list(range(x.shape[0]))))[:batch_size]
-            batch_inds = jax.random.randint(key, (batch_size,), minval=0, maxval=x.shape[0]-1)
+            batch_inds = jax.random.randint(subkey, (batch_size,), minval=0, maxval=x.shape[0]-1)
 
-            x_batch = x[batch_inds]
-            y_batch = y[batch_inds]
+            x_batch = copy.deepcopy(x[batch_inds])
+            y_batch = copy.deepcopy(y[batch_inds])
+            # val, params, updates, opt_state = step_nn(params, x, y, opt_state)
             val, params, updates, opt_state = step_nn(params, x_batch, y_batch, opt_state)
 
         # val, params, updates, opt_state = step_nn(params, x, y, opt_state)
-        print(f"Epoch {epoch} | MSE: {val} | {x.shape}")
         losses.append(val)
+
+        if progress:
+            pbar.set_description(f" Epoch {epoch} | MSE: {val:.10f} | {x.shape}")
 
     losses = jnp.array(losses)
     nn_mse = losses
@@ -122,16 +128,16 @@ def train_nn(
     #%% run prediction on all phases
     pred = model.apply(params, x)
     fig, ax = plt.subplots()
-    ax.set(xlabel=r"Ground truth, $\phi$", ylabel=r"Estimate, $\bar{\phi}$")
     ax.scatter(y, pred)
+    ax.set(xlabel=r"Ground truth, $\phi$", ylabel=r"Estimate, $\bar{\phi}$")
     fig.show()
     io.save_figure(fig, filename="ground-truth-phi-to-estimate.png")
 
     # %% save to H5 file
-    metadata = dict(n=n, nn_dims=nn_dims, lr=lr, batch_size=batch_size, n_epochs=n_epochs)
+    metadata = dict(nn_dims=nn_dims, lr=lr, batch_size=batch_size, n_epochs=n_epochs)
     io.save_json(metadata, filename="nn-metadata.json")
 
-    io.save_json(serialization.to_state_dict(params), filename="nn-params.json")
+    # io.save_json(serialization.to_state_dict(params), filename="nn-params.json")
 
     hf = h5py.File(io.path.joinpath("nn.h5"), 'w')
     hf.create_dataset('nn_mse', data=nn_mse)

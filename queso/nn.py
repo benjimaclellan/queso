@@ -11,5 +11,5 @@ class RegressionEstimator(nn.Module):
     def __call__(self, x):
         for features in self.features[:-1]:
             x = nn.relu(nn.Dense(features=features)(x))
-        x = nn.Dense(self.features[-1])(x)
+        x = nn.Dense(self.features[-1])(x).squeeze()
         return x

@@ -20,6 +20,7 @@ def train_circuit(
         n_shots: int = 500,
         lr: float = 1e-2,
 ):
+    print(f"Initializing sensor n={n}, k={k}")
     sensor = Sensor(n, k)
 
     phi = jnp.array(0.0)
@@ -44,7 +45,7 @@ def train_circuit(
 
 
     #%%
-    key = jax.random.PRNGKey(time.time_ns())
+    # key = jax.random.PRNGKey(time.time_ns())
 
     phi = jnp.array(0.0)
     theta = jax.random.uniform(key, shape=[n, k, 2])
@@ -88,8 +89,10 @@ def train_circuit(
     #%%
     print(f"Sampling {n_shots} shots for {n_phis} phase value between 0 and pi.")
     phis = jnp.linspace(0, jnp.pi, n_phis)
+    t0 = time.time()
     shots = sensor.sample_over_phases(theta, phis, mu, n_shots=n_shots)
-
+    t1 = time.time()
+    print(f"Sampling took {t1 - t0} seconds.")
     #%%
     metadata = dict(n=n, k=k, lr=lr)
     io.save_json(metadata, filename="circ-metadata.json")
