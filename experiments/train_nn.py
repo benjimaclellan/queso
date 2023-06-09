@@ -24,7 +24,7 @@ def shots_to_counts(shots, phis):
         c = {''.join([str(j) for j in basis[i]]): count[i].item() for i in range(len(count))}
         cts = [c.get(b, 0) for b in bin_str]
         counts.append(cts)
-    counts = jnp.array(counts)
+    counts = jnp.array(counts) #/ shots.shape[1]  # normalize data to get relative frequency
     return counts
 
 
@@ -36,14 +36,15 @@ def train_nn(
     batch_size: int = 10,
     n_epochs: int = 100,
     lr: float = 1e-2,
-    n_batches: int = 10
+    n_batches: int = 10,
+    plot: bool = False,
+    progress: bool = True,
 ):
 
     #%% hyperparameters
-    progress = True
 
     # %% extract data from H5 file
-    hf = h5py.File(io.path.joinpath("circuit.h5"), 'r')
+    hf = h5py.File(io.path.joinpath("circ.h5"), 'r')
     print(hf.keys())
 
     shots = jnp.array(hf.get('shots'))
@@ -101,13 +102,12 @@ def train_nn(
     for epoch in (pbar := tqdm.tqdm(range(n_epochs), disable=(not progress))):
         for batch in range(n_batches):
             key, subkey = jax.random.split(key)
-            # batch_inds = jax.random.shuffle(key, jnp.array(list(range(x.shape[0]))))[:batch_size]
             batch_inds = jax.random.randint(subkey, (batch_size,), minval=0, maxval=x.shape[0]-1)
 
-            x_batch = copy.deepcopy(x[batch_inds])
-            y_batch = copy.deepcopy(y[batch_inds])
-            # val, params, updates, opt_state = step_nn(params, x, y, opt_state)
-            val, params, updates, opt_state = step_nn(params, x_batch, y_batch, opt_state)
+            x_batch = x[batch_inds]
+            y_batch = y[batch_inds]
+            val, params, updates, opt_state = step_nn(params, x, y, opt_state)
+            # val, params, updates, opt_state = step_nn(params, x_batch, y_batch, opt_state)
 
         # val, params, updates, opt_state = step_nn(params, x, y, opt_state)
         losses.append(val)
@@ -117,21 +117,22 @@ def train_nn(
 
     losses = jnp.array(losses)
     nn_mse = losses
-
-    #%% plot NN loss minimization
-    fig, ax = plt.subplots()
-    ax.plot(losses)
-    ax.set(xlabel="Optimization step", ylabel="Loss")
-    fig.show()
-    io.save_figure(fig, filename="nn-loss.png")
-
-    #%% run prediction on all phases
     pred = model.apply(params, x)
-    fig, ax = plt.subplots()
-    ax.scatter(y, pred)
-    ax.set(xlabel=r"Ground truth, $\phi$", ylabel=r"Estimate, $\bar{\phi}$")
-    fig.show()
-    io.save_figure(fig, filename="ground-truth-phi-to-estimate.png")
+
+    if plot:
+        #%% plot NN loss minimization
+        fig, ax = plt.subplots()
+        ax.plot(losses)
+        ax.set(xlabel="Optimization step", ylabel="Loss")
+        fig.show()
+        io.save_figure(fig, filename="nn-loss.png")
+
+        #%% run prediction on all phases
+        fig, ax = plt.subplots()
+        ax.scatter(y, pred)
+        ax.set(xlabel=r"Ground truth, $\phi$", ylabel=r"Estimate, $\bar{\phi}$")
+        fig.show()
+        io.save_figure(fig, filename="ground-truth-phi-to-estimate.png")
 
     # %% save to H5 file
     metadata = dict(nn_dims=nn_dims, lr=lr, batch_size=batch_size, n_epochs=n_epochs)
@@ -141,4 +142,5 @@ def train_nn(
 
     hf = h5py.File(io.path.joinpath("nn.h5"), 'w')
     hf.create_dataset('nn_mse', data=nn_mse)
+    hf.create_dataset('pred', data=pred)
     hf.close()

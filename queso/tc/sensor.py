@@ -9,8 +9,6 @@ import jax
 import jax.numpy as jnp
 
 
-colors = sns.color_palette("mako", as_cmap=True)
-
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")
 tc.set_contractor("auto")  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
