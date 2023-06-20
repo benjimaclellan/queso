@@ -25,18 +25,18 @@ io = IO(folder=f"2023-06-07_nn-estimator-n{n}-k{k}")
 hf = h5py.File(io.path.joinpath("circ.h5"), "r")
 
 # %%
-device = 'cuda'
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = 'cuda'
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 progress = True
 save = True
 plot = True
 
-n_epoch = 1
+# n_epoch = 1
 n_batch = 512
 
 d_model = n
-d_ff = 10
+d_ff = 50
 dropout = 0.1
 num_heads = 1
 n_layers = 8
@@ -46,7 +46,8 @@ lr = 1e-3
 
 #%%
 # cutoff = 160
-inds = torch.arange(0, 20, 1)
+inds = torch.arange(0, 200, 1)
+
 shots = torch.tensor(np.array(hf.get("shots")), dtype=torch.float32)
 phis = torch.tensor(np.array(hf.get("phis")), dtype=torch.float32).unsqueeze(dim=1)
 shots = shots[inds, :, :]
@@ -72,7 +73,7 @@ encoder.to(device)
 # nn.init.xavier_uniform_(nn.Linear(2, 2))
 
 
-def count_parameters(model):
+def count_parameters(model, verbose=True):  # todo: move to utils
     table = PrettyTable(["Modules", "Parameters"])
     total_params = 0
     for name, parameter in model.named_parameters():
@@ -80,7 +81,8 @@ def count_parameters(model):
         params = parameter.numel()
         table.add_row([name, params])
         total_params += params
-    print(table)
+    if verbose:
+        print(table)
     print(f"Total Trainable Params: {total_params}")
     return total_params
 
@@ -122,6 +124,7 @@ optimizer = optim.Adam(encoder.parameters(), lr=lr) #, betas=(0.9, 0.98), eps=1e
 encoder.train()
 
 #%%
+# todo: change to lightning
 for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
     x, y = next(iter(train_loader))
     pred = encoder(x)
@@ -134,6 +137,15 @@ for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
     # print(f"Epoch: {epoch+1}, Loss: {loss.item()}")
     if progress:
         pbar.set_description(f"MSE: {loss.item():.10f}")
+
+#%% save 
+torch.save({
+    'epoch': epoch,
+    'model_state_dict': model.state_dict(),
+    'optimizer_state_dict': optimizer.state_dict(),
+    'loss': loss,
+}, PATH)
+
 
 #%%
 fig, ax = plt.subplots()
