@@ -3,12 +3,14 @@ import time
 import datetime
 import numpy as np
 import h5py
+import pandas as pd
 import tqdm
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
+from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 import matplotlib.pyplot as plt
 import seaborn as sns
 from prettytable import PrettyTable
@@ -41,7 +43,7 @@ dropout = 0.1
 num_heads = 1
 n_layers = 8
 
-n_steps = 10000
+n_steps = 10
 lr = 1e-3
 
 #%%
@@ -100,7 +102,7 @@ train_loader = data.DataLoader(dataset, sampler=sampler, batch_size=None)
 #%%
 x, y = next(iter(train_loader))
 print(x.shape)
-print(encoder.encoder_layer(x).shape)
+
 #%%
 for batch_ind in range(1):
     x, y = next(iter(train_loader))
@@ -124,6 +126,8 @@ optimizer = optim.Adam(encoder.parameters(), lr=lr) #, betas=(0.9, 0.98), eps=1e
 encoder.train()
 
 #%%
+log = CSVLogger(io.path, name='logs', version=0, flush_logs_every_n_steps=1)
+
 # todo: change to lightning
 for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
     x, y = next(iter(train_loader))
@@ -133,23 +137,28 @@ for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
     loss = criterion(pred, y)
     loss.backward()
     optimizer.step()
-    losses.append(loss.item())
-    # print(f"Epoch: {epoch+1}, Loss: {loss.item()}")
+
+    log.log_metrics({'loss': loss})
+
     if progress:
         pbar.set_description(f"MSE: {loss.item():.10f}")
 
-#%% save 
+log.save()
+
+#%% save model and optimizer
 torch.save({
-    'epoch': epoch,
-    'model_state_dict': model.state_dict(),
+    'step': step,
+    'encoder_state_dict': encoder.state_dict(),
     'optimizer_state_dict': optimizer.state_dict(),
     'loss': loss,
-}, PATH)
+}, io.path.joinpath("checkpoint.pt"))
 
+#%%
+df = io.load_csv(filename="logs/version_0/metrics.csv")
 
 #%%
 fig, ax = plt.subplots()
-ax.plot(losses)
+ax.plot(df.step, df.loss)
 ax.set(xlabel='Iteration', ylabel='MSE Loss', yscale='log')
 if save:
     io.save_figure(fig, filename="loss.png")

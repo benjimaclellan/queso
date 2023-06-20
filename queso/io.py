@@ -253,6 +253,39 @@ class IO:
             print(f"{current_time()} | Loaded from {full_path} successfully.")
         return file
 
+    def save_csv(self, df, filename):
+        """
+        Save a panda dataframe object to csv
+
+        :param df: data contained in a dataframe
+        :type df: panda dataframe
+        :param filename: file to which data should be saved
+        :return: the function returns nothing
+        :rtype: None
+        """
+        ext = ".csv"
+        full_path = self.path.joinpath(filename + ext)
+        os.makedirs(full_path.parent, exist_ok=True)
+        df.to_csv(str(full_path), sep=",", index=False, header=True)
+        if self.verbose:
+            print(f"{current_time()} | Saved to {full_path} successfully.")
+
+    def load_csv(self, filename):
+        """
+        Load panda dataframe object from CSV
+
+        :param filename: name of the file from which data should be loaded
+        :type filename: str
+        :return: dataframe data
+        :rtype: panda dataframe
+        """
+        full_path = self.path.joinpath(filename)
+        df = pd.read_csv(str(full_path), sep=",", header=0)
+        if self.verbose:
+            print(f"{current_time()} | Loaded from {full_path} successfully.")
+        return df
+
+
     # def new_h5_file(self, filename):
     #     """
     #     :param filename: name of the text file to which we want to save the numpy array
