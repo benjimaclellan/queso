@@ -7,7 +7,6 @@ import jax.numpy as jnp
 
 
 class Sensor:
-
     def __init__(
         self,
         n,
@@ -27,10 +26,18 @@ class Sensor:
         self.interface = "jax"
         self.device = qml.device("default.qubit", wires=n, shots=None)
 
-        self.state = jax.jit(qml.QNode(self._state, device=self.device, interface=self.interface))
-        self.probs = jax.jit(qml.QNode(self._probs, device=self.device, interface=self.interface))
-        self.sample_nonjit = qml.QNode(self._sample, device=self.device, interface=self.interface)
-        self.counts_nonjit = qml.QNode(self._counts, device=self.device, interface=self.interface)
+        self.state = jax.jit(
+            qml.QNode(self._state, device=self.device, interface=self.interface)
+        )
+        self.probs = jax.jit(
+            qml.QNode(self._probs, device=self.device, interface=self.interface)
+        )
+        self.sample_nonjit = qml.QNode(
+            self._sample, device=self.device, interface=self.interface
+        )
+        self.counts_nonjit = qml.QNode(
+            self._counts, device=self.device, interface=self.interface
+        )
 
         return
 
@@ -105,8 +112,18 @@ class Sensor:
 
     def qfi(self, theta, phi, mu):
         psi = self.state(theta, phi, mu)
-        dpsi = jax.jacrev(self.state, argnums=1, holomorphic=True)(theta.astype("complex64"), phi.astype("complex64"), mu.astype("complex64"))
-        fi = 4 * jnp.real((jnp.conj(dpsi[None, :]) @ dpsi[:, None] - jnp.abs(jnp.conj(dpsi[None, :]) @ psi[:, None]))).squeeze()
+        dpsi = jax.jacrev(self.state, argnums=1, holomorphic=True)(
+            theta.astype("complex64"), phi.astype("complex64"), mu.astype("complex64")
+        )
+        fi = (
+            4
+            * jnp.real(
+                (
+                    jnp.conj(dpsi[None, :]) @ dpsi[:, None]
+                    - jnp.abs(jnp.conj(dpsi[None, :]) @ psi[:, None])
+                )
+            ).squeeze()
+        )
         return fi
 
     def cfi(self, theta, phi, mu):
@@ -114,5 +131,3 @@ class Sensor:
         dpr = jax.jacrev(self.probs, argnums=1, holomorphic=False)(theta, phi, mu)
         fi = jnp.sum((jnp.power(dpr, 2) / pr))
         return fi
-
-

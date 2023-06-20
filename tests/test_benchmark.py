@@ -1,8 +1,8 @@
 import uuid
 
-from queso.pennylane.sensor import brick_wall_probe
-from queso.pennylane.sensor import Interaction, Measurement, Sensor
-from queso.pennylane.sensor import Phase, U3
+from queso.sensors.pennylane.sensor import brick_wall_probe
+from queso.sensors.pennylane.sensor import Interaction, Measurement, Sensor
+from queso.sensors.pennylane.sensor import Phase, U3
 
 
 def test_calculate_state():

@@ -1,4 +1,3 @@
-
 from functools import partial
 
 import quimb as qu
@@ -40,20 +39,23 @@ class Sensor:
         circ = qtn.Circuit(self.n)
         for j in range(self.k):
             for i in range(self.n):
-                circ.apply_gate('U3', *theta[i, j, :], i, gate_round=None, parametrize=True)
+                circ.apply_gate(
+                    "U3", *theta[i, j, :], i, gate_round=None, parametrize=True
+                )
             for i in range(0, self.n - 1, 2):
-                circ.apply_gate('CNOT', i, i + 1)
+                circ.apply_gate("CNOT", i, i + 1)
             for i in range(1, self.n - 1, 2):
-                circ.apply_gate('CNOT', i, i + 1)
+                circ.apply_gate("CNOT", i, i + 1)
 
         for i in range(n):
-            circ.apply_gate('RX', phi, i, gate_round=None, parametrize=True)
+            circ.apply_gate("RX", phi, i, gate_round=None, parametrize=True)
 
         return circ
 
     # @partial(jax.jit, static_argnums=(0,))
     def sample(self, shots, theta, phi):
         return self.circuit(theta, phi).sample(shots)
+
     # def __call__(self):
     #     psi = qtn.unpack(self.params, self.skeleton)
     #     return loss_fn(norm_fn(psi))
@@ -74,7 +76,7 @@ sensor = Sensor(n, k)
 
 print(type(sensor.state(theta, phi)))
 
-print(jnp.sum(jnp.abs(sensor.state(theta, phi))**2))
+print(jnp.sum(jnp.abs(sensor.state(theta, phi)) ** 2))
 sensor.sample(1, theta, phi)
 for b in sensor.circuit(theta, phi).sample(10):
     print(b)

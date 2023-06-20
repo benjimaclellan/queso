@@ -29,7 +29,6 @@ tc.set_contractor("auto")  # “auto”, “greedy”, “branch”, “plain”
 
 
 if __name__ == "__main__":
-
     folder = ""
     n = args.n
     k = args.k
@@ -45,26 +44,28 @@ if __name__ == "__main__":
     n_samples = 1000
     fi_name = "qfi"
 
-    #%%
+    # %%
     circ, shape = probes.build(ansatz, n, k)
 
     phi = 0.0
     key = random.PRNGKey(seed)
-    theta = random.uniform(key, shape, minval=0, maxval=2*np.pi)
+    theta = random.uniform(key, shape, minval=0, maxval=2 * np.pi)
 
     fi_val_grad_jit = backend.jit(
         backend.value_and_grad(
-            lambda _theta: quantum_fisher_information(circ=circ, theta=_theta, phi=phi, n=n, k=k),
+            lambda _theta: quantum_fisher_information(
+                circ=circ, theta=_theta, phi=phi, n=n, k=k
+            ),
             argnums=0,
         )
     )
     val, grad = fi_val_grad_jit(theta)
     print(-val, -grad)
 
-    #%% optimize the sensor circuit `repeat` times
+    # %% optimize the sensor circuit `repeat` times
     def _optimize(n_steps=250, lr=0.25, progress=True, subkey=None):
         opt = tc.backend.optimizer(optax.adagrad(learning_rate=lr))
-        theta = random.uniform(subkey, shape, minval=0, maxval=2*np.pi)
+        theta = random.uniform(subkey, shape, minval=0, maxval=2 * np.pi)
         loss = []
         t0 = time.time()
         for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
@@ -101,14 +102,14 @@ if __name__ == "__main__":
         io.save_dataframe(pd.DataFrame(df), filename=f"optimization/n={n}_k={k}")
         plt.pause(0.01)
 
-    #%% sample FI and gradient vectors
+    # %% sample FI and gradient vectors
     def _sample(n_samples=250, progress=True, key=None):
         df = []
         vals, grads = [], []
         t0 = time.time()
         for sample in (pbar := tqdm.tqdm(range(n_samples), disable=(not progress))):
             key, subkey = random.split(key)
-            theta = random.uniform(subkey, shape, minval=0, maxval=2*np.pi)
+            theta = random.uniform(subkey, shape, minval=0, maxval=2 * np.pi)
             val, grad = fi_val_grad_jit(theta)
 
             vals.append(val)

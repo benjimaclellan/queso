@@ -9,9 +9,12 @@ def quantum_fisher_information(circ, theta, phi, n, k):
     )
     d_psi = f_dpsi_phi(phi)
 
-    fi = 4 * tc.backend.real(
-        (tc.backend.conj(d_psi.T) @ d_psi) + (tc.backend.conj(d_psi.T) @ psi) ** 2
-    ).squeeze()
+    fi = (
+        4
+        * tc.backend.real(
+            (tc.backend.conj(d_psi.T) @ d_psi) + (tc.backend.conj(d_psi.T) @ psi) ** 2
+        ).squeeze()
+    )
     return -fi
 
 
@@ -29,9 +32,7 @@ def quantum_fisher_information(circ, theta, phi, n, k):
 def classical_fisher_information(circ, theta, phi, n, k):
     pr = circ(theta, phi, n, k).probability()
 
-    dpr_phi = tc.backend.jacrev(
-        lambda _phi: circ(theta, _phi, n, k).probability()
-    )
+    dpr_phi = tc.backend.jacrev(lambda _phi: circ(theta, _phi, n, k).probability())
     d_pr = dpr_phi(phi).squeeze()
     fi = tc.backend.sum(d_pr * d_pr / pr)
     return -fi

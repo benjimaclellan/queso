@@ -66,27 +66,29 @@ if __name__ == "__main__":
     n_samples = 1000
     fi_name = "cfi"
 
-    #%%
+    # %%
     circ, shape = sensors.build(ansatz, n, k)
 
     phi = 0.0
     key = random.PRNGKey(seed)
-    theta = random.uniform(key, shape, minval=0, maxval=2*np.pi)
+    theta = random.uniform(key, shape, minval=0, maxval=2 * np.pi)
     gammas = np.logspace(-5, -0.25, 15)
 
     fi_val_grad_jit = backend.jit(
         backend.value_and_grad(
-            lambda _theta, _gamma: classical_fisher_information(circ=circ, theta=_theta, phi=phi, gamma=_gamma, n=n, k=k),
+            lambda _theta, _gamma: classical_fisher_information(
+                circ=circ, theta=_theta, phi=phi, gamma=_gamma, n=n, k=k
+            ),
             argnums=0,
         )
     )
     val, grad = fi_val_grad_jit(theta, gammas[0])
     print(-val, -grad)
 
-    #%% optimize the sensor circuit `repeat` times
+    # %% optimize the sensor circuit `repeat` times
     def _optimize(gamma, n_steps=250, lr=0.25, progress=True, subkey=None):
         opt = tc.backend.optimizer(optax.adagrad(learning_rate=lr))
-        theta = random.uniform(subkey, shape, minval=0, maxval=2*np.pi)
+        theta = random.uniform(subkey, shape, minval=0, maxval=2 * np.pi)
         loss = []
         t0 = time.time()
         for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
@@ -125,7 +127,7 @@ if __name__ == "__main__":
             io.save_dataframe(pd.DataFrame(df), filename=f"optimization/n={n}_k={k}")
             plt.pause(0.01)
 
-    #%% sample FI and gradient vectors
+    # %% sample FI and gradient vectors
     def _sample(n_samples=250, progress=True, key=None):
         df = []
         for i, gamma in enumerate(gammas):
@@ -134,14 +136,16 @@ if __name__ == "__main__":
             t0 = time.time()
             for sample in (pbar := tqdm.tqdm(range(n_samples), disable=(not progress))):
                 _key, subkey = random.split(_key)
-                theta = random.uniform(subkey, shape, minval=0, maxval=2*np.pi)
+                theta = random.uniform(subkey, shape, minval=0, maxval=2 * np.pi)
                 val, grad = fi_val_grad_jit(theta, gamma)
 
                 vals.append(val)
                 grads.append(grad)
 
                 if progress:
-                    pbar.set_description(f"Cost: {-val:.10f} | Gamma = 10e{np.log10(gamma):.5f}")
+                    pbar.set_description(
+                        f"Cost: {-val:.10f} | Gamma = 10e{np.log10(gamma):.5f}"
+                    )
             t = time.time() - t0
 
             df.append(

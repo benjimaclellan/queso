@@ -29,10 +29,11 @@ if __name__ == "__main__":
     # %%
     fi_val_grad_jit = backend.jit(
         backend.value_and_grad(
-            lambda _theta: fisher_information(circ=circ, theta=_theta, phi=phi, n=n, k=k),
+            lambda _theta: fisher_information(
+                circ=circ, theta=_theta, phi=phi, n=n, k=k
+            ),
             argnums=0,
         )
     )
     val, grad = fi_val_grad_jit(theta)
     print(val, grad)
-

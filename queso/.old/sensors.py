@@ -27,7 +27,12 @@ def cnot_2local_dephased_ansatz(params, phi, gamma, n, k):
 
     # measurement
     for j in range(n):
-        c.r(j, theta=params[3 * j, k], alpha=params[3 * j + 1, k], phi=params[3 * j + 2, k])
+        c.r(
+            j,
+            theta=params[3 * j, k],
+            alpha=params[3 * j + 1, k],
+            phi=params[3 * j + 2, k],
+        )
 
     return c
 
@@ -55,7 +60,12 @@ def cnot_2local_ansatz(params, phi, n, k):
 
     # measurement
     for j in range(n):
-        c.r(j, theta=params[3 * j, k], alpha=params[3 * j + 1, k], phi=params[3 * j + 2, k])
+        c.r(
+            j,
+            theta=params[3 * j, k],
+            alpha=params[3 * j + 1, k],
+            phi=params[3 * j + 2, k],
+        )
 
     return c
 
