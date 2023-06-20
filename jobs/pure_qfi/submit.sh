@@ -5,15 +5,15 @@
 ##SBATCH --gpus-per-node=1
 #SBATCH --time=0:10:00
 #SBATCH --mail-user=bmaclell@uwaterloo.ca
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type=FAIL
 #SBATCH --output=slurm_%J.out
 
 module purge
 module load python/3.9 scipy-stack
 module load cuda/11.4
 module load cudnn/8.2.0
-source ~/.bash_profile
-source ~/queso_venv/bin/activate
+source ~/bash-profiles/queso
+source ~/venv/queso_venv/bin/activate
 
 echo "${FOLDER}" ${NQUBIT} ${KLAYER} ${ANSATZ}
 
