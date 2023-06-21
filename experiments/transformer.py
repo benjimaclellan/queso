@@ -35,7 +35,7 @@ save = True
 plot = True
 
 # n_epoch = 1
-n_batch = 512
+n_batch = 256
 
 d_model = n
 d_ff = 50
@@ -43,7 +43,7 @@ dropout = 0.1
 num_heads = 1
 n_layers = 8
 
-n_steps = 10
+n_steps = 10000
 lr = 1e-3
 
 #%%
