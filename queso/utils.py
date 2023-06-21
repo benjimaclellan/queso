@@ -2,6 +2,7 @@ import itertools
 import torch
 from jax import numpy as jnp
 import numpy as np
+from prettytable import PrettyTable
 
 
 def shots_to_counts(
@@ -26,3 +27,17 @@ def shots_to_counts(
         counts
     )  # / shots.shape[1]  # normalize data to get relative frequency
     return counts
+
+
+def count_parameters(model, verbose=True):  # todo: move to utils
+    table = PrettyTable(["Modules", "Parameters"])
+    total_params = 0
+    for name, parameter in model.named_parameters():
+        if not parameter.requires_grad: continue
+        params = parameter.numel()
+        table.add_row([name, params])
+        total_params += params
+    if verbose:
+        print(table)
+    print(f"Total Trainable Params: {total_params}")
+    return total_params

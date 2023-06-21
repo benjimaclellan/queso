@@ -3,22 +3,19 @@ import time
 import datetime
 import numpy as np
 import h5py
-import pandas as pd
 import tqdm
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
-from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
+from pytorch_lightning.loggers import CSVLogger
 import matplotlib.pyplot as plt
-import seaborn as sns
-from prettytable import PrettyTable
 
 from queso.io import IO
 from queso.estimators.transformer import Encoder
 from queso.estimators.data import SensorDataset, SensorSampler
-from queso.utils import shots_to_counts
+from queso.utils import count_parameters
 
 #%%
 n = 6
@@ -73,20 +70,6 @@ encoder.to(device)
 # encoder
 # torch.nn.init.uniform_(encoder.weight)
 # nn.init.xavier_uniform_(nn.Linear(2, 2))
-
-
-def count_parameters(model, verbose=True):  # todo: move to utils
-    table = PrettyTable(["Modules", "Parameters"])
-    total_params = 0
-    for name, parameter in model.named_parameters():
-        if not parameter.requires_grad: continue
-        params = parameter.numel()
-        table.add_row([name, params])
-        total_params += params
-    if verbose:
-        print(table)
-    print(f"Total Trainable Params: {total_params}")
-    return total_params
 
 
 #%%
