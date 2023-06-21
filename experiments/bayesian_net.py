@@ -13,7 +13,6 @@ import torch.utils.data as data
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 import matplotlib.pyplot as plt
 import seaborn as sns
-from prettytable import PrettyTable
 
 from queso.io import IO
 from queso.estimators.data import SensorDataset, SensorSampler
@@ -59,6 +58,9 @@ class BayesianEstimator(nn.Module):
 
 
 #%%
+# device = 'cuda'
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 n = 1
 n_shots = 2000
 n_phis = 40
@@ -111,6 +113,11 @@ count_parameters(model)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
+# move data and model to device
+outcomes = outcomes.to(device)
+labels = labels.to(device)
+model.to(device)
+
 model.train()
 
 #%%
@@ -146,14 +153,14 @@ for i, phi in enumerate(phis):
     hist[i, 1] = (outcomes[i, :, 0] == 1).sum()
 
 #%%
-sns.heatmap(hist)
+sns.heatmap(hist.detach().cpu())
 plt.show()
 
 #%%
 fig, ax = plt.subplots()
 m_pred0 = model(torch.tensor([0]).type(outcomes.type()))
 m_pred1 = model(torch.tensor([1]).type(outcomes.type()))
-m = torch.stack([m_pred0, m_pred1], dim=1).detach()
+m = torch.stack([m_pred0, m_pred1], dim=1).detach().cpu()
 sns.heatmap(m)
 plt.show()
 
