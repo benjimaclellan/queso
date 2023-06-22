@@ -42,13 +42,17 @@ class BayesianEstimator(nn.Module):
         assert dims[0] == 1
 
         net = []
-        for i in range(1, len(dims)):
+        for i in range(1, len(dims) - 1):
             net.append(nn.Linear(dims[i-1], dims[i]))
             # net.append(nn.Sigmoid())
             net.append(nn.ReLU())
             # net.append(nn.LeakyReLU())
-            net.append(nn.Dropout(p=0.5))
-        net.append(nn.Softmax(dim=-1))
+            # net.append(nn.Dropout(p=0.5))
+
+        net.append(nn.Linear(dims[-2], dims[-1]))
+        # net.append(nn.Softmax(dim=-1))
+        net.append(nn.LogSoftmax(dim=-1))
+
         self.net = nn.Sequential(*net)
 
         # for layer in self.net:
@@ -66,20 +70,20 @@ class BayesianEstimator(nn.Module):
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 io = IO(folder='bayesian-net')
-save = False
-plot = True
+save = True
+plot = False
 
 n = 1
 n_shots = 1000
 n_phis = 200
-n_output = 20  # number of output neurons (discretization of phase range)
+n_output = 30  # number of output neurons (discretization of phase range)
 
-dims = [1, 10, 10, n_output]
-n_steps = 10000
-batch_size_phases = 32
+dims = [1, 12, 12, n_output]
+n_steps = 30000
+batch_size_phases = 128
 batch_size_outcomes = 1
 progress = True
-lr = 1e-3
+lr = 1e-4
 
 # phis = torch.linspace(0, torch.pi, n_phis, dtype=torch.float64,)
 phi_range = (0, np.pi)
@@ -126,12 +130,14 @@ def init_weights(m):
         m.bias.data.fill_(0.01)
 
 
-model.apply(init_weights)
-
+# model.apply(init_weights)
+print(model)
 count_parameters(model)
 
 #%%
-criterion = nn.CrossEntropyLoss()
+# criterion = nn.CrossEntropyLoss()
+criterion = nn.NLLLoss()
+
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
 # move data and model to device
@@ -143,29 +149,23 @@ model.train()
 
 #%%
 losses = []
-for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterval=0.1)):
+for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterval=0.333)):
     inds = torch.randint(0, labels.shape[0], size=(batch_size_phases,))
     jnds = torch.randint(0, outcomes.shape[1], size=(batch_size_phases,))
 
     y = labels[inds]
-    y = y.unsqueeze(1)
-    y = y.repeat(1, batch_size_outcomes, 1)
-    y = torch.swapaxes(y, 1, 2)
+    # y = y.unsqueeze(1)
+    # y = y.repeat(1, batch_size_outcomes, 1)
+    # y = torch.swapaxes(y, 1, 2)
 
     a = (step % (outcomes.shape[1] - batch_size_outcomes))
     b = a + batch_size_outcomes
 
-    # x = outcomes[inds, step % outcomes.shape[1], :]
-    x = outcomes[inds, a:b, :]
-    # x = torch.swapaxes(x, 1, 2)
-    # x = outcomes[inds, (step % outcomes.shape[1]) : (step % outcomes.shape[1]) + 100, :]
-    # x = outcomes[inds, jnds, :]
-    # y = labels[inds].repeat(1, 20, 1)
-    # x = outcomes[inds, :, :]
-    # x = x[:, jnds, :]
+    # x = outcomes[inds, a:b, :]
+    x = outcomes[inds, jnds, :]
 
     pred = model(x)
-    pred = torch.swapaxes(pred, 1, 2)
+    # pred = torch.swapaxes(pred, 1, 2)
 
     optimizer.zero_grad()
     loss = criterion(pred, y)
@@ -175,7 +175,7 @@ for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterv
     losses.append(loss.item())
 
     if progress:
-        pbar.set_description(f"CE Loss: {loss.item():.10f} | {step % outcomes.shape[1]}")
+        pbar.set_description(f"CE Loss: {loss.item():.10f} | {step % outcomes.shape[1]}", refresh=False)
 
 #%% 
 model.eval()
