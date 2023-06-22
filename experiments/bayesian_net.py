@@ -43,8 +43,8 @@ class BayesianEstimator(nn.Module):
         for i in range(1, len(dims)):
             net.append(nn.Linear(dims[i-1], dims[i]))
             # net.append(nn.Sigmoid())
-            net.append(nn.GELU())
-        net.append(nn.Softmax(dim=-1))
+            net.append(nn.ReLU())
+        # net.append(nn.Softmax(dim=-1))
         self.net = nn.Sequential(*net)
 
         for layer in self.net:
@@ -63,17 +63,19 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 io = IO(folder='bayesian-net')
 save = True
-plot = False
+plot = True
 
 n = 1
-n_shots = 2000
-n_phis = 40
-n_output = 30  # number of output neurons (discretization of phase range)
+n_shots = 1000
+n_phis = 20
+n_output = 15  # number of output neurons (discretization of phase range)
 
+dims = [1, 128, 128, 128, 128, n_output]
 n_steps = 10000
-batch_size = 32
+batch_size_phases = 128
+batch_size_outcomes = 1
 progress = True
-lr = 1e-5
+lr = 1e-3
 
 phis = torch.linspace(0, torch.pi, n_phis, dtype=torch.float64)
 outcomes = torch.zeros([n_phis, n_shots])
@@ -109,7 +111,7 @@ labels = nn.functional.one_hot(index, num_classes=n_output).type(torch.FloatTens
 print(labels.shape)
 
 #%%
-model = BayesianEstimator(dims=[1, 20, 20, n_output])
+model = BayesianEstimator(dims=dims)
 
 # pred = model(outcomes[:, 0, :])
 # print(pred.shape)
@@ -131,13 +133,17 @@ model.train()
 #%%
 losses = []
 for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
-    inds = torch.randint(0, labels.shape[0], size=(batch_size,))
-    jnds = torch.randint(0, outcomes.shape[1], size=(20,))
+    inds = torch.randint(0, labels.shape[0], size=(batch_size_phases,))
+    jnds = torch.randint(0, outcomes.shape[1], size=(batch_size_outcomes,))
 
     x = outcomes[inds, step % outcomes.shape[1], :]
-    # x = outcomes[inds, jnds, :]
+    # y = labels[inds].repeat(1, 20, 1)
+    # x = outcomes[inds, :, :]
+    # x = x[:, jnds, :]
+
     y = labels[inds]
-    # y = labels[inds].repeat(1, 20)
+    # y = y.unsqueeze(1)
+    # y = y.repeat(1, batch_size_outcomes, 1)
 
     pred = model(x)
 
@@ -149,7 +155,7 @@ for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
     losses.append(loss.item())
 
     if progress:
-        pbar.set_description(f"CE Loss: {loss.item():.10f}")
+        pbar.set_description(f"CE Loss: {loss.item():.10f} | {step % outcomes.shape[1]}")
 
 #%%
 fig, ax = plt.subplots()
