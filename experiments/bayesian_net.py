@@ -33,10 +33,10 @@ def bit_to_integer(a, endian='le'):
 
 #%%
 class BayesianEstimator(nn.Module):
-    def __init__(self, dims: list = None):
+    def __init__(self, dims: list = None): 
         super().__init__()
         if dims is None:
-            dims = [1, 10, 10, 100]
+            dims = [1, 10, 10, 20]
         assert dims[0] == 1
 
         net = []
@@ -44,12 +44,13 @@ class BayesianEstimator(nn.Module):
             net.append(nn.Linear(dims[i-1], dims[i]))
             # net.append(nn.Sigmoid())
             net.append(nn.ReLU())
+            net.append(nn.Dropout(p=0.1))
         # net.append(nn.Softmax(dim=-1))
         self.net = nn.Sequential(*net)
 
-        for layer in self.net:
-            if isinstance(layer, nn.Linear):
-                nn.init.xavier_uniform_(layer.weight)
+        # for layer in self.net:
+            # if isinstance(layer, nn.Linear):
+                # nn.init.xavier_uniform_(layer.weight)
 
     def forward(self, x):
         for layer in self.net:
@@ -67,12 +68,12 @@ plot = True
 
 n = 1
 n_shots = 1000
-n_phis = 20
+n_phis = 256
 n_output = 15  # number of output neurons (discretization of phase range)
 
-dims = [1, 128, 128, 128, 128, n_output]
-n_steps = 10000
-batch_size_phases = 128
+dims = [1, 36, 36, n_output]
+n_steps = 800000
+batch_size_phases = 32
 batch_size_outcomes = 1
 progress = True
 lr = 1e-3
@@ -113,6 +114,12 @@ print(labels.shape)
 #%%
 model = BayesianEstimator(dims=dims)
 
+def init_weights(m):
+    if isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform(m.weight)
+        m.bias.data.fill_(0.01)
+model.apply(init_weights)
+
 # pred = model(outcomes[:, 0, :])
 # print(pred.shape)
 # print(labels.shape)
@@ -132,11 +139,12 @@ model.train()
 
 #%%
 losses = []
-for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
+for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterval=0.1)):
     inds = torch.randint(0, labels.shape[0], size=(batch_size_phases,))
-    jnds = torch.randint(0, outcomes.shape[1], size=(batch_size_outcomes,))
+    jnds = torch.randint(0, outcomes.shape[1], size=(batch_size_phases,))
 
-    x = outcomes[inds, step % outcomes.shape[1], :]
+    # x = outcomes[inds, step % outcomes.shape[1], :]
+    x = outcomes[inds, jnds, :]
     # y = labels[inds].repeat(1, 20, 1)
     # x = outcomes[inds, :, :]
     # x = x[:, jnds, :]
@@ -156,6 +164,9 @@ for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
 
     if progress:
         pbar.set_description(f"CE Loss: {loss.item():.10f} | {step % outcomes.shape[1]}")
+
+#%% 
+model.eval()
 
 #%%
 fig, ax = plt.subplots()
