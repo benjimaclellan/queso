@@ -61,11 +61,19 @@ class BayesianEstimator(nn.Module):
 # device = 'cuda'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+io = IO(folder='bayesian-net')
+save = True
+plot = False
+
 n = 1
 n_shots = 2000
 n_phis = 40
 n_output = 30  # number of output neurons (discretization of phase range)
-lr = 1e-3
+
+n_steps = 10000
+batch_size = 32
+progress = True
+lr = 1e-5
 
 phis = torch.linspace(0, torch.pi, n_phis, dtype=torch.float64)
 outcomes = torch.zeros([n_phis, n_shots])
@@ -121,14 +129,15 @@ model.to(device)
 model.train()
 
 #%%
-n_steps = 50000
-progress = True
 losses = []
 for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
-    inds = torch.randint(0, labels.shape[0], size=(128,))
+    inds = torch.randint(0, labels.shape[0], size=(batch_size,))
+    jnds = torch.randint(0, outcomes.shape[1], size=(20,))
 
     x = outcomes[inds, step % outcomes.shape[1], :]
+    # x = outcomes[inds, jnds, :]
     y = labels[inds]
+    # y = labels[inds].repeat(1, 20)
 
     pred = model(x)
 
@@ -143,25 +152,31 @@ for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
         pbar.set_description(f"CE Loss: {loss.item():.10f}")
 
 #%%
-plt.plot(losses)
-plt.show()
+fig, ax = plt.subplots()
+ax.plot(losses)
+if save:
+    io.save_figure(fig, filename='loss.png')
+if plot:
+    plt.show()
 
 #%%
+fig, axs = plt.subplots(2, 1)
+
 hist = torch.zeros([n_phis, 2])
 for i, phi in enumerate(phis):
     hist[i, 0] = (outcomes[i, :, 0] == 0).sum()
     hist[i, 1] = (outcomes[i, :, 0] == 1).sum()
 
-#%%
-sns.heatmap(hist.detach().cpu())
-plt.show()
+sns.heatmap(hist.detach().cpu(), ax=axs[0])
 
-#%%
-fig, ax = plt.subplots()
 m_pred0 = model(torch.tensor([0]).type(outcomes.type()))
 m_pred1 = model(torch.tensor([1]).type(outcomes.type()))
 m = torch.stack([m_pred0, m_pred1], dim=1).detach().cpu()
-sns.heatmap(m)
-plt.show()
+sns.heatmap(m, ax=axs[1])
+
+if save: 
+    io.save_figure(fig, filename='posteriors.png')
+if plot:
+    plt.show()
 
 #%%
