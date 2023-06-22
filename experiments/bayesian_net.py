@@ -43,8 +43,8 @@ class BayesianEstimator(nn.Module):
         for i in range(1, len(dims)):
             net.append(nn.Linear(dims[i-1], dims[i]))
             # net.append(nn.Sigmoid())
-            net.append(nn.ReLU())
-            net.append(nn.Dropout(p=0.1))
+            net.append(nn.GELU())
+            net.append(nn.Dropout(p=0.3))
         # net.append(nn.Softmax(dim=-1))
         self.net = nn.Sequential(*net)
 
@@ -63,22 +63,24 @@ class BayesianEstimator(nn.Module):
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 io = IO(folder='bayesian-net')
-save = True
+save = False
 plot = True
 
 n = 1
 n_shots = 1000
 n_phis = 256
-n_output = 15  # number of output neurons (discretization of phase range)
+n_output = 20  # number of output neurons (discretization of phase range)
 
-dims = [1, 36, 36, n_output]
-n_steps = 800000
+dims = [1, 40, 40, n_output]
+n_steps = 16000
 batch_size_phases = 32
 batch_size_outcomes = 1
 progress = True
-lr = 1e-3
+lr = 1e-4
 
-phis = torch.linspace(0, torch.pi, n_phis, dtype=torch.float64)
+# phis = torch.linspace(0, torch.pi, n_phis, dtype=torch.float64,)
+phi_range = (0, np.pi)
+phis = torch.tensor(np.linspace(phi_range[0], phi_range[1], n_phis, endpoint=False))
 outcomes = torch.zeros([n_phis, n_shots])
 for i, phi in enumerate(phis):
     pr0 = np.cos(phi / 2)**2
@@ -103,26 +105,25 @@ outcomes = outcomes.unsqueeze(2)
 # print(outcomes.shape, outcomes.type())
 
 #%%
-D = [0, phis[-1]]  # range of phase values in training set
-dphi = (D[1] - D[0]) / (n_output - 1)
+dphi = (phi_range[1] - phi_range[0]) / (n_output - 1)
 
-index = torch.floor(phis / dphi).type(torch.int64)
+index = torch.round(phis / dphi).type(torch.int64)
 print(index)
 labels = nn.functional.one_hot(index, num_classes=n_output).type(torch.FloatTensor)
 print(labels.shape)
 
+
 #%%
 model = BayesianEstimator(dims=dims)
 
+
 def init_weights(m):
     if isinstance(m, nn.Linear):
-        torch.nn.init.xavier_uniform(m.weight)
+        torch.nn.init.xavier_uniform_(m.weight)
         m.bias.data.fill_(0.01)
-model.apply(init_weights)
 
-# pred = model(outcomes[:, 0, :])
-# print(pred.shape)
-# print(labels.shape)
+
+model.apply(init_weights)
 
 count_parameters(model)
 
@@ -195,5 +196,17 @@ if save:
     io.save_figure(fig, filename='posteriors.png')
 if plot:
     plt.show()
+
+#%%
+outcomes_0 = outcomes[50, 0:10, :]
+pred = model(outcomes_0).detach()
+print(pred)
+print(torch.log(pred).sum(dim=0))
+p = torch.exp(torch.log(pred).sum(dim=0))
+print(p)
+#
+# fig, ax = plt.subplots()
+# ax.plot(p)
+# plt.show()
 
 #%%
