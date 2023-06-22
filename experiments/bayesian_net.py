@@ -18,6 +18,8 @@ from queso.io import IO
 from queso.estimators.data import SensorDataset, SensorSampler
 from queso.utils import shots_to_counts, count_parameters
 
+torch.set_default_dtype(torch.float64)
+
 
 #%%
 def bit_to_integer(a, endian='le'):
@@ -43,9 +45,10 @@ class BayesianEstimator(nn.Module):
         for i in range(1, len(dims)):
             net.append(nn.Linear(dims[i-1], dims[i]))
             # net.append(nn.Sigmoid())
-            net.append(nn.GELU())
-            net.append(nn.Dropout(p=0.3))
-        # net.append(nn.Softmax(dim=-1))
+            net.append(nn.ReLU())
+            # net.append(nn.LeakyReLU())
+            net.append(nn.Dropout(p=0.5))
+        net.append(nn.Softmax(dim=-1))
         self.net = nn.Sequential(*net)
 
         # for layer in self.net:
@@ -68,15 +71,15 @@ plot = True
 
 n = 1
 n_shots = 1000
-n_phis = 256
+n_phis = 200
 n_output = 20  # number of output neurons (discretization of phase range)
 
-dims = [1, 40, 40, n_output]
-n_steps = 16000
+dims = [1, 10, 10, n_output]
+n_steps = 10000
 batch_size_phases = 32
 batch_size_outcomes = 1
 progress = True
-lr = 1e-4
+lr = 1e-3
 
 # phis = torch.linspace(0, torch.pi, n_phis, dtype=torch.float64,)
 phi_range = (0, np.pi)
@@ -144,17 +147,25 @@ for step in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterv
     inds = torch.randint(0, labels.shape[0], size=(batch_size_phases,))
     jnds = torch.randint(0, outcomes.shape[1], size=(batch_size_phases,))
 
+    y = labels[inds]
+    y = y.unsqueeze(1)
+    y = y.repeat(1, batch_size_outcomes, 1)
+    y = torch.swapaxes(y, 1, 2)
+
+    a = (step % (outcomes.shape[1] - batch_size_outcomes))
+    b = a + batch_size_outcomes
+
     # x = outcomes[inds, step % outcomes.shape[1], :]
-    x = outcomes[inds, jnds, :]
+    x = outcomes[inds, a:b, :]
+    # x = torch.swapaxes(x, 1, 2)
+    # x = outcomes[inds, (step % outcomes.shape[1]) : (step % outcomes.shape[1]) + 100, :]
+    # x = outcomes[inds, jnds, :]
     # y = labels[inds].repeat(1, 20, 1)
     # x = outcomes[inds, :, :]
     # x = x[:, jnds, :]
 
-    y = labels[inds]
-    # y = y.unsqueeze(1)
-    # y = y.repeat(1, batch_size_outcomes, 1)
-
     pred = model(x)
+    pred = torch.swapaxes(pred, 1, 2)
 
     optimizer.zero_grad()
     loss = criterion(pred, y)
@@ -198,15 +209,19 @@ if plot:
     plt.show()
 
 #%%
-outcomes_0 = outcomes[50, 0:10, :]
-pred = model(outcomes_0).detach()
-print(pred)
-print(torch.log(pred).sum(dim=0))
-p = torch.exp(torch.log(pred).sum(dim=0))
-print(p)
-#
 # fig, ax = plt.subplots()
-# ax.plot(p)
+#
+# for i in range(0, n_phis, 5):
+#     outcomes_0 = outcomes[i, 0:100, :]
+#     pred = model(outcomes_0).detach()
+#     print(pred)
+#     p = pred.prod(dim=0)
+#     p = p / p.sum()
+#     print(p)
+#     #
+#
+#     ax.plot(p, label=f'{i}')
+# # ax.legend()
 # plt.show()
 
 #%%
