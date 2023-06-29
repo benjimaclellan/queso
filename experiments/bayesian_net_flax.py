@@ -44,20 +44,20 @@ class BayesianNetwork(nn.Module):
 
 #%%
 io = IO(folder='bayesian-net')
-save = True
+save = False
 show = True
 
 n = 1
 n_shots = 1000
-n_phis = 600
-n_output = 60  # number of output neurons (discretization of phase range)
+n_phis = 200
+n_output = 30  # number of output neurons (discretization of phase range)
 
-dims = [24, 24, n_output]
+dims = [4, 4, n_output]
 n_steps = 5000
 batch_phis = 32
-batch_shots = 32
+batch_shots = 16
 progress = True
-lr = 1e-4
+lr = 1e-3
 
 phi_range = (0, jnp.pi)
 phis = jnp.linspace(phi_range[0], phi_range[1], n_phis)
@@ -168,14 +168,22 @@ if save:
 
 #%% 
 fig, axs = plt.subplots(nrows=3)
-for i, n_check in enumerate([1, 10, 100]):
+colors = sns.color_palette('crest', n_colors=10)
+x = jnp.linspace(*phi_range, n_output)
+
+for i, m in enumerate([1, 10, 30]):
     ax = axs[i]
-    for j in range(0, n_phis, 100):
-        phi = phis[j]
-        shots = outcomes[j, :n_check]
-        pred = state.apply_fn({'params': state.params}, jnp.array([[0], [1]]))
-        pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
-        ax.plot(pred.prod(axis=1), label=f"Phi {phi:1.4f}")
+    for j, k in enumerate(range(0, n_phis, 20)):
+        phi = phis[k]
+        shots = outcomes[k, :m]
+        pred = state.apply_fn({'params': state.params}, shots)
+        pred = nn.activation.softmax(pred, axis=-1)
+        # pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
+        pred = pred.prod(axis=0)
+        pred = pred / jnp.max(pred)
+
+        ax.plot(x, pred, color=colors[j])
+        ax.axvline(phi, color=colors[j], ls='--', alpha=0.4)
 
 if show:
     plt.show()
