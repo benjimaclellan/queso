@@ -50,14 +50,14 @@ show = True
 n = 1
 n_shots = 1000
 n_phis = 600
-n_output = 40  # number of output neurons (discretization of phase range)
+n_output = 60  # number of output neurons (discretization of phase range)
 
-dims = [12, 12, n_output]
-n_steps = 1000
+dims = [24, 24, n_output]
+n_steps = 5000
 batch_phis = 32
-batch_shots = 64
+batch_shots = 32
 progress = True
-lr = 1e-3
+lr = 1e-4
 
 phi_range = (0, jnp.pi)
 phis = jnp.linspace(phi_range[0], phi_range[1], n_phis)
@@ -124,7 +124,7 @@ state = create_train_state(model, init_key, x_init, learning_rate=lr)
 # del init_key
 
 #%%
-for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
+for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterval=0.333)):
     # generate batch
     key = jax.random.PRNGKey(time.time_ns())
     subkeys = jax.random.split(key, num=2)
@@ -142,13 +142,12 @@ for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
 
     state, loss = train_step(state, batch)
     if progress:
-        pbar.set_description(f"Step {i} | FI: {loss:.10f}")
+        pbar.set_description(f"Step {i} | FI: {loss:.10f}", refresh=False)
 
 #%%
 state_params = state.params
 # model.apply(state_params, x_init)
-pred = dist = state.apply_fn({'params': state.params}, jnp.array([[0], [1]]))
-
+pred = state.apply_fn({'params': state.params}, jnp.array([[0], [1]]))
 pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
 
 fig, axs = plt.subplots(nrows=2, sharex=True)
@@ -167,4 +166,18 @@ if show:
 if save:
     io.save_figure(fig, filename="probs.png")
 
-#%%
+#%% 
+fig, axs = plt.subplots(nrows=3)
+for i, n_check in enumerate([1, 10, 100]):
+    ax = axs[i]
+    for j in range(0, n_phis, 100):
+        phi = phis[j]
+        shots = outcomes[j, :n_check]
+        pred = state.apply_fn({'params': state.params}, jnp.array([[0], [1]]))
+        pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
+        ax.plot(pred.prod(axis=1), label=f"Phi {phi:1.4f}")
+
+if show:
+    plt.show()
+if save:
+    io.save_figure(fig, filename="sequence.png")
