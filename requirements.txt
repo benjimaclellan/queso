@@ -1,9 +1,9 @@
-jax
 tqdm
 matplotlib
-optax
 pandas
 seaborn
-jax[cpu]
 networkx
 qutip
+h5py
+flax
+optax
