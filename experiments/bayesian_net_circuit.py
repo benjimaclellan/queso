@@ -32,7 +32,20 @@ def bit_to_integer(a, endian='le'):
     else:
         raise NotImplementedError
     s = jnp.einsum('ijk,k->ij', a, k)
-    return s.type(jnp.float32).unsqueeze(2)
+    return jnp.expand_dims(s, 2)
+
+
+#%%
+class BayesianNetwork(nn.Module):
+    dims: Sequence[int]
+
+    @nn.compact
+    def __call__(self, x):
+        for dim in self.dims[:-1]:
+            x = nn.relu(nn.Dense(dim)(x))
+        x = nn.Dense(self.dims[-1])(x)
+        # x = nn.activation.softmax(x, axis=-1)
+        return x
 
 
 #%%
@@ -42,7 +55,9 @@ def circuit(n, phi):
     for i in range(1, n):
         c.cnot(0, i)
     for i in range(n):
-        c.rx(i, theta=phi)
+        c.rz(i, theta=phi)
+    for i in range(n):
+        c.h(i)
     return c
 
 
@@ -54,7 +69,7 @@ def _sample(n, phi, key):
 
 
 @partial(jax.jit, static_argnums=(0,))
-def probs(n, phi):
+def probability(n, phi):
     c = circuit(n, phi)
     return c.probability()
 
@@ -80,77 +95,57 @@ def sample_over_phases(n, phis, n_shots, key=None):
         ],
         axis=0,
     )
-    pr = jnp.stack([probs(n, phi) for phi in phis], axis=0)
-    return data, pr
-
-
-
-#%%
-class BayesianNetwork(nn.Module):
-    dims: Sequence[int]
-
-    @nn.compact
-    def __call__(self, x):
-        for dim in self.dims[:-1]:
-            x = nn.relu(nn.Dense(dim)(x))
-        x = nn.Dense(self.dims[-1])(x)
-        # x = nn.activation.softmax(x, axis=-1)
-        return x
+    probs = jnp.stack([probability(n, phi) for phi in phis], axis=0)
+    return data, probs
 
 
 #%%
 io = IO(folder='bayesian-net')
-save = True
-show = False
+save = False
+show = True
+verbose = False
 
-n = 1
+# input_type = 'value'
+input_type = 'bits'
+
+n = 3
 n_shots = 1000
-n_phis = 500
-n_output = 100  # number of output neurons (discretization of phase range)
+n_phis = 200
+n_output = 20  # number of output neurons (discretization of phase range)
 
-dims = [400, 400, n_output]
-n_steps = 5000
+dims = [32, 32, n_output]
+n_steps = 50000
 batch_phis = 32
-batch_shots = 16
+batch_shots = 1
 progress = True
-lr = 1e-4
+lr = 1e-3
 
 phi_range = (0, jnp.pi)
-phis = jnp.linspace(phi_range[0], phi_range[1], n_phis)
-choices = jnp.array([0, 1])
-
-
-#%%
-probs(n, jnp.array(0.0))
-sample_over_phases(n, phis, n_shots=10)
-
-#%%
-probs = jnp.array([jnp.cos(phis / 2) ** 2, jnp.sin(phis / 2) ** 2])
-
-
-@jax.vmap
-def sample(phi, key):
-    probs = jnp.array([jnp.cos(phi / 2)**2, jnp.sin(phi / 2)**2])
-    return jax.random.choice(key, choices, shape=(n_shots, 1), p=probs)
-
-
-key = jax.random.PRNGKey(time.time_ns())
-subkeys = jax.random.split(key, num=n_phis)
-outcomes = sample(phis, subkeys)
-
-#%%
-dphi = (phi_range[1] - phi_range[0]) / (n_output - 1)
-
-index = jnp.round(phis / dphi)
+phis = jnp.linspace(*phi_range, n_phis, endpoint=False)
+index = jnp.floor(n_output * (phis / (phi_range[1] - phi_range[0])))
 labels = jax.nn.one_hot(index, num_classes=n_output)
-# print(index)
-# print(labels.shape)
-
+print(index)
 print(labels.sum(axis=0))
+
+samples, probs = sample_over_phases(n, phis, n_shots=n_shots)
+if input_type == "value":
+    outcomes = bit_to_integer(samples)  # data into network is real number (i.e., 0, 1, 2, 3, 4, ...)
+elif input_type == "bits":
+    outcomes = samples
+else:
+    raise ValueError
+
+if verbose:
+    print(probs)
+    print(samples.squeeze().sum(axis=1))
+    for i in range(n_phis):
+        print(probs[i, :])
+
+#%%
+
 
 #%%
 model = BayesianNetwork(dims)
-
 
 #%%
 x_init = outcomes[1:10, 1:10, :]
@@ -190,6 +185,7 @@ state = create_train_state(model, init_key, x_init, learning_rate=lr)
 # del init_key
 
 #%%
+metrics = []
 for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterval=0.333)):
     # generate batch
     key = jax.random.PRNGKey(time.time_ns())
@@ -201,8 +197,6 @@ for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterval=
     idx = jax.random.randint(subkeys[1], minval=0, maxval=n_shots, shape=(batch_phis, batch_shots, 1))
     x = jnp.take_along_axis(x, idx, axis=1)
 
-    #%%
-    # x = outcomes[inds, jnds, :]
     y = jnp.repeat(jnp.expand_dims(labels[inds], 1), repeats=batch_shots, axis=1)
     batch = (x, y)
 
@@ -210,21 +204,46 @@ for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterval=
     if progress:
         pbar.set_description(f"Step {i} | FI: {loss:.10f}", refresh=False)
 
+    metrics.append(dict(step=i, loss=loss))
+
+metrics = pd.DataFrame(metrics)
+
+#%%
+fig, ax = plt.subplots()
+ax.plot(metrics.step, metrics.loss)
+
+if show:
+    plt.show()
+if save:
+    io.save_figure(fig, filename="loss.png")
+
 #%%
 state_params = state.params
 # model.apply(state_params, x_init)
-pred = state.apply_fn({'params': state.params}, jnp.array([[0], [1]]))
+
+if input_type == "value":
+    test = jnp.expand_dims(jnp.arange(n ** 2), 1)
+elif input_type == "bits":
+    test = jnp.expand_dims(jnp.arange(n ** 2-1), 1).astype(jnp.uint8)
+    test = jnp.unpackbits(test, axis=1, bitorder='big')[:, -n:]
+else:
+    raise ValueError
+
+pred = state.apply_fn({'params': state.params}, test)
 pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
+
+colors = sns.color_palette('deep', n_colors=8)
 
 fig, axs = plt.subplots(nrows=2, sharex=True)
 ax = axs[0]
-ax.plot(jnp.linspace(phi_range[0], phi_range[1], pred.shape[1]), pred[0, :], ls='-', color=colors[0], label='Pr(0)')
-ax.plot(jnp.linspace(phi_range[0], phi_range[1], pred.shape[1]), pred[1, :], ls='-', color=colors[1], label='Pr(1)')
+for i in range(test.shape[0]):
+    print(i)
+    ax.plot(jnp.linspace(phi_range[0], phi_range[1], pred.shape[1]), pred[i, :], ls='-', color=colors[i], label=f'Pr({i})')
 ax.legend()
 
 ax = axs[1]
-ax.plot(jnp.linspace(phi_range[0], phi_range[1], probs.shape[1]), probs[0], ls='--', color=colors[0], label='Pr(0) Truth')
-ax.plot(jnp.linspace(phi_range[0], phi_range[1], probs.shape[1]), probs[1], ls='--', color=colors[1], label='Pr(1) Truth')
+for i in range(test.shape[0]):
+    ax.plot(jnp.linspace(phi_range[0], phi_range[1], n_phis), probs[:, i], ls='--', color=colors[i], label=f'Pr({i}) Truth')
 ax.set(xlabel='Phi Prediction', ylabel="Probability")
 
 if show:
@@ -235,7 +254,7 @@ if save:
 #%% 
 fig, axs = plt.subplots(nrows=3)
 colors = sns.color_palette('crest', as_cmap=True)
-x = jnp.linspace(*phi_range, n_output)
+z = jnp.linspace(*phi_range, n_output)
 
 for i, m in enumerate([1, 10, 30]):
     ax = axs[i]
@@ -248,7 +267,7 @@ for i, m in enumerate([1, 10, 30]):
         pred = pred.prod(axis=0)
         pred = pred / jnp.max(pred)
 
-        ax.plot(x, pred, color=colors(k/n_phis))
+        ax.plot(z, pred, color=colors(k / n_phis))
         ax.axvline(phi, color=colors(k/n_phis), ls='--', alpha=0.4)
 
 if show:
