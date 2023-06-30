@@ -44,20 +44,20 @@ class BayesianNetwork(nn.Module):
 
 #%%
 io = IO(folder='bayesian-net')
-save = False
-show = True
+save = True
+show = False
 
 n = 1
 n_shots = 1000
-n_phis = 200
-n_output = 30  # number of output neurons (discretization of phase range)
+n_phis = 500
+n_output = 100  # number of output neurons (discretization of phase range)
 
-dims = [4, 4, n_output]
+dims = [400, 400, n_output]
 n_steps = 5000
 batch_phis = 32
 batch_shots = 16
 progress = True
-lr = 1e-3
+lr = 1e-4
 
 phi_range = (0, jnp.pi)
 phis = jnp.linspace(phi_range[0], phi_range[1], n_phis)
@@ -103,7 +103,11 @@ def train_step(state, batch):
     x, labels = batch
     def loss_fn(params):
         logits = state.apply_fn({'params': params}, x)
-        loss = optax.softmax_cross_entropy(logits, labels).mean(axis=(0, 1))
+        loss = optax.softmax_cross_entropy(
+            logits,
+            # optax.smooth_labels(labels, 0.01)
+            labels
+        ).mean(axis=(0, 1))
         return loss
     loss_val_grad_fn = jax.value_and_grad(loss_fn)
     loss, grads = loss_val_grad_fn(state.params)
@@ -114,6 +118,7 @@ def train_step(state, batch):
 #%%
 def create_train_state(model, init_key, x, learning_rate):
     params = model.init(init_key, x)['params']
+    print("initial parameters", params)
     tx = optax.adam(learning_rate=learning_rate)
     state = TrainState.create(apply_fn=model.apply, params=params, tx=tx)
     return state
@@ -168,7 +173,7 @@ if save:
 
 #%% 
 fig, axs = plt.subplots(nrows=3)
-colors = sns.color_palette('crest', n_colors=10)
+colors = sns.color_palette('crest', as_cmap=True)
 x = jnp.linspace(*phi_range, n_output)
 
 for i, m in enumerate([1, 10, 30]):
@@ -182,8 +187,8 @@ for i, m in enumerate([1, 10, 30]):
         pred = pred.prod(axis=0)
         pred = pred / jnp.max(pred)
 
-        ax.plot(x, pred, color=colors[j])
-        ax.axvline(phi, color=colors[j], ls='--', alpha=0.4)
+        ax.plot(x, pred, color=colors(k/n_phis))
+        ax.axvline(phi, color=colors(k/n_phis), ls='--', alpha=0.4)
 
 if show:
     plt.show()

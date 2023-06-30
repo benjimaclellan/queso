@@ -10,3 +10,6 @@ source ~/venv/queso_venv/bin/activate
 module load cuda/11.4
 module load cudnn/8.2.0
 module load python/3.9 scipy-stack
+
+# to log into disconnected session, just ssh into node. No password needed
+# ssh node-name  (e.g., ssh gra977)
