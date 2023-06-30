@@ -111,6 +111,7 @@ def train_step(state, batch):
         return loss
     loss_val_grad_fn = jax.value_and_grad(loss_fn)
     loss, grads = loss_val_grad_fn(state.params)
+
     state = state.apply_gradients(grads=grads)
     return state, loss
 
