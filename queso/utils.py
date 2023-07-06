@@ -1,5 +1,4 @@
 import itertools
-import torch
 from jax import numpy as jnp
 import numpy as np
 from prettytable import PrettyTable
@@ -13,8 +12,8 @@ def shots_to_counts(
         shots,
         phis
 ):
-    if isinstance(shots, torch.Tensor):
-        shots = shots.numpy().astype('int8')
+    # if isinstance(shots, torch.Tensor):
+    #     shots = shots.numpy().astype('int8')
 
     assert isinstance(shots, np.ndarray)
     bin_str = ["".join(p) for p in itertools.product("01", repeat=shots.shape[2])]

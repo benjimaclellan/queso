@@ -114,8 +114,8 @@ def train_circuit(
 
 
 if __name__ == "__main__":
-    n = 2
-    k = 4
+    n = 1
+    k = 1
 
     io = IO(folder=f"nn-estimator-n{n}-k{k}", include_date=True)
     io.path.mkdir(parents=True, exist_ok=True)
@@ -128,7 +128,7 @@ if __name__ == "__main__":
         n=n,
         k=k,
         key=key,
-        n_steps=1000,
+        n_steps=100,
         lr=1e-1,
         n_phis=200,
         n_shots=1000,

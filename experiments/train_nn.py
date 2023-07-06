@@ -11,7 +11,9 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax import linen as nn
-from flax.training.train_state import TrainState
+from flax.training import train_state, orbax_utils
+from orbax.checkpoint import PyTreeCheckpointer, Checkpointer, \
+    CheckpointManager, CheckpointManagerOptions, PyTreeCheckpointHandler
 
 from queso.estimators.flax.dnn import BayesianDNNEstimator
 from queso.io import IO
@@ -30,6 +32,8 @@ def train_nn(
 ):
 
     # %% extract data from H5 file
+    t0 = time.time()
+
     hf = h5py.File(io.path.joinpath("circ.h5"), "r")
     print(hf.keys())
 
@@ -43,8 +47,6 @@ def train_nn(
     n = shots.shape[2]
     n_shots = shots.shape[1]
     n_phis = shots.shape[0]
-
-    n_grid = 50
 
     batch_phis = 32
     batch_shots = 1
@@ -69,6 +71,9 @@ def train_nn(
     print(model.tabulate(jax.random.PRNGKey(0), x_init))
 
     # %%
+    def l2_loss(x, alpha):
+        return alpha * (x ** 2).mean()
+
     @jax.jit
     def train_step(state, batch):
         x, labels = batch
@@ -79,6 +84,12 @@ def train_nn(
                 logits,
                 labels
             ).mean(axis=(0, 1))
+
+            # loss += sum(
+            #     l2_loss(w, alpha=0.001)
+            #     for w in jax.tree_leaves(variables["params"])
+            # )
+
             return loss
 
         loss_val_grad_fn = jax.value_and_grad(loss_fn)
@@ -91,8 +102,9 @@ def train_nn(
     def create_train_state(model, init_key, x, learning_rate):
         params = model.init(init_key, x)['params']
         print("initial parameters", params)
-        tx = optax.adam(learning_rate=learning_rate)
-        state = TrainState.create(apply_fn=model.apply, params=params, tx=tx)
+        # tx = optax.adam(learning_rate=learning_rate)
+        tx = optax.adamw(learning_rate=learning_rate, weight_decay=1e-3)
+        state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
         return state
 
     init_key = jax.random.PRNGKey(time.time_ns())
@@ -117,7 +129,7 @@ def train_nn(
 
         state, loss = train_step(state, batch)
         if progress:
-            pbar.set_description(f"Step {i} | FI: {loss:.10f}", refresh=False)
+            pbar.set_description(f"Step {i} | Loss: {loss:.10f}", refresh=False)
 
         metrics.append(dict(step=i, loss=loss))
 
@@ -148,60 +160,87 @@ def train_nn(
         bit_strings = jnp.expand_dims(jnp.arange(n ** 2), 1).astype(jnp.uint8)
         bit_strings = jnp.unpackbits(bit_strings, axis=1, bitorder='big')[:, -n:]
 
-        pred = state.apply_fn({'params': state.params}, bit_strings)
+        # pred = state.apply_fn({'params': state.params}, bit_strings)
+        pred = model.apply({'params': state.params}, bit_strings)
         pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
 
-        fig, axs = plt.subplots(nrows=2, sharex=True)
+        fig, ax = plt.subplots()
         colors = sns.color_palette('deep', n_colors=bit_strings.shape[0])
-        markers = cycle([".", "o", "v", "^", "<", ">"])
-        ax = axs[0]
+        markers = cycle(["o", "D", 's', "v", "^", "<", ">", ])
         for i in range(bit_strings.shape[0]):
-            print(i)
             ax.plot(jnp.linspace(phi_range[0], phi_range[1], pred.shape[1]),
                     pred[i, :],
                     ls='',
                     marker=next(markers),
                     color=colors[i],
-                    label=f'Pr({i})')
+                    label=r"Pr($\phi_j | "+"b_{"+str(i)+"}$)")
+        ax.set(xlabel=r"$\phi_j$", ylabel=r"Posterior distribution, Pr($\phi_j | b_i$)")
         ax.legend()
-        io.save_figure(fig, filename="ground-truth-phi-to-estimate.png")
+        io.save_figure(fig, filename="posterior-dist.png")
 
         plt.show()
 
     # %% save to H5 file
     metadata = dict(nn_dims=nn_dims, lr=lr,)
     io.save_json(metadata, filename="nn-metadata.json")
+    io.save_csv(metrics, filename="metrics")
 
-    # io.save_json(serialization.to_state_dict(params), filename="nn-params.json")
+    #%%
+    info = get_machine_info()
+    info.update(
+        dict(
+            time=time.time() - t0
+        )
+    )
+    io.save_json(info, filename="machine-info.json")
 
-    hf = h5py.File(io.path.joinpath("nn.h5"), "w")
-    hf.create_dataset("pred", data=state.params)
-    hf.close()
+    #%%
+    # ckpt = {'params': state, 'nn_dims': nn_dims}
+    # ckpt_dir = io.path.joinpath("ckpts")
+    #
+    # orbax_checkpointer = PyTreeCheckpointer()
+    # options = CheckpointManagerOptions(max_to_keep=2)
+    # checkpoint_manager = CheckpointManager(ckpt_dir, orbax_checkpointer, options)
+    # save_args = orbax_utils.save_args_from_target(ckpt)
+    #
+    # # doesn't overwrite
+    # check = checkpoint_manager.save(0, ckpt, save_kwargs={'save_args': save_args})
+    # print(check)
+    # restored = checkpoint_manager.restore(0)
 
-    io.save_dataframe(metrics, filename="metrics.csv")
+    #%%
+    ckpt = {'params': state.params, 'nn_dims': nn_dims}
+
+    ckpt_dir = io.path.joinpath("ckpts")
+
+    ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.
+    ckptr.save(ckpt_dir, ckpt, save_args=orbax_utils.save_args_from_target(ckpt), force=True)
+    restored = ckptr.restore(ckpt_dir, item=None)
+
+    #%%
 
 
 if __name__ == "__main__":
     #%%
-    io = IO(folder="2023-07-05_nn-estimator-n2-k4")
+    io = IO(folder="2023-07-06_nn-estimator-n1-k1")
     key = jax.random.PRNGKey(time.time_ns())
 
     n_steps = 50000
-    lr = 1e-4
+    lr = 1e-3
     plot = True
     progress = True
 
-    n_grid = 50
+    n_grid = 100
 
-    nn_dims = [16, 16, n_grid]
-    #
-    # #%%
-    # train_nn(
-    #     io=io,
-    #     key=key,
-    #     nn_dims=nn_dims,
-    #     n_steps=n_steps,
-    #     lr=lr,
-    #     plot=plot,
-    #     progress=progress,
-    # )
+    nn_dims = [4, 4, n_grid]
+
+    #%%
+    train_nn(
+        io=io,
+        key=key,
+        nn_dims=nn_dims,
+        n_steps=n_steps,
+        lr=lr,
+        plot=plot,
+        progress=progress,
+    )
