@@ -9,7 +9,20 @@ import string
 import pandas as pd
 import random
 import h5py
+import yaml
 
+
+def _default_path():
+    config = pathlib.Path(__file__).parent.parent.joinpath("config.yaml")
+    print(config)
+    try:
+        with open(config, "r") as fid:
+            file = yaml.safe_load(fid)
+            default_path = file['default_path']
+            print(file)
+    except:
+        default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
+    return default_path
 
 def current_time():
     """
@@ -36,7 +49,8 @@ class IO:
     """
 
     # default save path always points to `data/` no matter where this repository is located
-    default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
+    # default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
+    default_path = _default_path()
 
     def __init__(
         self,

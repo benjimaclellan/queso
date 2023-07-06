@@ -1,16 +1,21 @@
+import time
 import tqdm
 import matplotlib.pyplot as plt
+from itertools import cycle
+import seaborn as sns
 from typing import Sequence
+import pandas as pd
+import h5py
 
 import jax
 import jax.numpy as jnp
 import optax
+from flax import linen as nn
+from flax.training.train_state import TrainState
 
-from queso.estimators.ff import RegressionEstimator
+from queso.estimators.flax.dnn import BayesianDNNEstimator
 from queso.io import IO
-import h5py
-
-from queso.utils import shots_to_counts
+from queso.utils import get_machine_info
 
 
 # %%
@@ -18,118 +23,185 @@ def train_nn(
     io: IO,
     key: jax.random.PRNGKey,
     nn_dims: Sequence[int],
-    batch_size: int = 10,
-    n_epochs: int = 100,
+    n_steps: int = 50000,
     lr: float = 1e-2,
-    n_batches: int = 10,
     plot: bool = False,
     progress: bool = True,
 ):
-    # %% hyperparameters
 
     # %% extract data from H5 file
     hf = h5py.File(io.path.joinpath("circ.h5"), "r")
     print(hf.keys())
 
     shots = jnp.array(hf.get("shots"))
+    probs = jnp.array(hf.get("probs"))
     phis = jnp.array(hf.get("phis"))
 
     hf.close()
 
-    # %%
-    counts = shots_to_counts(shots, phis)
+    #%%
+    n = shots.shape[2]
+    n_shots = shots.shape[1]
+    n_phis = shots.shape[0]
+
+    n_grid = 50
+
+    batch_phis = 32
+    batch_shots = 1
+
+    #%%
+    phi_range = (jnp.min(phis), jnp.max(phis))
+    # delta_phi = (phi_range[1] - phi_range[0]) / (n_grid - 1)  # needed for proper normalization
+    # index = jnp.floor(n_grid * (phis / (phi_range[1] - phi_range[0])))
+    index = jnp.floor(n_grid * phis / (phi_range[1] - phi_range[0]))  #- 1 / 2
+    labels = jax.nn.one_hot(index, num_classes=n_grid)
+    print(index)
+    print(labels.sum(axis=0))
 
     # %%
-    model = RegressionEstimator(nn_dims)
+    model = BayesianDNNEstimator(nn_dims)
 
-    x = counts
-    y = phis
+    x = shots
+    y = labels
 
-    # %% create batches
-    batch_inds = jax.random.shuffle(key, jnp.array(list(range(x.shape[0]))))[
-        :batch_size
-    ]
+    #%%
+    x_init = x[1:10, 1:10, :]
+    print(model.tabulate(jax.random.PRNGKey(0), x_init))
 
-    x_batch = x[batch_inds]
-    y_batch = y[batch_inds]
-
-    params = model.init(key, x)
-    pred_batch = model.apply(params, x_batch)
-    print(pred_batch)
-
-    # %% define mean-squared error as the loss function
-    def mse(params, x, y):
-        def squared_error(x, y):
-            pred = model.apply(params, x)
-            return jnp.inner(y - pred, y - pred) / 2.0
-
-        return jnp.mean(jax.vmap(squared_error)(x, y), axis=0)
-
-    # %% audition the loss function
-    print(mse(params, x_batch, y_batch))
-
-    # %% audition value and grad calculations
-    loss_val_grad = jax.value_and_grad(mse)
-    print(loss_val_grad(params, x, y))
-
-    # %% # JIT training step
+    # %%
     @jax.jit
-    def step_nn(params, x, y, opt_state):
-        val, grads = loss_val_grad(params, x, y)
-        updates, opt_state = optimizer.update(grads, opt_state)
-        params = optax.apply_updates(params, updates)
-        return val, params, updates, opt_state
+    def train_step(state, batch):
+        x, labels = batch
 
-    # %% initialize optimizer
-    optimizer = optax.adam(learning_rate=lr)
-    opt_state = optimizer.init(params)
+        def loss_fn(params):
+            logits = state.apply_fn({'params': params}, x)
+            loss = optax.softmax_cross_entropy(
+                logits,
+                labels
+            ).mean(axis=(0, 1))
+            return loss
 
-    # %% run training loop
-    losses = []
-    for epoch in (pbar := tqdm.tqdm(range(n_epochs), disable=(not progress))):
-        for batch in range(n_batches):
-            key, subkey = jax.random.split(key)
-            batch_inds = jax.random.randint(
-                subkey, (batch_size,), minval=0, maxval=x.shape[0] - 1
-            )
+        loss_val_grad_fn = jax.value_and_grad(loss_fn)
+        loss, grads = loss_val_grad_fn(state.params)
 
-            x_batch = x[batch_inds]
-            y_batch = y[batch_inds]
-            val, params, updates, opt_state = step_nn(params, x, y, opt_state)
-            # val, params, updates, opt_state = step_nn(params, x_batch, y_batch, opt_state)
+        state = state.apply_gradients(grads=grads)
+        return state, loss
 
-        # val, params, updates, opt_state = step_nn(params, x, y, opt_state)
-        losses.append(val)
+    # %%
+    def create_train_state(model, init_key, x, learning_rate):
+        params = model.init(init_key, x)['params']
+        print("initial parameters", params)
+        tx = optax.adam(learning_rate=learning_rate)
+        state = TrainState.create(apply_fn=model.apply, params=params, tx=tx)
+        return state
 
+    init_key = jax.random.PRNGKey(time.time_ns())
+    state = create_train_state(model, init_key, x_init, learning_rate=lr)
+    # del init_key
+
+    # %%
+    metrics = []
+    for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterval=0.333)):
+        # generate batch
+        key = jax.random.PRNGKey(time.time_ns())
+        subkeys = jax.random.split(key, num=2)
+
+        inds = jax.random.randint(subkeys[0], minval=0, maxval=n_phis, shape=(batch_phis,))
+
+        x_batch = x[inds, :, :]
+        idx = jax.random.randint(subkeys[1], minval=0, maxval=n_shots, shape=(batch_phis, batch_shots, 1))
+        x_batch = jnp.take_along_axis(x_batch, idx, axis=1)
+
+        y_batch = jnp.repeat(jnp.expand_dims(y[inds], 1), repeats=batch_shots, axis=1)
+        batch = (x_batch, y_batch)
+
+        state, loss = train_step(state, batch)
         if progress:
-            pbar.set_description(f" Epoch {epoch} | MSE: {val:.10f} | {x.shape}")
+            pbar.set_description(f"Step {i} | FI: {loss:.10f}", refresh=False)
 
-    losses = jnp.array(losses)
-    nn_mse = losses
-    pred = model.apply(params, x)
+        metrics.append(dict(step=i, loss=loss))
 
+    metrics = pd.DataFrame(metrics)
+
+    #%%
     if plot:
+        # %% plot probs and relative freqs
+        _tmp = jnp.packbits(shots, axis=2, bitorder='little').squeeze()
+        freqs = jnp.stack([jnp.count_nonzero(_tmp == m, axis=1) for m in range(n ** 2)], axis=1)
+
+        fig, axs = plt.subplots(nrows=2)
+        sns.heatmap(probs, ax=axs[0])
+        sns.heatmap(freqs, ax=axs[1])
+
+        # ax.set(xlabel="Measurement outcome", ylabel="Phase")
+        fig.show()
+        io.save_figure(fig, filename="probs.png")
+
         # %% plot NN loss minimization
         fig, ax = plt.subplots()
-        ax.plot(losses)
+        ax.plot(metrics.step, metrics.loss)
         ax.set(xlabel="Optimization step", ylabel="Loss")
         fig.show()
         io.save_figure(fig, filename="nn-loss.png")
 
-        # %% run prediction on all phases
-        fig, ax = plt.subplots()
-        ax.scatter(y, pred)
-        ax.set(xlabel=r"Ground truth, $\phi$", ylabel=r"Estimate, $\bar{\phi}$")
-        fig.show()
+        # %% run prediction on all possible inputs
+        bit_strings = jnp.expand_dims(jnp.arange(n ** 2), 1).astype(jnp.uint8)
+        bit_strings = jnp.unpackbits(bit_strings, axis=1, bitorder='big')[:, -n:]
+
+        pred = state.apply_fn({'params': state.params}, bit_strings)
+        pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
+
+        fig, axs = plt.subplots(nrows=2, sharex=True)
+        colors = sns.color_palette('deep', n_colors=bit_strings.shape[0])
+        markers = cycle([".", "o", "v", "^", "<", ">"])
+        ax = axs[0]
+        for i in range(bit_strings.shape[0]):
+            print(i)
+            ax.plot(jnp.linspace(phi_range[0], phi_range[1], pred.shape[1]),
+                    pred[i, :],
+                    ls='',
+                    marker=next(markers),
+                    color=colors[i],
+                    label=f'Pr({i})')
+        ax.legend()
         io.save_figure(fig, filename="ground-truth-phi-to-estimate.png")
 
+        plt.show()
+
     # %% save to H5 file
-    metadata = dict(nn_dims=nn_dims, lr=lr, batch_size=batch_size, n_epochs=n_epochs)
+    metadata = dict(nn_dims=nn_dims, lr=lr,)
     io.save_json(metadata, filename="nn-metadata.json")
 
     # io.save_json(serialization.to_state_dict(params), filename="nn-params.json")
 
     hf = h5py.File(io.path.joinpath("nn.h5"), "w")
-    hf.create_dataset("nn_mse", data=nn_mse)
-    hf.create_dataset("pred", data=pred)
+    hf.create_dataset("pred", data=state.params)
     hf.close()
+
+    io.save_dataframe(metrics, filename="metrics.csv")
+
+
+if __name__ == "__main__":
+    #%%
+    io = IO(folder="2023-07-05_nn-estimator-n2-k4")
+    key = jax.random.PRNGKey(time.time_ns())
+
+    n_steps = 50000
+    lr = 1e-4
+    plot = True
+    progress = True
+
+    n_grid = 50
+
+    nn_dims = [16, 16, n_grid]
+    #
+    # #%%
+    # train_nn(
+    #     io=io,
+    #     key=key,
+    #     nn_dims=nn_dims,
+    #     n_steps=n_steps,
+    #     lr=lr,
+    #     plot=plot,
+    #     progress=progress,
+    # )

@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from queso.sensors.tc import Sensor
+from queso.sensors.tc.sensor import Sensor
 from queso.io import IO
 import h5py
 
@@ -90,7 +90,7 @@ def train_circuit(
 
     # %%
     print(f"Sampling {n_shots} shots for {n_phis} phase value between 0 and pi.")
-    phis = jnp.linspace(0, jnp.pi, n_phis)
+    phis = jnp.linspace(0, jnp.pi, n_phis, endpoint=False)
     t0 = time.time()
     shots, probs = sensor.sample_over_phases(theta, phis, mu, n_shots=n_shots)
     t1 = time.time()
@@ -111,3 +111,27 @@ def train_circuit(
     hf.close()
 
     return
+
+
+if __name__ == "__main__":
+    n = 2
+    k = 4
+
+    io = IO(folder=f"nn-estimator-n{n}-k{k}", include_date=True)
+    io.path.mkdir(parents=True, exist_ok=True)
+
+    # %%
+    key = jax.random.PRNGKey(time.time_ns())
+    plot = True
+    train_circuit(
+        io=io,
+        n=n,
+        k=k,
+        key=key,
+        n_steps=1000,
+        lr=1e-1,
+        n_phis=200,
+        n_shots=1000,
+        plot=plot,
+    )
+    time.sleep(0.1)

@@ -13,7 +13,7 @@ from pytorch_lightning.loggers import CSVLogger
 import matplotlib.pyplot as plt
 
 from queso.io import IO
-from queso.estimators.transformer import Encoder
+from queso.estimators.torch.transformer import Encoder
 from queso.estimators.data import SensorDataset, SensorSampler
 from queso.utils import count_parameters
 

@@ -1,3 +1,4 @@
+import copy
 import time
 from functools import partial
 from typing import Sequence
@@ -10,11 +11,11 @@ from flax.training.train_state import TrainState
 import optax
 import matplotlib.pyplot as plt
 import pandas as pd
-import itertools
 import seaborn as sns
 import tensorcircuit as tc
 
 from queso.io import IO
+from queso.utils import bit_to_integer
 
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")
@@ -23,21 +24,10 @@ tc.set_contractor("auto")
 colors = sns.color_palette('deep', n_colors=8)
 
 
-#%%
-def bit_to_integer(a, endian='le'):
-    if endian == 'le':
-        k = 1 << jnp.arange(a.shape[-1] - 1, -1, -1)  # little-endian
-    elif endian == 'be':
-        k = 1 << jnp.arange(a.shape[-1] - 1, -1, -1)
-    else:
-        raise NotImplementedError
-    s = jnp.einsum('ijk,k->ij', a, k)
-    return jnp.expand_dims(s, 2)
-
 
 #%%
 class BayesianNetwork(nn.Module):
-    dims: Sequence[int]
+    nn_dims: Sequence[int]
 
     @nn.compact
     def __call__(self, x):
@@ -100,6 +90,7 @@ def sample_over_phases(n, phis, n_shots, key=None):
 
 
 # todo: normalize posterior distributions
+# todo: create torch dataset object to have non-uniform number of samples
 # todo: test variance and bias of estimator
 # todo: performance when training phase is erroneous
 # todo:
@@ -117,9 +108,9 @@ input_type = 'bits'
 n = 2
 n_shots = 200
 n_phis = 50
-n_output = 50  # number of output neurons (discretization of phase range)
+n_grid = 50  # number of output neurons (discretization of phase range)
 
-dims = [16, 16, n_output]
+nn_dims = [16, 16, n_grid]
 n_steps = 50000
 batch_phis = 32
 batch_shots = 1
@@ -128,15 +119,16 @@ lr = 1e-3
 
 phi_range = (0, jnp.pi)
 phis = jnp.linspace(*phi_range, n_phis, endpoint=False)
-delta_phi = (phi_range[1] - phi_range[0]) / (n_output - 1)
-index = jnp.floor(n_output * (phis / (phi_range[1] - phi_range[0])))
-labels = jax.nn.one_hot(index, num_classes=n_output)
+delta_phi = (phi_range[1] - phi_range[0]) / (n_grid - 1)
+index = jnp.floor(n_grid * (phis / (phi_range[1] - phi_range[0])))
+labels = jax.nn.one_hot(index, num_classes=n_grid)
 print(index)
 print(labels.sum(axis=0))
 
 
-samples, probs = sample_over_phases(n, phis[0:n_phis//2], n_shots=n_shots)  # non-uniform sampling
-# samples, probs = sample_over_phases(n, phis, n_shots=n_shots)
+samples, probs = sample_over_phases(n, phis, n_shots=n_shots)
+full_samples = copy.copy(samples)
+samples = samples[:n_phis//2, :, :]
 
 if input_type == "value":
     outcomes = bit_to_integer(samples)  # data into network is real number (i.e., 0, 1, 2, 3, 4, ...)
@@ -152,7 +144,7 @@ if verbose:
         print(probs[i, :])
 
 #%%
-model = BayesianNetwork(dims)
+model = BayesianNetwork(nn_dims)
 
 #%%
 x_init = outcomes[1:10, 1:10, :]
@@ -229,27 +221,27 @@ state_params = state.params
 # model.apply(state_params, x_init)
 
 if input_type == "value":
-    test = jnp.expand_dims(jnp.arange(n ** 2), 1)
+    bit_strings = jnp.expand_dims(jnp.arange(n ** 2), 1)
 elif input_type == "bits":
-    test = jnp.expand_dims(jnp.arange(n ** 2), 1).astype(jnp.uint8)
-    test = jnp.unpackbits(test, axis=1, bitorder='big')[:, -n:]
+    bit_strings = jnp.expand_dims(jnp.arange(n ** 2), 1).astype(jnp.uint8)
+    bit_strings = jnp.unpackbits(bit_strings, axis=1, bitorder='big')[:, -n:]
 else:
     raise ValueError
 
-pred = state.apply_fn({'params': state.params}, test)
+pred = state.apply_fn({'params': state.params}, bit_strings)
 pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
 
 colors = sns.color_palette('deep', n_colors=8)
 
 fig, axs = plt.subplots(nrows=2, sharex=True)
 ax = axs[0]
-for i in range(test.shape[0]):
+for i in range(bit_strings.shape[0]):
     print(i)
     ax.plot(jnp.linspace(phi_range[0], phi_range[1], pred.shape[1]), pred[i, :], ls='-', color=colors[i], label=f'Pr({i})')
 ax.legend()
 
 ax = axs[1]
-for i in range(test.shape[0]):
+for i in range(bit_strings.shape[0]):
     ax.plot(jnp.linspace(phi_range[0], phi_range[1], n_phis), probs[:, i], ls='--', color=colors[i], label=f'Pr({i}) Truth')
 ax.set(xlabel='Phi Prediction', ylabel="Probability")
 
@@ -261,7 +253,8 @@ if save:
 #%% get relative frequencies
 fig, axs = plt.subplots()
 
-val = jnp.packbits(outcomes, axis=2, bitorder='little').squeeze()
+val = jnp.packbits(full_samples, axis=2, bitorder='little').squeeze()
+# val = jnp.packbits(outcomes, axis=2, bitorder='little').squeeze()
 rel_freq = jnp.stack([jnp.count_nonzero(val == m, axis=1) for m in range(n**2)], axis=1)
 
 sns.heatmap(rel_freq)
@@ -270,12 +263,12 @@ plt.show()
 #%%
 likelihood = rel_freq / n_shots
 
-pred = state.apply_fn({'params': state.params}, test)
+pred = state.apply_fn({'params': state.params}, bit_strings)
 pred = nn.activation.softmax(pred, axis=-1)
 posterior = jnp.swapaxes(pred, 0, 1)
 
 _outer = jnp.einsum('jm,km->jkm', likelihood, posterior)
-A_jk = jnp.eye(n_output, n_phis) - _outer.sum(axis=2)
+A_jk = jnp.eye(n_grid, n_phis) - _outer.sum(axis=2)
 
 # compute and sort eigenvectors by eigenvalue
 w, v = jnp.linalg.eig(A_jk)
@@ -295,7 +288,7 @@ plt.show()
 #%%
 fig, axs = plt.subplots(nrows=3)
 colors = sns.color_palette('crest', as_cmap=True)
-z = jnp.linspace(*phi_range, n_output)
+z = jnp.linspace(*phi_range, n_grid)
 
 for i, m in enumerate([1, 10, 30]):
     ax = axs[i]
