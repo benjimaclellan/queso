@@ -53,11 +53,11 @@ def train_nn(
 
     #%%
     phi_range = (jnp.min(phis), jnp.max(phis))
+    dphi = phis[1] - phis[0]
     # delta_phi = (phi_range[1] - phi_range[0]) / (n_grid - 1)  # needed for proper normalization
     # index = jnp.floor(n_grid * (phis / (phi_range[1] - phi_range[0])))
-    index = jnp.floor(n_grid * phis / (phi_range[1] - phi_range[0]))  #- 1 / 2
+    index = jnp.floor(n_grid * phis / (phi_range[1] + dphi - phi_range[0]))  #- 1 / 2
     labels = jax.nn.one_hot(index, num_classes=n_grid)
-    # labels = index.astype('int')
 
     print(index)
     print(labels.sum(axis=0))
@@ -73,44 +73,27 @@ def train_nn(
     print(model.tabulate(jax.random.PRNGKey(0), x_init))
 
     # %%
-    def l2_loss(x, alpha):
-        return alpha * (x ** 2).mean()
+    def l2_loss(params, alpha):
+        return alpha * (params ** 2).mean()
 
     @jax.jit
     def train_step(state, batch):
         x, labels = batch
 
         def loss_fn(params):
-            # logits = state.apply_fn({'params': params}, x)
+            # logits = jax.nn.softmax(state.apply_fn({'params': params}, x), axis=-1)
+            # loss = -(labels * jnp.log(logits)).sum(axis=-1).mean(axis=(0, 1))
 
-            logits = jax.nn.softmax(state.apply_fn({'params': params}, x), axis=-1)
-            loss = -(labels * jnp.log(logits)).sum(axis=-1).mean(axis=(0, 1))
+            logits = state.apply_fn({'params': params}, x)
 
             # cross-entropy
-            # loss = optax.softmax_cross_entropy(
-            #     logits,
-            #     labels
-            # ).mean(axis=(0, 1))
+            loss = optax.softmax_cross_entropy(
+                logits,
+                labels
+            ).mean(axis=(0, 1))
 
-            # loss = optax.softmax_cross_entropy_with_integer_labels(
-            #     logits,
-            #     labels
-            # ).mean(axis=(0, 1))
+            # loss += l2_loss()
 
-            # mean-squared error
-            # loss = ((labels - jax.nn.softmax(logits, axis=-1)) ** 2).mean(axis=(0, 1, 2))
-
-            # loss += sum(
-            #     l2_loss(w, alpha=0.001)
-            #     for w in jax.tree_leaves(variables["params"])
-            # )
-
-            # def kl(p, q, eps: float = 2 ** -17):
-            #     """Calculates the Kullback-Leibler divergence between arrays p and q."""
-            #     return (p * (jnp.log(p + eps) - jnp.log(q + eps))).sum(axis=-1)
-            #
-            # # loss = kl(jax.nn.softmax(logits, axis=-1), labels).mean(axis=(0, 1))
-            # loss = kl(labels, jax.nn.softmax(logits, axis=-1)).mean(axis=(0, 1))
             return loss
 
         loss_val_grad_fn = jax.value_and_grad(loss_fn)
@@ -132,8 +115,16 @@ def train_nn(
             print(f"Random initialization of parameters")
 
         print("Initial parameters", params)
-        tx = optax.adam(learning_rate=learning_rate)
+        schedule = optax.polynomial_schedule(
+            init_value=1e-2,
+            end_value=1e-4,
+            power=2,
+            transition_steps=1000,
+            transition_begin=1000,
+        )
+        tx = optax.adam(learning_rate=schedule)
         # tx = optax.adamw(learning_rate=learning_rate, weight_decay=1e-5)
+
         state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
         return state
 
@@ -253,17 +244,17 @@ if __name__ == "__main__":
     io = IO(folder="2023-07-13_calibration-samples-n1-ghz")
     key = jax.random.PRNGKey(time.time_ns())
 
-    n_steps = 5000
-    lr = 1e-3
+    n_steps = 3000
+    lr = 1e-2
     batch_phis = 128
     batch_shots = 36
     plot = True
     progress = True
     from_checkpoint = False
 
-    n_grid = 50
+    n_grid = 100
 
-    nn_dims = [4, 4, n_grid]
+    nn_dims = [16, 16, n_grid]
 
     #%%
     train_nn(
