@@ -23,12 +23,15 @@ from queso.utils import get_machine_info
 # %%
 def train_nn(
     io: IO,
-    key: jax.random.PRNGKey,
+    key: jax.random.PRNGKey,  # todo: use provided key for reproducibility
     nn_dims: Sequence[int],
     n_steps: int = 50000,
     lr: float = 1e-2,
+    batch_phis: int = 32,
+    batch_shots: int = 1,
     plot: bool = False,
     progress: bool = True,
+    from_checkpoint: bool = True,
 ):
 
     # %% extract data from H5 file
@@ -48,15 +51,14 @@ def train_nn(
     n_shots = shots.shape[1]
     n_phis = shots.shape[0]
 
-    batch_phis = 32
-    batch_shots = 1
-
     #%%
     phi_range = (jnp.min(phis), jnp.max(phis))
     # delta_phi = (phi_range[1] - phi_range[0]) / (n_grid - 1)  # needed for proper normalization
     # index = jnp.floor(n_grid * (phis / (phi_range[1] - phi_range[0])))
     index = jnp.floor(n_grid * phis / (phi_range[1] - phi_range[0]))  #- 1 / 2
     labels = jax.nn.one_hot(index, num_classes=n_grid)
+    # labels = index.astype('int')
+
     print(index)
     print(labels.sum(axis=0))
 
@@ -79,17 +81,36 @@ def train_nn(
         x, labels = batch
 
         def loss_fn(params):
-            logits = state.apply_fn({'params': params}, x)
-            loss = optax.softmax_cross_entropy(
-                logits,
-                labels
-            ).mean(axis=(0, 1))
+            # logits = state.apply_fn({'params': params}, x)
+
+            logits = jax.nn.softmax(state.apply_fn({'params': params}, x), axis=-1)
+            loss = -(labels * jnp.log(logits)).sum(axis=-1).mean(axis=(0, 1))
+
+            # cross-entropy
+            # loss = optax.softmax_cross_entropy(
+            #     logits,
+            #     labels
+            # ).mean(axis=(0, 1))
+
+            # loss = optax.softmax_cross_entropy_with_integer_labels(
+            #     logits,
+            #     labels
+            # ).mean(axis=(0, 1))
+
+            # mean-squared error
+            # loss = ((labels - jax.nn.softmax(logits, axis=-1)) ** 2).mean(axis=(0, 1, 2))
 
             # loss += sum(
             #     l2_loss(w, alpha=0.001)
             #     for w in jax.tree_leaves(variables["params"])
             # )
 
+            # def kl(p, q, eps: float = 2 ** -17):
+            #     """Calculates the Kullback-Leibler divergence between arrays p and q."""
+            #     return (p * (jnp.log(p + eps) - jnp.log(q + eps))).sum(axis=-1)
+            #
+            # # loss = kl(jax.nn.softmax(logits, axis=-1), labels).mean(axis=(0, 1))
+            # loss = kl(labels, jax.nn.softmax(logits, axis=-1)).mean(axis=(0, 1))
             return loss
 
         loss_val_grad_fn = jax.value_and_grad(loss_fn)
@@ -100,10 +121,19 @@ def train_nn(
 
     # %%
     def create_train_state(model, init_key, x, learning_rate):
-        params = model.init(init_key, x)['params']
-        print("initial parameters", params)
-        # tx = optax.adam(learning_rate=learning_rate)
-        tx = optax.adamw(learning_rate=learning_rate, weight_decay=1e-3)
+        if from_checkpoint:
+            ckpt_dir = io.path.joinpath("ckpts")
+            ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.
+            restored = ckptr.restore(ckpt_dir, item=None)
+            params = restored['params']
+            print(f"Loading parameters from checkpoint: {ckpt_dir}")
+        else:
+            params = model.init(init_key, x)['params']
+            print(f"Random initialization of parameters")
+
+        print("Initial parameters", params)
+        tx = optax.adam(learning_rate=learning_rate)
+        # tx = optax.adamw(learning_rate=learning_rate, weight_decay=1e-5)
         state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
         return state
 
@@ -138,8 +168,8 @@ def train_nn(
     #%%
     if plot:
         # %% plot probs and relative freqs
-        _tmp = jnp.packbits(shots, axis=2, bitorder='little').squeeze()
-        freqs = jnp.stack([jnp.count_nonzero(_tmp == m, axis=1) for m in range(n ** 2)], axis=1)
+        tmp = jnp.packbits(shots, axis=2, bitorder='little').squeeze()
+        freqs = jnp.stack([jnp.count_nonzero(tmp == m, axis=1) for m in range(2 ** n)], axis=1)
 
         fig, axs = plt.subplots(nrows=2)
         sns.heatmap(probs, ax=axs[0])
@@ -157,12 +187,13 @@ def train_nn(
         io.save_figure(fig, filename="nn-loss.png")
 
         # %% run prediction on all possible inputs
-        bit_strings = jnp.expand_dims(jnp.arange(n ** 2), 1).astype(jnp.uint8)
+        bit_strings = jnp.expand_dims(jnp.arange(2 ** n), 1).astype(jnp.uint8)
         bit_strings = jnp.unpackbits(bit_strings, axis=1, bitorder='big')[:, -n:]
 
         # pred = state.apply_fn({'params': state.params}, bit_strings)
         pred = model.apply({'params': state.params}, bit_strings)
-        pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
+        pred = jax.nn.softmax(pred, axis=-1)
+        # pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
 
         fig, ax = plt.subplots()
         colors = sns.color_palette('deep', n_colors=bit_strings.shape[0])
@@ -180,18 +211,13 @@ def train_nn(
 
         plt.show()
 
-    # %% save to H5 file
-    metadata = dict(nn_dims=nn_dims, lr=lr,)
+    # %% save to disk
+    metadata = dict(nn_dims=nn_dims, lr=lr, time=time.time() - t0)
     io.save_json(metadata, filename="nn-metadata.json")
     io.save_csv(metrics, filename="metrics")
 
     #%%
     info = get_machine_info()
-    info.update(
-        dict(
-            time=time.time() - t0
-        )
-    )
     io.save_json(info, filename="machine-info.json")
 
     #%%
@@ -222,15 +248,20 @@ def train_nn(
 
 if __name__ == "__main__":
     #%%
-    io = IO(folder="2023-07-06_nn-estimator-n1-k1")
+    # io = IO(folder="2023-07-06_nn-estimator-n1-k1")
+    # io = IO(folder="2023-07-11_calibration-samples-n2-ghz-backup")
+    io = IO(folder="2023-07-13_calibration-samples-n1-ghz")
     key = jax.random.PRNGKey(time.time_ns())
 
-    n_steps = 50000
+    n_steps = 5000
     lr = 1e-3
+    batch_phis = 128
+    batch_shots = 36
     plot = True
     progress = True
+    from_checkpoint = False
 
-    n_grid = 100
+    n_grid = 50
 
     nn_dims = [4, 4, n_grid]
 
@@ -241,6 +272,9 @@ if __name__ == "__main__":
         nn_dims=nn_dims,
         n_steps=n_steps,
         lr=lr,
+        batch_phis=batch_phis,
+        batch_shots=batch_shots,
         plot=plot,
         progress=progress,
+        from_checkpoint=from_checkpoint,
     )

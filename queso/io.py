@@ -24,6 +24,7 @@ def _default_path():
         default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
     return default_path
 
+
 def current_time():
     """
     Returns current date and time in a consistent format, used for monitoring long-running measurements
