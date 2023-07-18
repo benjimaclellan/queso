@@ -13,7 +13,7 @@ from train_nn import train_nn
 n = 2
 k = 1
 
-io = IO(folder=f"nn-estimator-n{n}-k{k}", include_date=True)
+io = IO(folder=f"fig-example-n{n}-k{k}", include_date=True)
 io.path.mkdir(parents=True, exist_ok=True)
 
 # %%
@@ -25,13 +25,12 @@ train_circuit(
     key=key,
     phi_range=(-jnp.pi/4, jnp.pi/4),
     n_steps=1000,
-    lr=1e-1,
-    n_phis=500,
+    lr=1e-3,
+    n_phis=100,
     n_shots=1000,
     progress=True,
     plot=True,
 )
-time.sleep(0.1)
 
 #%%
 key = jax.random.PRNGKey(time.time_ns())

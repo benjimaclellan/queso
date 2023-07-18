@@ -89,7 +89,9 @@ def train_circuit(
 
     # %%
     print(f"Sampling {n_shots} shots for {n_phis} phase value between 0 and pi.")
-    phis = jnp.linspace(*phi_range, n_phis, endpoint=False)
+    # phis = jnp.linspace(*phi_range, n_phis, endpoint=False)
+    phis = (phi_range[1] - phi_range[0]) * jnp.arange(n_phis) / (n_phis - 1) + phi_range[0]
+
     t0 = time.time()
     shots, probs = sensor.sample_over_phases(theta, phis, mu, n_shots=n_shots, verbose=True)
     t1 = time.time()

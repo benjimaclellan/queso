@@ -54,10 +54,12 @@ def train_nn(
 
     #%%
     dphi = phis[1] - phis[0]
-    phi_range = (jnp.min(phis), jnp.max(phis) + dphi)
-    # delta_phi = (phi_range[1] - phi_range[0]) / (n_grid - 1)  # needed for proper normalization
-    # index = jnp.floor(n_grid * (phis / (phi_range[1] - phi_range[0])))
-    index = jnp.floor(n_grid * (phis - phi_range[0]) / (phi_range[1] - phi_range[0]))  #- 1 / 2
+    phi_range = (jnp.min(phis), jnp.max(phis))
+
+    index = jnp.arange(n_grid)
+    phis = (phi_range[1] - phi_range[0]) * jnp.arange(n_grid) / (n_grid - 1) + phi_range[0]
+    assert n_phis == n_grid
+
     labels = jax.nn.one_hot(index, num_classes=n_grid)
 
     print(index)
@@ -157,8 +159,44 @@ def train_nn(
 
     metrics = pd.DataFrame(metrics)
 
+    #%% compute posterior
+    assert n_phis == n_grid
+
+    # approx likelihood from relative frequencies
+    tmp = jnp.packbits(shots, axis=2, bitorder='little').squeeze()
+    freqs = jnp.stack([jnp.count_nonzero(tmp == m, axis=1) for m in range(2 ** n)], axis=1)
+    likelihood = freqs / freqs.sum(axis=1, keepdims=True)
+
+    bit_strings = jnp.expand_dims(jnp.arange(2 ** n), 1).astype(jnp.uint8)
+    bit_strings = jnp.unpackbits(bit_strings, axis=1, bitorder='big')[:, -n:]
+    pred = model.apply({'params': state.params}, bit_strings)
+    pred = jax.nn.softmax(pred, axis=-1)
+    posterior = pred
+
+    lp = (likelihood @ posterior).T
+    a_jk = jnp.eye(n_phis, n_grid) - lp
+
+    eigenvalues, eigenvectors = jnp.linalg.eig(a_jk)
+    prior = eigenvectors[:, 0].real
+    print(eigenvalues[0])
+
+    assert jnp.all(eigenvalues[0] <= eigenvalues)  # ensure eigenvalue sorting is correct
+
+    # idx = eigenvalues.real.argsort(order="")
+    # eigenvalues = eigenvalues[idx]
+    # eigenvectors = eigenvectors[:, idx]
+
+    # eigenvalues[-1].real
+    # prior = eigenvectors[:, -1].real
+
     #%%
     if plot:
+        #%% plot prior
+        fig, ax = plt.subplots()
+        ax.stem(prior)
+        fig.show()
+        io.save_figure(fig, filename="prior.png")
+
         # %% plot probs and relative freqs
         tmp = jnp.packbits(shots, axis=2, bitorder='little').squeeze()
         freqs = jnp.stack([jnp.count_nonzero(tmp == m, axis=1) for m in range(2 ** n)], axis=1)
@@ -250,7 +288,9 @@ if __name__ == "__main__":
     #%%
     # io = IO(folder="2023-07-06_nn-estimator-n1-k1")
     # io = IO(folder="2023-07-11_calibration-samples-n2-ghz-backup")
-    io = IO(folder="2023-07-13_calibration-samples-n1-ghz")
+    # io = IO(folder="2023-07-13_calibration-samples-n1-ghz")
+    io = IO(folder=f"2023-07-18_fig-example-n{2}-k{1}", include_date=False)
+
     key = jax.random.PRNGKey(time.time_ns())
 
     n_steps = 3000
