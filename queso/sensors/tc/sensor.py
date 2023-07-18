@@ -86,7 +86,8 @@ class Sensor:
         return c.measure(*list(range(self.n)))[0]
 
     # @partial(jax.jit, static_argnums=(0,))
-    def sample(self, theta, phi, mu, key=None, n_shots=100):
+    def sample(self, theta, phi, mu, key=None, n_shots=100, verbose=False):
+        print(f"Sampling {phi}")
         if key is None:
             key = jax.random.PRNGKey(time.time_ns())
         keys = jax.random.split(key, n_shots)
@@ -128,13 +129,13 @@ class Sensor:
         entropy = tc.quantum.entropy(rho_A)
         return entropy
 
-    def sample_over_phases(self, theta, phis, mu, n_shots, key=None):
+    def sample_over_phases(self, theta, phis, mu, n_shots, key=None, verbose=False):
         if key is None:
             key = jax.random.PRNGKey(time.time_ns())
         keys = jax.random.split(key, phis.shape[0])
         data = jnp.stack(
             [
-                self.sample(theta, phi, mu, key=key, n_shots=n_shots)
+                self.sample(theta, phi, mu, key=key, n_shots=n_shots, verbose=verbose)
                 for (phi, key) in zip(phis, keys)
             ],
             axis=0,

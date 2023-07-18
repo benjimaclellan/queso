@@ -26,6 +26,7 @@ def train_nn(
     key: jax.random.PRNGKey,  # todo: use provided key for reproducibility
     nn_dims: Sequence[int],
     n_steps: int = 50000,
+    n_grid: int = 50,
     lr: float = 1e-2,
     batch_phis: int = 32,
     batch_shots: int = 1,
@@ -52,11 +53,11 @@ def train_nn(
     n_phis = shots.shape[0]
 
     #%%
-    phi_range = (jnp.min(phis), jnp.max(phis))
     dphi = phis[1] - phis[0]
+    phi_range = (jnp.min(phis), jnp.max(phis) + dphi)
     # delta_phi = (phi_range[1] - phi_range[0]) / (n_grid - 1)  # needed for proper normalization
     # index = jnp.floor(n_grid * (phis / (phi_range[1] - phi_range[0])))
-    index = jnp.floor(n_grid * phis / (phi_range[1] + dphi - phi_range[0]))  #- 1 / 2
+    index = jnp.floor(n_grid * (phis - phi_range[0]) / (phi_range[1] - phi_range[0]))  #- 1 / 2
     labels = jax.nn.one_hot(index, num_classes=n_grid)
 
     print(index)
@@ -114,7 +115,7 @@ def train_nn(
             params = model.init(init_key, x)['params']
             print(f"Random initialization of parameters")
 
-        print("Initial parameters", params)
+        # print("Initial parameters", params)
         schedule = optax.polynomial_schedule(
             init_value=1e-2,
             end_value=1e-4,
@@ -186,17 +187,25 @@ def train_nn(
         pred = jax.nn.softmax(pred, axis=-1)
         # pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
 
-        fig, ax = plt.subplots()
+        fig, axs = plt.subplots(nrows=3, figsize=[9, 6])
         colors = sns.color_palette('deep', n_colors=bit_strings.shape[0])
         markers = cycle(["o", "D", 's', "v", "^", "<", ">", ])
         for i in range(bit_strings.shape[0]):
-            ax.plot(jnp.linspace(phi_range[0], phi_range[1], pred.shape[1]),
+            ax = axs[0]
+            xdata = jnp.linspace(phi_range[0], phi_range[1], pred.shape[1], endpoint=False)
+            ax.plot(xdata,
                     pred[i, :],
                     ls='',
                     marker=next(markers),
                     color=colors[i],
                     label=r"Pr($\phi_j | "+"b_{"+str(i)+"}$)")
-        ax.set(xlabel=r"$\phi_j$", ylabel=r"Posterior distribution, Pr($\phi_j | b_i$)")
+
+            xdata = jnp.linspace(phi_range[0], phi_range[1], probs.shape[0], endpoint=False)
+            axs[1].plot(xdata, probs[:, i], color=colors[i])
+            axs[2].plot(xdata, freqs[:, i], color=colors[i], ls='--', alpha=0.3)
+
+        axs[-1].set(xlabel=r"$\phi_j$")
+        axs[0].set(ylabel=r"Posterior distribution, Pr($\phi_j | b_i$)")
         ax.legend()
         io.save_figure(fig, filename="posterior-dist.png")
 
@@ -262,6 +271,7 @@ if __name__ == "__main__":
         key=key,
         nn_dims=nn_dims,
         n_steps=n_steps,
+        n_grid=n_grid,
         lr=lr,
         batch_phis=batch_phis,
         batch_shots=batch_shots,
