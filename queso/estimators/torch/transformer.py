@@ -76,7 +76,9 @@ class Encoder(torch.nn.Module):
     def __init__(self, d_model, n_layers=4, num_heads=1, d_ff=10, dropout=0.0):
         super().__init__()
         # self.encoder_layer = nn.ModuleList([EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(n_layers)])
-        self.encoder_layer = nn.Sequential(*[EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(n_layers)])
+        self.encoder_layer = nn.Sequential(
+            *[EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(n_layers)]
+        )
         # self.encoder_layer = EncoderLayer(d_model, num_heads, d_ff, dropout)
         self.linear = nn.Linear(in_features=d_model, out_features=1)
         return

@@ -11,14 +11,28 @@ import jax.numpy as jnp
 
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")
+
 tc.set_contractor("auto")  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
 
 
 class Sensor:
-    def __init__(self, n, k, shots=100):
+    def __init__(self, n, k, shots=100, contractor='auto', backend='ket'):
         self.n = n
         self.k = k
         self.shots = shots
+
+        if backend == 'ket':
+            self._circ = lambda: tc.Circuit(self.n)
+        elif backend == 'dm':
+            self._circ = lambda: tc.DMCircuit(self.n)
+        else:
+            raise ValueError
+
+        self.phi = jnp.array(0.0)
+        self.theta = jnp.zeros([n, k, 6])
+        self.mu = jnp.zeros([n, 3])
+        # tc.set_contractor(contractor)  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
+
         return
 
     def preparation(self, c, theta):
@@ -32,15 +46,31 @@ class Sensor:
                 )
 
             for i in range(0, self.n - 1, 2):
-                c.cnot(i, i + 1)
+                # c.cnot(i, i + 1)
+                c.cr(
+                    i,
+                    i + 1,
+                    theta=theta[i, j, 3],
+                    alpha=theta[i, j, 4],
+                    phi=theta[i, j, 5],
+                )
 
             for i in range(1, self.n - 1, 2):
-                c.cnot(i, i + 1)
+                # c.cnot(i, i + 1)
+                c.cr(
+                    i,
+                    i + 1,
+                    theta=theta[i, j, 3],
+                    alpha=theta[i, j, 4],
+                    phi=theta[i, j, 5],
+                )
         return c
 
     def interaction(self, c, phi):
+        # for i in range(self.n):
+        #     c.rx(i, theta=phi)
         for i in range(self.n):
-            c.rx(i, theta=phi)
+            c.phasedamping(i, gamma=phi)
         return c
 
     def detection(self, c, mu):
@@ -54,7 +84,8 @@ class Sensor:
         return c
 
     def circuit(self, theta, phi, mu):
-        c = tc.Circuit(self.n)
+        # c = tc.Circuit(self.n)
+        c = self._circ()
         c = self.preparation(c, theta)
         c = self.interaction(c, phi)
         c = self.detection(c, mu)
@@ -62,14 +93,16 @@ class Sensor:
 
     @partial(jax.jit, static_argnums=(0,))
     def state(self, theta, phi):
-        c = tc.Circuit(self.n)
+        # c = tc.Circuit(self.n)
+        c = self._circ()
         c = self.preparation(c, theta)
         c = self.interaction(c, phi)
         return c.state()
 
     @partial(jax.jit, static_argnums=(0,))
     def probs(self, theta, phi, mu):
-        c = tc.Circuit(self.n)
+        # c = tc.Circuit(self.n)
+        c = self._circ()
         c = self.preparation(c, theta)
         c = self.interaction(c, phi)
         c = self.detection(c, mu)
@@ -77,7 +110,8 @@ class Sensor:
 
     @partial(jax.jit, static_argnums=(0,))
     def _sample(self, theta, phi, mu, key):
-        c = tc.Circuit(self.n)
+        # c = tc.Circuit(self.n)
+        c = self._circ()
         c = self.preparation(c, theta)
         c = self.interaction(c, phi)
         c = self.detection(c, mu)

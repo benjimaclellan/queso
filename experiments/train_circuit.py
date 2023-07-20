@@ -21,11 +21,13 @@ def train_circuit(
     n_shots: int = 500,
     lr: float = 1e-2,
     n_steps: int = 100,
+    contractor: str = "auto",
     plot: bool = False,
     progress: bool = True,
 ):
-    print(f"Initializing sensor n={n}, k={k}")
-    sensor = Sensor(n, k)
+    print(f"Initializing sensor n={n}, k={k} | contractor {contractor}")
+    sensor = Sensor(n, k, contractor=contractor, backend='dm')
+    phi = jnp.array(0.1)
 
     optimizer = optax.adam(learning_rate=lr)
 
@@ -46,9 +48,8 @@ def train_circuit(
     # %%
     # key = jax.random.PRNGKey(time.time_ns())
 
-    phi = jnp.array(0.0)
-    theta = jax.random.uniform(key, shape=[n, k, 2])
-    mu = jax.random.uniform(key, shape=[n, 3])
+    theta = jax.random.uniform(key, shape=sensor.theta.shape)
+    mu = jax.random.uniform(key, shape=sensor.mu.shape)
 
     loss = loss_cfi
     params = {"theta": theta, "mu": mu}
@@ -84,9 +85,9 @@ def train_circuit(
         axs[1].plot(vn_ent)
         axs[1].set(ylabel="Entropy of entanglement", xlabel="Optimization Step")
         io.save_figure(fig, filename="fi-entropy-optimization")
+        fig.show()
 
         # sensor.circuit(theta, phi, mu).draw(output="text")
-
     # %%
     print(f"Sampling {n_shots} shots for {n_phis} phase value between 0 and pi.")
     # phis = jnp.linspace(*phi_range, n_phis, endpoint=False)

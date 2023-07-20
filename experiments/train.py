@@ -10,32 +10,42 @@ from train_circuit import train_circuit
 from train_nn import train_nn
 
 #%%
-n = 2
-k = 1
+n = 4
+k = 2
 
-io = IO(folder=f"fig-example-n{n}-k{k}", include_date=True)
+io = IO(folder=f"cr-ansatz-n{n}-k{k}", include_date=True)
 io.path.mkdir(parents=True, exist_ok=True)
 
 # %%
+# phi_range = (-jnp.pi/4, jnp.pi/4)
+phi_range = (1e-8, 0.5)
+n_steps = 20000
+lr = 1e-3
+n_phis = 100
+n_shots = 1000
 key = jax.random.PRNGKey(time.time_ns())
+progress = True
+plot = True
+
 train_circuit(
     io=io,
     n=n,
     k=k,
     key=key,
-    phi_range=(-jnp.pi/4, jnp.pi/4),
-    n_steps=1000,
-    lr=1e-3,
-    n_phis=100,
-    n_shots=1000,
-    progress=True,
-    plot=True,
+    phi_range=phi_range,
+    n_steps=n_steps,
+    lr=lr,
+    n_phis=n_phis,
+    n_shots=n_shots,
+    contractor="plain",
+    progress=progress,
+    plot=plot,
 )
 
 #%%
 key = jax.random.PRNGKey(time.time_ns())
-nn_dims = [16, 16, 100]
-n_steps = 3000
+nn_dims = [128, 128, 128, 100]
+n_steps = 5000
 n_grid = 100
 lr = 1e-2
 batch_phis = 128
@@ -56,4 +66,5 @@ train_nn(
     progress=progress,
     from_checkpoint=from_checkpoint,
 )
+
 # %%

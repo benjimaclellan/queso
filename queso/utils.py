@@ -8,10 +8,7 @@ from datetime import datetime
 import GPUtil
 
 
-def shots_to_counts(
-        shots,
-        phis
-):
+def shots_to_counts(shots, phis):
     # if isinstance(shots, torch.Tensor):
     #     shots = shots.numpy().astype('int8')
 
@@ -36,7 +33,8 @@ def count_parameters(model, verbose=True):  # todo: move to utils
     table = PrettyTable(["Modules", "Parameters"])
     total_params = 0
     for name, parameter in model.named_parameters():
-        if not parameter.requires_grad: continue
+        if not parameter.requires_grad:
+            continue
         params = parameter.numel()
         table.add_row([name, params])
         total_params += params
@@ -46,14 +44,14 @@ def count_parameters(model, verbose=True):  # todo: move to utils
     return total_params
 
 
-def bit_to_integer(a, endian='le'):
-    if endian == 'le':
+def bit_to_integer(a, endian="le"):
+    if endian == "le":
         k = 1 << jnp.arange(a.shape[-1] - 1, -1, -1)  # little-endian
-    elif endian == 'be':
+    elif endian == "be":
         k = 1 << jnp.arange(a.shape[-1] - 1, -1, -1)
     else:
         raise NotImplementedError
-    s = jnp.einsum('ijk,k->ij', a, k)
+    s = jnp.einsum("ijk,k->ij", a, k)
     return jnp.expand_dims(s, 2)
 
 

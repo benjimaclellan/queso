@@ -18,7 +18,7 @@ def _default_path():
     try:
         with open(config, "r") as fid:
             file = yaml.safe_load(fid)
-            default_path = file['default_path']
+            default_path = file["default_path"]
             print(file)
     except:
         default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
@@ -299,7 +299,6 @@ class IO:
         if self.verbose:
             print(f"{current_time()} | Loaded from {full_path} successfully.")
         return df
-
 
     # def new_h5_file(self, filename):
     #     """

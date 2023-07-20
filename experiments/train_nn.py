@@ -119,14 +119,14 @@ def train_nn(
 
         # print("Initial parameters", params)
         schedule = optax.polynomial_schedule(
-            init_value=1e-2,
-            end_value=1e-4,
-            power=2,
-            transition_steps=1000,
-            transition_begin=1000,
+            init_value=lr,
+            end_value=lr**2,
+            power=1,
+            transition_steps=n_steps//2,
+            transition_begin=n_steps//2,
         )
-        tx = optax.adam(learning_rate=schedule)
-        # tx = optax.adamw(learning_rate=learning_rate, weight_decay=1e-5)
+        # tx = optax.adam(learning_rate=schedule)
+        tx = optax.adamw(learning_rate=learning_rate, weight_decay=1e-5)
 
         state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
         return state
@@ -177,7 +177,7 @@ def train_nn(
     a_jk = jnp.eye(n_phis, n_grid) - lp
 
     eigenvalues, eigenvectors = jnp.linalg.eig(a_jk)
-    prior = eigenvectors[:, 0].real
+    prior = jnp.abs(eigenvectors[:, 0])
     print(eigenvalues[0])
 
     assert jnp.all(eigenvalues[0] <= eigenvalues)  # ensure eigenvalue sorting is correct
@@ -244,7 +244,7 @@ def train_nn(
 
         axs[-1].set(xlabel=r"$\phi_j$")
         axs[0].set(ylabel=r"Posterior distribution, Pr($\phi_j | b_i$)")
-        ax.legend()
+        # ax.legend()
         io.save_figure(fig, filename="posterior-dist.png")
 
         plt.show()
