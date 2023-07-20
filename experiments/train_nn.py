@@ -16,9 +16,9 @@ from orbax.checkpoint import PyTreeCheckpointer, Checkpointer, \
     CheckpointManager, CheckpointManagerOptions, PyTreeCheckpointHandler
 
 from queso.estimators.flax.dnn import BayesianDNNEstimator
+from queso.sensors.tc.sensor import sample_int2bin
 from queso.io import IO
 from queso.utils import get_machine_info
-
 
 # %%
 def train_nn(
@@ -38,10 +38,12 @@ def train_nn(
     # %% extract data from H5 file
     t0 = time.time()
 
-    hf = h5py.File(io.path.joinpath("circ.h5"), "r")
+    hf = h5py.File(io.path.joinpath("samples.h5"), "r")
     print(hf.keys())
 
     shots = jnp.array(hf.get("shots"))
+    counts = jnp.array(hf.get("counts"))
+    shots_test = jnp.array(hf.get("shots_test"))
     probs = jnp.array(hf.get("probs"))
     phis = jnp.array(hf.get("phis"))
 
@@ -57,7 +59,7 @@ def train_nn(
     phi_range = (jnp.min(phis), jnp.max(phis))
 
     index = jnp.arange(n_grid)
-    phis = (phi_range[1] - phi_range[0]) * jnp.arange(n_grid) / (n_grid - 1) + phi_range[0]
+    phis = (phi_range[1] - phi_range[0]) * index / (n_grid - 1) + phi_range[0]
     assert n_phis == n_grid
 
     labels = jax.nn.one_hot(index, num_classes=n_grid)
@@ -84,19 +86,13 @@ def train_nn(
         x, labels = batch
 
         def loss_fn(params):
-            # logits = jax.nn.softmax(state.apply_fn({'params': params}, x), axis=-1)
-            # loss = -(labels * jnp.log(logits)).sum(axis=-1).mean(axis=(0, 1))
-
             logits = state.apply_fn({'params': params}, x)
-
-            # cross-entropy
             loss = optax.softmax_cross_entropy(
                 logits,
                 labels
             ).mean(axis=(0, 1))
 
             # loss += l2_loss()
-
             return loss
 
         loss_val_grad_fn = jax.value_and_grad(loss_fn)
@@ -163,12 +159,10 @@ def train_nn(
     assert n_phis == n_grid
 
     # approx likelihood from relative frequencies
-    tmp = jnp.packbits(shots, axis=2, bitorder='little').squeeze()
-    freqs = jnp.stack([jnp.count_nonzero(tmp == m, axis=1) for m in range(2 ** n)], axis=1)
-    likelihood = freqs / freqs.sum(axis=1, keepdims=True)
+    freqs = counts / counts.sum(axis=1, keepdims=True)
+    likelihood = freqs
 
-    bit_strings = jnp.expand_dims(jnp.arange(2 ** n), 1).astype(jnp.uint8)
-    bit_strings = jnp.unpackbits(bit_strings, axis=1, bitorder='big')[:, -n:]
+    bit_strings = sample_int2bin(jnp.arange(2**n), n)
     pred = model.apply({'params': state.params}, bit_strings)
     pred = jax.nn.softmax(pred, axis=-1)
     posterior = pred
@@ -196,18 +190,6 @@ def train_nn(
         ax.stem(prior)
         fig.show()
         io.save_figure(fig, filename="prior.png")
-
-        # %% plot probs and relative freqs
-        tmp = jnp.packbits(shots, axis=2, bitorder='little').squeeze()
-        freqs = jnp.stack([jnp.count_nonzero(tmp == m, axis=1) for m in range(2 ** n)], axis=1)
-
-        fig, axs = plt.subplots(nrows=2)
-        sns.heatmap(probs, ax=axs[0])
-        sns.heatmap(freqs, ax=axs[1])
-
-        # ax.set(xlabel="Measurement outcome", ylabel="Phase")
-        fig.show()
-        io.save_figure(fig, filename="probs.png")
 
         # %% plot NN loss minimization
         fig, ax = plt.subplots()

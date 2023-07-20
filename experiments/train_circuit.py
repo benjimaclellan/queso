@@ -1,6 +1,7 @@
 import time
 import tqdm
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 import jax
 import jax.numpy as jnp
@@ -18,36 +19,34 @@ def train_circuit(
     key: jax.random.PRNGKey,
     phi_range: tuple,
     n_phis: int = 10,
-    n_shots: int = 500,
     lr: float = 1e-2,
     n_steps: int = 100,
     contractor: str = "auto",
     plot: bool = False,
     progress: bool = True,
 ):
-    print(f"Initializing sensor n={n}, k={k} | contractor {contractor}")
-    sensor = Sensor(n, k, contractor=contractor, backend='dm')
-    phi = jnp.array(0.1)
+    #%%
+    print(f"Initializing sensor n={n}, k={k}")
+    sensor = Sensor(n, k, backend='ket')
+    phi = jnp.array(0.0)
 
     optimizer = optax.adam(learning_rate=lr)
 
-    def loss_cfi(params):
+    def loss_cfi(params, phi):
         return -sensor.cfi(params["theta"], phi, params["mu"])
 
-    def loss_qfi(params):
+    def loss_qfi(params, phi):
         return -sensor.qfi(params["theta"], phi)
 
     # %%
     @jax.jit
     def step(params, opt_state):
-        val, grads = loss_val_grad(params)
+        val, grads = loss_val_grad(params, phi)
         updates, opt_state = optimizer.update(grads, opt_state)
         params = optax.apply_updates(params, updates)
         return val, params, updates, opt_state
 
     # %%
-    # key = jax.random.PRNGKey(time.time_ns())
-
     theta = jax.random.uniform(key, shape=sensor.theta.shape)
     mu = jax.random.uniform(key, shape=sensor.mu.shape)
 
@@ -57,46 +56,44 @@ def train_circuit(
     # loss = loss_qfi
     # params = {'theta': theta}
 
-    loss_val_grad = jax.value_and_grad(loss)
+    loss_val_grad = jax.value_and_grad(loss, argnums=0)
 
     opt_state = optimizer.init(params)
-    val, grads = loss_val_grad(params)
+    # val, grads = loss_val_grad(params, phi)
 
     # %%
-    losses, vn_ent = [], []
+    losses, vn_ent_train = [], []
     for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
         val, params, updates, opt_state = step(params, opt_state)
         losses.append(-val)
-        vn_ent.append(sensor.entanglement(params["theta"], phi))
+        vn_ent_train.append(sensor.entanglement(params["theta"], phi))
         if progress:
             pbar.set_description(f"Step {i} | FI: {-val:.10f}")
 
     losses = jnp.array(losses)
-    fi = losses  # set FI to the losses
+    fi_train = losses  # set FI to the losses
     theta = params["theta"]
     mu = params["mu"]
 
+    #%%
     if plot:
         # %% visualize
         fig, axs = plt.subplots(ncols=1, nrows=2, sharex=True)
         axs[0].plot(losses)
         axs[0].axhline(n**2, ls="--", alpha=0.5)
         axs[0].set(ylabel="Fisher Information")
-        axs[1].plot(vn_ent)
+        axs[1].plot(vn_ent_train)
         axs[1].set(ylabel="Entropy of entanglement", xlabel="Optimization Step")
         io.save_figure(fig, filename="fi-entropy-optimization")
         fig.show()
 
+        #%%
         # sensor.circuit(theta, phi, mu).draw(output="text")
-    # %%
-    print(f"Sampling {n_shots} shots for {n_phis} phase value between 0 and pi.")
-    # phis = jnp.linspace(*phi_range, n_phis, endpoint=False)
-    phis = (phi_range[1] - phi_range[0]) * jnp.arange(n_phis) / (n_phis - 1) + phi_range[0]
 
-    t0 = time.time()
-    shots, probs = sensor.sample_over_phases(theta, phis, mu, n_shots=n_shots, verbose=True)
-    t1 = time.time()
-    print(f"Sampling took {t1 - t0} seconds.")
+    #%% compute other quantities of interest and save
+    phis = (phi_range[1] - phi_range[0]) * jnp.arange(n_phis) / (n_phis - 1) + phi_range[0]
+    qfi_phis = jax.vmap(lambda phi: -loss_qfi(params={'theta': theta}, phi=phi))(phis)
+    cfi_phis = jax.vmap(lambda phi: -loss_cfi(params={'theta': theta, "mu": mu}, phi=phi))(phis)
 
     # %%
     metadata = dict(n=n, k=k, lr=lr)
@@ -105,16 +102,17 @@ def train_circuit(
     hf = h5py.File(io.path.joinpath("circ.h5"), "w")
     hf.create_dataset("theta", data=theta)
     hf.create_dataset("mu", data=mu)
+    hf.create_dataset("fi_train", data=fi_train)
+    hf.create_dataset("vn_ent_train", data=vn_ent_train)
     hf.create_dataset("phis", data=phis)
-    hf.create_dataset("shots", data=shots)
-    hf.create_dataset("probs", data=probs)
-    hf.create_dataset("fi", data=fi)
-    hf.create_dataset("vn_ent", data=vn_ent)
+    hf.create_dataset("qfi_phis", data=qfi_phis)
+    hf.create_dataset("cfi_phis", data=cfi_phis)
     hf.close()
 
     return
 
 
+#%%
 if __name__ == "__main__":
     n = 1
     k = 1
@@ -133,7 +131,6 @@ if __name__ == "__main__":
         n_steps=100,
         lr=1e-1,
         n_phis=200,
-        n_shots=1000,
         plot=plot,
     )
     time.sleep(0.1)

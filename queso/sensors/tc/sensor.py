@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 import tensorcircuit as tc
+from tensorcircuit.quantum import sample_bin2int, sample_int2bin
 import jax
 import jax.numpy as jnp
 
@@ -16,105 +17,76 @@ tc.set_contractor("auto")  # “auto”, “greedy”, “branch”, “plain”
 
 
 class Sensor:
-    def __init__(self, n, k, shots=100, contractor='auto', backend='ket'):
+    def __init__(
+        self,
+        n,
+        k,
+        contractor="auto",
+        backend="ket",
+        preparation="cr_brick_wall",
+        interaction="rx",
+        detection="local",
+    ):
         self.n = n
         self.k = k
-        self.shots = shots
 
-        if backend == 'ket':
-            self._circ = lambda: tc.Circuit(self.n)
-        elif backend == 'dm':
-            self._circ = lambda: tc.DMCircuit(self.n)
+        if backend == "ket":
+            self._circ = tc.Circuit #(self.n)
+        elif backend == "dm":
+            self._circ = tc.DMCircuit #(self.n)
         else:
             raise ValueError
 
-        self.phi = jnp.array(0.0)
-        self.theta = jnp.zeros([n, k, 6])
-        self.mu = jnp.zeros([n, 3])
         # tc.set_contractor(contractor)  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
+
+        if preparation == "cr_brick_wall":
+            self.preparation = preparation_cr_brick_wall
+            self.theta = jnp.zeros([n, k, 6])
+        else:
+            raise ValueError("Not a valid preparation layer.")
+
+        if interaction == "rx":
+            self.interaction = interaction_rx
+            self.phi = jnp.array(0.0)
+        else:
+            raise ValueError("Not a valid interaction layer.")
+
+        if detection == "local":
+            self.detection = detection_local
+            self.mu = jnp.zeros([n, 3])
+        else:
+            raise ValueError("Not a valid detection layer.")
 
         return
 
-    def preparation(self, c, theta):
-        for j in range(self.k):
-            for i in range(self.n):
-                c.r(
-                    i,
-                    theta=theta[i, j, 0],
-                    alpha=theta[i, j, 1],
-                    phi=theta[i, j, 2],
-                )
-
-            for i in range(0, self.n - 1, 2):
-                # c.cnot(i, i + 1)
-                c.cr(
-                    i,
-                    i + 1,
-                    theta=theta[i, j, 3],
-                    alpha=theta[i, j, 4],
-                    phi=theta[i, j, 5],
-                )
-
-            for i in range(1, self.n - 1, 2):
-                # c.cnot(i, i + 1)
-                c.cr(
-                    i,
-                    i + 1,
-                    theta=theta[i, j, 3],
-                    alpha=theta[i, j, 4],
-                    phi=theta[i, j, 5],
-                )
-        return c
-
-    def interaction(self, c, phi):
-        # for i in range(self.n):
-        #     c.rx(i, theta=phi)
-        for i in range(self.n):
-            c.phasedamping(i, gamma=phi)
-        return c
-
-    def detection(self, c, mu):
-        for i in range(self.n):
-            c.r(
-                i,
-                theta=mu[i, 0],
-                alpha=mu[i, 1],
-                phi=mu[i, 2],
-            )
-        return c
-
     def circuit(self, theta, phi, mu):
-        # c = tc.Circuit(self.n)
-        c = self._circ()
-        c = self.preparation(c, theta)
-        c = self.interaction(c, phi)
-        c = self.detection(c, mu)
+        c = self._circ(self.n)
+        c = self.preparation(c, theta, self.n, self.k)
+        c = self.interaction(c, phi, self.n)
+        c = self.detection(c, mu, self.n, self.k)
         return c
 
     @partial(jax.jit, static_argnums=(0,))
     def state(self, theta, phi):
-        # c = tc.Circuit(self.n)
-        c = self._circ()
-        c = self.preparation(c, theta)
-        c = self.interaction(c, phi)
+        c = self._circ(self.n)
+        c = self.preparation(c, theta, self.n, self.k)
+        c = self.interaction(c, phi, self.n)
         return c.state()
 
     @partial(jax.jit, static_argnums=(0,))
     def probs(self, theta, phi, mu):
-        # c = tc.Circuit(self.n)
-        c = self._circ()
-        c = self.preparation(c, theta)
-        c = self.interaction(c, phi)
-        c = self.detection(c, mu)
+        c = self._circ(self.n)
+        c = self.preparation(c, theta, self.n, self.k)
+        c = self.interaction(c, phi, self.n)
+        c = self.detection(c, mu, self.n, self.k)
         return c.probability()
 
     @partial(jax.jit, static_argnums=(0,))
     def _sample(self, theta, phi, mu, key):
-        # c = tc.Circuit(self.n)
-        c = self._circ()
-        c = self.preparation(c, theta)
-        c = self.interaction(c, phi)
-        c = self.detection(c, mu)
+        c = self._circ(self.n)
+        c = self.preparation(c, theta, self.n, self.k)
+        c = self.interaction(c, phi, self.n)
+        c = self.detection(c, mu, self.n, self.k)
 
         backend.set_random_state(key)
         return c.measure(*list(range(self.n)))[0]
@@ -126,7 +98,7 @@ class Sensor:
             key = jax.random.PRNGKey(time.time_ns())
         keys = jax.random.split(key, n_shots)
         shots = jnp.array([self._sample(theta, phi, mu, key) for key in keys]).astype(
-            "int8"
+            "bool"
         )
         return shots
 
@@ -178,6 +150,59 @@ class Sensor:
         return data, probs
 
 
+# preparation layers
+def preparation_cr_brick_wall(c, theta, n, k):
+    for j in range(k):
+        for i in range(n):
+            c.r(
+                i,
+                theta=theta[i, j, 0],
+                alpha=theta[i, j, 1],
+                phi=theta[i, j, 2],
+            )
+
+        for i in range(0, n - 1, 2):
+            # c.cnot(i, i + 1)
+            c.cr(
+                i,
+                i + 1,
+                theta=theta[i, j, 3],
+                alpha=theta[i, j, 4],
+                phi=theta[i, j, 5],
+            )
+
+        for i in range(1, n - 1, 2):
+            # c.cnot(i, i + 1)
+            c.cr(
+                i,
+                i + 1,
+                theta=theta[i, j, 3],
+                alpha=theta[i, j, 4],
+                phi=theta[i, j, 5],
+            )
+    return c
+
+
+# interaction layers
+def interaction_rx(c, phi, n):
+    for i in range(n):
+        c.rx(i, theta=phi)
+    return c
+
+
+# detection layers
+def detection_local(c, mu, n, k):
+    for i in range(n):
+        c.r(
+            i,
+            theta=mu[i, 0],
+            alpha=mu[i, 1],
+            phi=mu[i, 2],
+        )
+    return c
+
+
+# utilities for sampling
 def shots_to_counts(shots):
     # shots = jnp.array(list(zip(*shots))[0]).astype("int8")
     basis, count = jnp.unique(shots, return_counts=True, axis=0)
