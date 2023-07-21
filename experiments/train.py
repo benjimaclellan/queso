@@ -19,15 +19,15 @@ io.path.mkdir(parents=True, exist_ok=True)
 
 # %%
 phi_range = (0, jnp.pi / 2)
-n_phis = 10
-n_steps = 200
+n_phis = 100
+n_steps = 20000
 lr = 1e-3
 key = jax.random.PRNGKey(time.time_ns())
 progress = True
 plot = True
 
 #%%
-if True:
+if False:
     train_circuit(
         io=io,
         n=n,
@@ -43,11 +43,11 @@ if True:
     )
 
 #%%
-n_shots = 50
-n_shots_test = 10
+n_shots = 5000
+n_shots_test = 1000
 
 #%%
-if True:
+if False:
     sample_circuit(
         io=io,
         n=n,
@@ -61,13 +61,15 @@ if True:
     )
 
 #%%
-key = jax.random.PRNGKey(time.time_ns())
-n_steps = 5000
+# key = jax.random.PRNGKey(time.time_ns())
+key = jax.random.PRNGKey(0)
+
+# n_steps = 50000
+n_epochs = 100
+batch_size = 50
 n_grid = n_phis  # todo: make more general - not requiring matching training phis and grid
-nn_dims = [32, 32, n_grid]
-lr = 1e-2
-batch_phis = 128
-batch_shots = 36
+nn_dims = [32, 32, 32, n_grid]
+lr = 1e-3
 plot = True
 progress = True
 from_checkpoint = False
@@ -81,8 +83,10 @@ if True:
         n_steps=n_steps,
         n_grid=n_grid,
         lr=lr,
-        batch_phis=batch_phis,
-        batch_shots=batch_shots,
+        n_epochs=n_epochs,
+        batch_size=batch_size,
+        # batch_phis=batch_phis,
+        # batch_shots=batch_shots,
         plot=plot,
         progress=progress,
         from_checkpoint=from_checkpoint,

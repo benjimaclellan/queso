@@ -28,8 +28,10 @@ def train_nn(
     n_steps: int = 50000,
     n_grid: int = 50,
     lr: float = 1e-2,
-    batch_phis: int = 32,
-    batch_shots: int = 1,
+    n_epochs: int = 10,
+    batch_size: int = 10,
+    # batch_phis: int = 32,
+    # batch_shots: int = 1,
     plot: bool = False,
     progress: bool = True,
     from_checkpoint: bool = True,
@@ -39,20 +41,22 @@ def train_nn(
     t0 = time.time()
 
     hf = h5py.File(io.path.joinpath("samples.h5"), "r")
-    print(hf.keys())
-
     shots = jnp.array(hf.get("shots"))
     counts = jnp.array(hf.get("counts"))
     shots_test = jnp.array(hf.get("shots_test"))
     probs = jnp.array(hf.get("probs"))
     phis = jnp.array(hf.get("phis"))
-
     hf.close()
 
     #%%
     n = shots.shape[2]
     n_shots = shots.shape[1]
     n_phis = shots.shape[0]
+
+    #%%
+    assert n_shots % batch_size == 0
+    n_batches = n_shots // batch_size
+    n_steps = n_epochs * n_batches
 
     #%%
     dphi = phis[1] - phis[0]
@@ -83,14 +87,16 @@ def train_nn(
 
     @jax.jit
     def train_step(state, batch):
-        x, labels = batch
+        x_batch, y_batch = batch
 
         def loss_fn(params):
-            logits = state.apply_fn({'params': params}, x)
-            loss = optax.softmax_cross_entropy(
-                logits,
-                labels
-            ).mean(axis=(0, 1))
+            logits = state.apply_fn({'params': params}, x_batch)
+            # loss = optax.softmax_cross_entropy(
+            #     logits,
+            #     y_batch
+            # ).mean(axis=(0, 1))
+
+            loss = -jnp.sum(y_batch[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
 
             # loss += l2_loss()
             return loss
@@ -118,11 +124,11 @@ def train_nn(
             init_value=lr,
             end_value=lr**2,
             power=1,
-            transition_steps=n_steps//2,
-            transition_begin=n_steps//2,
+            # transition_steps=n_steps//2,
+            # transition_begin=n_steps//2,
         )
-        # tx = optax.adam(learning_rate=schedule)
-        tx = optax.adamw(learning_rate=learning_rate, weight_decay=1e-5)
+        tx = optax.adam(learning_rate=schedule)
+        # tx = optax.adamw(learning_rate=learning_rate, weight_decay=1e-5)
 
         state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
         return state
@@ -132,28 +138,52 @@ def train_nn(
     # del init_key
 
     # %%
+    keys = jax.random.split(key, (n_epochs))
     metrics = []
-    for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterval=0.333)):
-        # generate batch
-        key = jax.random.PRNGKey(time.time_ns())
-        subkeys = jax.random.split(key, num=2)
+    pbar = tqdm.tqdm(total=n_epochs * n_batches, disable=(not progress), mininterval=0.333)
+    for i in range(n_epochs):
+        # shuffle shots
+        subkeys = jax.random.split(keys[i], n_phis)
+        x = jnp.stack([jax.random.permutation(subkey, x[k, :, :]) for k, subkey in enumerate(subkeys)])
 
-        inds = jax.random.randint(subkeys[0], minval=0, maxval=n_phis, shape=(batch_phis,))
+        for j in range(n_batches):
+            x_batch = x[:, j * batch_size : (j + 1) * batch_size, :]
+            y_batch = y  # use all phases each batch, but not all shots per phase
+            batch = (x_batch, y_batch)
 
-        x_batch = x[inds, :, :]
-        idx = jax.random.randint(subkeys[1], minval=0, maxval=n_shots, shape=(batch_phis, batch_shots, 1))
-        x_batch = jnp.take_along_axis(x_batch, idx, axis=1)
+            state, loss = train_step(state, batch)
+            if progress:
+                pbar.update()
+                pbar.set_description(f"Epoch {i} | Batch {j} | Loss: {loss:.10f}", refresh=False)
+            metrics.append(dict(step=i, loss=loss))
 
-        y_batch = jnp.repeat(jnp.expand_dims(y[inds], 1), repeats=batch_shots, axis=1)
-        batch = (x_batch, y_batch)
-
-        state, loss = train_step(state, batch)
-        if progress:
-            pbar.set_description(f"Step {i} | Loss: {loss:.10f}", refresh=False)
-
-        metrics.append(dict(step=i, loss=loss))
-
+    pbar.close()
     metrics = pd.DataFrame(metrics)
+
+    #%%
+    #
+    # metrics = []
+    # for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterval=0.333)):
+    #     # generate batch
+    #     key = jax.random.PRNGKey(time.time_ns())
+    #     subkeys = jax.random.split(key, num=2)
+    #
+    #     inds = jax.random.randint(subkeys[0], minval=0, maxval=n_phis, shape=(batch_phis,))
+    #
+    #     x_batch = x[inds, :, :]
+    #     idx = jax.random.randint(subkeys[1], minval=0, maxval=n_shots, shape=(batch_phis, batch_shots, 1))
+    #     x_batch = jnp.take_along_axis(x_batch, idx, axis=1)
+    #
+    #     y_batch = jnp.repeat(jnp.expand_dims(y[inds], 1), repeats=batch_shots, axis=1)
+    #     batch = (x_batch, y_batch)
+    #
+    #     state, loss = train_step(state, batch)
+    #     if progress:
+    #         pbar.set_description(f"Step {i} | Loss: {loss:.10f}", refresh=False)
+    #
+    #     metrics.append(dict(step=i, loss=loss))
+    #
+    # metrics = pd.DataFrame(metrics)
 
     #%% compute posterior
     assert n_phis == n_grid
