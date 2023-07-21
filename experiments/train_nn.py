@@ -124,7 +124,7 @@ def train_nn(
             init_value=lr,
             end_value=lr**2,
             power=1,
-            # transition_steps=n_steps//2,
+            transition_steps=n_steps,
             # transition_begin=n_steps//2,
         )
         tx = optax.adam(learning_rate=schedule)

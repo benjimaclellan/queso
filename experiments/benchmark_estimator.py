@@ -23,7 +23,8 @@ from queso.utils import get_machine_info
 
 #%%
 # io = IO(folder="2023-07-18_fig-example-n2-k1", verbose=False)
-io = IO(folder="2023-07-20_estimator-performance-n4-k4", verbose=False)
+# io = IO(folder="2023-07-21_estimator-performance-n2-k2", verbose=False)
+io = IO(folder="2023-07-21_circ-local-n4-k4", verbose=False)
 
 #%%
 hf = h5py.File(io.path.joinpath("samples.h5"), "r")
@@ -53,9 +54,9 @@ key = jax.random.PRNGKey(time.time_ns())
 model = BayesianDNNEstimator(nn_dims)
 
 #%%
-n_trials = 20
+n_trials = 50
 
-phis_inds = jnp.array([0, 50])
+phis_inds = jnp.array([50])
 phis_true = phis[phis_inds]
 
 # n_sequences = (1, 10, 100, 1000)
@@ -72,8 +73,8 @@ def select_sample_sequence(shots, key):
     return sequences
 
 
-key = jax.random.PRNGKey(0)
-# key = jax.random.PRNGKey(time.time_ns())
+# key = jax.random.PRNGKey(0)
+key = jax.random.PRNGKey(time.time_ns())
 keys = jax.random.split(key, n_trials)
 
 sequences = jnp.stack([select_sample_sequence(shots, key) for key in keys], axis=0)
@@ -118,17 +119,43 @@ phi_estimates = estimate(posteriors, phis)
 biases = bias(phi_estimates, phis_true)
 variances = variance(posteriors, phi_estimates, phis)
 
+#%% plot posterior
+fig, axs = plt.subplots(nrows=n_trials, figsize=(10.0, 1.5 * n_trials), sharex=True)
+colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
+markers = ["o", "D", 's', "v", "^", "<", ">", ]
+
+k = 0  # which phi to plot
+for j in range(n_trials):
+    for i, n_sequence in enumerate(n_sequences):
+        ax = axs[j]
+        ax.axvline(phis_true[k], color=colors[0], ls='--', alpha=0.7)
+        ax.axvline(phi_estimates[j, k, -1], color='red', ls='-', alpha=1.0)
+        p = posteriors[j, k, i, :]
+        ax.plot(
+            jnp.linspace(phi_range[0], phi_range[1], n_phis),
+            p / jnp.max(p),
+            ls=':',
+            marker=markers[i % len(markers)],
+            color=colors[i],
+            # alpha=(0.1 + i / len(n_sequences) * 0.8),
+            alpha=(i+1) / len(n_sequences),
+            markersize=3,
+            # label=r"$\phi_{true}=$" + f"{phis_true[k] / jnp.pi:0.2f}$\pi$",
+        )
+plt.show()
+io.save_figure(fig, 'test.pdf')
+
 #%% plot posterior, bias, and variance for one phase
 fig, axs = plt.subplots(nrows=3, figsize=(6.5, 6.0))
 colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
 markers = ["o", "D", 's', "v", "^", "<", ">", ]
 
-k = 1  # which phi to plot
+k = 0  # which phi to plot
 
 for i, n_sequence in enumerate(n_sequences):
     ax = axs[0]
     ax.axvline(phis_true[k], color=colors[0], ls='--', alpha=0.7)
-    p = posteriors[0, k, i, :]
+    p = posteriors[1, k, i, :]
     ax.plot(
         jnp.linspace(phi_range[0], phi_range[1], n_phis),
         p / jnp.max(p),
@@ -141,14 +168,18 @@ for i, n_sequence in enumerate(n_sequences):
         label=r"$\phi_{true}=$" + f"{phis_true[k] / jnp.pi:0.2f}$\pi$",
     )
 
+line_kwargs = dict(color='grey', alpha=0.6, ls='--')
 ax = axs[1]
-ax.plot(
+ax.errorbar(
     n_sequences,
     biases[:, k, :].mean(axis=0),
+    xerr=None,
+    yerr=jnp.var(biases[:, k, :], axis=0),
     color=colors[0],
     ls=':',
     marker=markers[0],
 )
+ax.axhline(0, **line_kwargs)
 ax.set(xscale="log")
 
 ax = axs[2]
@@ -159,8 +190,10 @@ ax.plot(
     ls=':',
     marker=markers[0],
 )
-ax.axhline(1/fi, color='grey', alpha=0.6, ls='--')
-ax.set(xscale="log")
+ax.plot(n_sequences, 1/(n_sequences * fi), **line_kwargs)
+ax.plot(n_sequences, 1/(n_sequences * n), **dict(color='black', alpha=0.8, ls=':'))
+ax.plot(n_sequences, 1/(n_sequences * n**2), **dict(color='black', alpha=0.8, ls=':'))
+ax.set(xscale="log", yscale='log')
 
 axs[0].set(xlabel="$\phi_j$", ylabel=r"p($\phi_j | \vec{s}$)")
 axs[1].set(xlabel="Sequence length, $m$", ylabel=r"Bias, $\langle \hat{\varphi} - \varphi \rangle$")

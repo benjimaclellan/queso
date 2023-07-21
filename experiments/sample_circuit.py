@@ -24,10 +24,11 @@ def sample_circuit(
         n_shots_test: int = 500,
         plot: bool = False,
         progress: bool = True,
+        **kwargs,
 ):
     # %%
     print(f"Initializing sensor n={n}, k={k}")
-    sensor = Sensor(n, k, backend='ket')
+    sensor = Sensor(n, k, backend='ket', **kwargs)
 
     #%%
     hf = h5py.File(io.path.joinpath("circ.h5"), "r")
@@ -35,13 +36,6 @@ def sample_circuit(
     theta = jnp.array(hf.get("theta"))
     mu = jnp.array(hf.get("mu"))
     hf.close()
-
-    #%%
-    # theta = jax.random.uniform(key, shape=sensor.theta.shape)
-    # mu = jax.random.uniform(key, shape=sensor.mu.shape)
-    #
-    # n_shots = 100
-    # n_shots_test = 100
 
     # %%
     print(f"Sampling {n_shots} shots for {n_phis} phase value between {phi_range[0]} and {phi_range[1]}.")

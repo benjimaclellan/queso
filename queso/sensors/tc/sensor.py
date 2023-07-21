@@ -9,10 +9,8 @@ from tensorcircuit.quantum import sample_bin2int, sample_int2bin
 import jax
 import jax.numpy as jnp
 
-
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")
-
 tc.set_contractor("auto")  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
 
 
@@ -23,39 +21,50 @@ class Sensor:
         k,
         contractor="auto",
         backend="ket",
-        preparation="cr_brick_wall",
-        interaction="rx",
-        detection="local",
+        **kwargs,
     ):
         self.n = n
         self.k = k
 
         if backend == "ket":
-            self._circ = tc.Circuit #(self.n)
+            self._circ = tc.Circuit
         elif backend == "dm":
-            self._circ = tc.DMCircuit #(self.n)
+            self._circ = tc.DMCircuit
         else:
             raise ValueError
 
         # tc.set_contractor(contractor)  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
 
-        if preparation == "cr_brick_wall":
-            self.preparation = preparation_cr_brick_wall
+        # default circuits
+        preparation = kwargs.get('preparation', "brick_wall_cr")
+        interaction = kwargs.get('interaction', "local_rx")
+        detection = kwargs.get('detection', "local_r")
+
+        if preparation == "brick_wall_cr":
+            self.preparation = brick_wall_cr
             self.theta = jnp.zeros([n, k, 6])
+        elif preparation == "local_r":
+            self.preparation = local_r
+            self.theta = jnp.zeros([n, 3])
         else:
             raise ValueError("Not a valid preparation layer.")
 
-        if interaction == "rx":
-            self.interaction = interaction_rx
+        if interaction == "local_rx":
+            self.interaction = local_rx
             self.phi = jnp.array(0.0)
         else:
             raise ValueError("Not a valid interaction layer.")
 
-        if detection == "local":
-            self.detection = detection_local
+        if detection == "local_r":
+            self.detection = local_r
             self.mu = jnp.zeros([n, 3])
+        elif detection == "brick_wall_cr":
+            self.detection = brick_wall_cr
+            self.mu = jnp.zeros([n, k, 6])
         else:
             raise ValueError("Not a valid detection layer.")
+
+        self.layers = dict(preparation=preparation, interaction=interaction, detection=detection)
 
         return
 
@@ -151,7 +160,7 @@ class Sensor:
 
 
 # preparation layers
-def preparation_cr_brick_wall(c, theta, n, k):
+def brick_wall_cr(c, theta, n, k):
     for j in range(k):
         for i in range(n):
             c.r(
@@ -184,14 +193,14 @@ def preparation_cr_brick_wall(c, theta, n, k):
 
 
 # interaction layers
-def interaction_rx(c, phi, n):
+def local_rx(c, phi, n):
     for i in range(n):
         c.rx(i, theta=phi)
     return c
 
 
 # detection layers
-def detection_local(c, mu, n, k):
+def local_r(c, mu, n, k):
     for i in range(n):
         c.r(
             i,

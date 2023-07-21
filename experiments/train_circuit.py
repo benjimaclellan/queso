@@ -24,10 +24,11 @@ def train_circuit(
     contractor: str = "auto",
     plot: bool = False,
     progress: bool = True,
+    **kwargs,
 ):
     #%%
     print(f"Initializing sensor n={n}, k={k}")
-    sensor = Sensor(n, k, backend='ket')
+    sensor = Sensor(n, k, backend='ket', **kwargs)
     phi = jnp.array(0.0)
 
     optimizer = optax.adam(learning_rate=lr)
@@ -75,6 +76,11 @@ def train_circuit(
     theta = params["theta"]
     mu = params["mu"]
 
+    # %% compute other quantities of interest and save
+    phis = (phi_range[1] - phi_range[0]) * jnp.arange(n_phis) / (n_phis - 1) + phi_range[0]
+    qfi_phis = jax.vmap(lambda phi: -loss_qfi(params={'theta': theta}, phi=phi))(phis)
+    cfi_phis = jax.vmap(lambda phi: -loss_cfi(params={'theta': theta, "mu": mu}, phi=phi))(phis)
+
     #%%
     if plot:
         # %% visualize
@@ -90,13 +96,21 @@ def train_circuit(
         #%%
         # sensor.circuit(theta, phi, mu).draw(output="text")
 
-    #%% compute other quantities of interest and save
-    phis = (phi_range[1] - phi_range[0]) * jnp.arange(n_phis) / (n_phis - 1) + phi_range[0]
-    qfi_phis = jax.vmap(lambda phi: -loss_qfi(params={'theta': theta}, phi=phi))(phis)
-    cfi_phis = jax.vmap(lambda phi: -loss_cfi(params={'theta': theta, "mu": mu}, phi=phi))(phis)
+        #%%
+        fig, axs = plt.subplots(ncols=1, nrows=2, sharex=True)
+        axs[0].plot(phis / jnp.pi, qfi_phis)
+        axs[1].plot(phis / jnp.pi, cfi_phis)
+        axs[0].set(ylabel="QFI")
+        axs[1].set(ylabel="CFI")
+        axs[-1].set(xlabel=r"$\phi$ (rad/$\pi$)")
+        for ax in axs:
+            ax.set(ylim=[0, 1.1 * n**2])
+        io.save_figure(fig, filename="qfi-cfi-phi")
+        fig.show()
 
     # %%
     metadata = dict(n=n, k=k, lr=lr)
+    metadata.update(sensor.layers)
     io.save_json(metadata, filename="circ-metadata.json")
 
     hf = h5py.File(io.path.joinpath("circ.h5"), "w")

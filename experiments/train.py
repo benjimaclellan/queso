@@ -1,9 +1,6 @@
+import time
 import jax
 import jax.numpy as jnp
-import matplotlib.pyplot
-import time
-import h5py
-import matplotlib.pyplot as plt
 
 from queso.io import IO
 from train_circuit import train_circuit
@@ -14,20 +11,23 @@ from train_nn import train_nn
 n = 4
 k = 4
 
-io = IO(folder=f"estimator-performance-n{n}-k{k}", include_date=True)
+io = IO(folder=f"circ-nonlocal-detection-n{n}-k{k}/", include_date=True, include_id=False)
 io.path.mkdir(parents=True, exist_ok=True)
 
-# %%
-phi_range = (0, jnp.pi / 2)
+# %% train circuit settings
+phi_range = (-jnp.pi/4, jnp.pi / 4)
 n_phis = 100
 n_steps = 20000
 lr = 1e-3
 key = jax.random.PRNGKey(time.time_ns())
 progress = True
 plot = True
+# circ_kwargs = dict(preparation="local_r", interaction="local_rx", detection="local_r")
+# circ_kwargs = dict(preparation="brick_wall_cr", interaction="rx", detection="local")
+circ_kwargs = dict(preparation="local_r", interaction="local_rx", detection="brick_wall_cr")
 
 #%%
-if False:
+if True:
     train_circuit(
         io=io,
         n=n,
@@ -40,14 +40,15 @@ if False:
         contractor="plain",
         progress=progress,
         plot=plot,
+        **circ_kwargs,
     )
 
-#%%
+#%% sample circuit settings
 n_shots = 5000
 n_shots_test = 1000
 
 #%%
-if False:
+if True:
     sample_circuit(
         io=io,
         n=n,
@@ -58,15 +59,15 @@ if False:
         n_shots=n_shots,
         n_shots_test=n_shots_test,
         plot=plot,
+        **circ_kwargs,
     )
 
-#%%
-# key = jax.random.PRNGKey(time.time_ns())
-key = jax.random.PRNGKey(0)
+#%% train estimator settings
+key = jax.random.PRNGKey(time.time_ns())
+# key = jax.random.PRNGKey(0)
 
-# n_steps = 50000
 n_epochs = 100
-batch_size = 50
+batch_size = 100
 n_grid = n_phis  # todo: make more general - not requiring matching training phis and grid
 nn_dims = [32, 32, 32, n_grid]
 lr = 1e-3
@@ -85,12 +86,10 @@ if True:
         lr=lr,
         n_epochs=n_epochs,
         batch_size=batch_size,
-        # batch_phis=batch_phis,
-        # batch_shots=batch_shots,
         plot=plot,
         progress=progress,
         from_checkpoint=from_checkpoint,
     )
 
-# %%
+# %% todo: benchmark estimator
 
