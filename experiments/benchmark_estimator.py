@@ -4,201 +4,189 @@ import tqdm
 import matplotlib.pyplot as plt
 from itertools import cycle
 import seaborn as sns
-from typing import Sequence
 import pandas as pd
 import h5py
 
 import jax
 import jax.numpy as jnp
-import optax
 from flax import linen as nn
-from flax.training import train_state, orbax_utils
-from orbax.checkpoint import PyTreeCheckpointer, Checkpointer, \
-    CheckpointManager, CheckpointManagerOptions, PyTreeCheckpointHandler
+from orbax.checkpoint import Checkpointer, PyTreeCheckpointHandler
 
 from queso.estimators.flax.dnn import BayesianDNNEstimator
 from queso.io import IO
-from queso.utils import get_machine_info
 
 
 #%%
-# io = IO(folder="2023-07-18_fig-example-n2-k1", verbose=False)
-# io = IO(folder="2023-07-21_estimator-performance-n2-k2", verbose=False)
-io = IO(folder="2023-07-21_circ-local-n4-k4", verbose=False)
+def benchmark_estimator(
+    io: IO,
+    key: jax.random.PRNGKey = None,
+    n_trials: int = 50,
+    phis_inds: jnp.array = jnp.array([0]),
+    n_sequences: jnp.array = jnp.round(jnp.logspace(0, 2, 10)).astype("int"),
+    plot: bool = True,
+):
 
-#%%
-hf = h5py.File(io.path.joinpath("samples.h5"), "r")
-print(hf.keys())
-shots = jnp.array(hf.get("shots"))
-probs = jnp.array(hf.get("probs"))
-phis = jnp.array(hf.get("phis"))
-hf.close()
+    #%%
+    # io = IO(folder="2023-07-18_fig-example-n2-k1", verbose=False)
+    # io = IO(folder="2023-07-21_estimator-performance-n2-k2", verbose=False)
+    # io = IO(folder="2023-07-21_circ-local-n4-k4", verbose=False)
 
-hf = h5py.File(io.path.joinpath("circ.h5"), "r")
-print(hf.keys())
-fi = jnp.array(hf.get("fi_train"))[-1]
-hf.close()
+    #%%
+    hf = h5py.File(io.path.joinpath("samples.h5"), "r")
+    print(hf.keys())
+    shots = jnp.array(hf.get("shots_test"))
+    phis = jnp.array(hf.get("phis"))
+    hf.close()
 
-n = shots.shape[2]
-n_phis = shots.shape[0]
-phi_range = (jnp.min(phis), jnp.max(phis))
+    hf = h5py.File(io.path.joinpath("circ.h5"), "r")
+    print(hf.keys())
+    fi = jnp.array(hf.get("fi_train"))[-1]
+    hf.close()
 
-#%%
-ckpt_dir = io.path.joinpath("ckpts")
-ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.
-restored = ckptr.restore(ckpt_dir, item=None)
-nn_dims = restored['nn_dims']
+    n = shots.shape[2]
+    n_phis = shots.shape[0]
+    phi_range = (jnp.min(phis), jnp.max(phis))
 
-#%%
-key = jax.random.PRNGKey(time.time_ns())
-model = BayesianDNNEstimator(nn_dims)
+    #%%
+    ckpt_dir = io.path.joinpath("ckpts")
+    ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.
+    restored = ckptr.restore(ckpt_dir, item=None)
+    nn_dims = restored['nn_dims']
 
-#%%
-n_trials = 50
+    #%%
+    model = BayesianDNNEstimator(nn_dims)
 
-phis_inds = jnp.array([50])
-phis_true = phis[phis_inds]
+    #%%
+    phis_true = phis[phis_inds]
+    n_sequence_max = n_sequences[-1]
 
-# n_sequences = (1, 10, 100, 1000)
-n_sequences = jnp.round(jnp.logspace(0, 2, 10)).astype("int")
-# n_sequences = jnp.round(jnp.linspace(1, 10**3, 20)).astype("int")
-n_sequence_max = n_sequences[-1]
+    #%%
+    def select_sample_sequence(shots, key):
+        shot_inds = jax.random.randint(key, shape=(n_sequence_max,), minval=0, maxval=shots.shape[1])
+        shots_phis = shots[phis_inds, :, :]
+        sequences = shots_phis[:, shot_inds, :]
+        return sequences
 
+    if key is None:
+        key = jax.random.PRNGKey(time.time_ns())
+    keys = jax.random.split(key, n_trials)
 
-#%%
-def select_sample_sequence(shots, key):
-    shot_inds = jax.random.randint(key, shape=(n_sequence_max,), minval=0, maxval=shots.shape[1])
-    shots_phis = shots[phis_inds, :, :]
-    sequences = shots_phis[:, shot_inds, :]
-    return sequences
+    sequences = jnp.stack([select_sample_sequence(shots, key) for key in keys], axis=0)
+    assert sequences.shape == (n_trials, len(phis_true), n_sequence_max, n)
 
+    #%%
+    pred = model.apply({'params': restored['params']}, sequences)
+    pred = nn.activation.softmax(pred, axis=-1)
+    print(pred.shape)
+    assert pred.shape == (n_trials, len(phis_true), n_sequence_max, n_phis)
 
-# key = jax.random.PRNGKey(0)
-key = jax.random.PRNGKey(time.time_ns())
-keys = jax.random.split(key, n_trials)
+    #%%
+    def posterior_product(pred, n_sequence):
+        tmp = pred[:, :, :n_sequence, :]
+        tmp = jnp.log(tmp).sum(axis=-2, keepdims=False)  # sum log posterior probs for each individual input sample
+        tmp = jnp.exp(tmp - tmp.max(axis=-1, keepdims=True))  # help with underflow in normalization
+        posteriors = tmp / tmp.sum(axis=-1, keepdims=True)
+        return posteriors
 
-sequences = jnp.stack([select_sample_sequence(shots, key) for key in keys], axis=0)
-assert sequences.shape == (n_trials, len(phis_true), n_sequence_max, n)
+    def estimate(posteriors, phis):
+        return phis[jnp.argmax(posteriors, axis=-1)]
 
-#%%
-pred = model.apply({'params': restored['params']}, sequences)
-pred = nn.activation.softmax(pred, axis=-1)
-print(pred.shape)
-assert pred.shape == (n_trials, len(phis_true), n_sequence_max, n_phis)
+    @jax.jit
+    def bias(phi_estimates, phis_true):
+        biases = phi_estimates - phis_true[None, :, None]
+        return biases
 
+    @jax.jit
+    def variance(posteriors, phi_estimates, phis):
+        variances = (posteriors * jnp.power(phi_estimates[:, :, :, None] - phis[None, None, None, :], 2)).sum(axis=-1)
+        return variances
 
-#%%
-def posterior_product(pred, n_sequence):
-    tmp = pred[:, :, :n_sequence, :]
-    tmp = jnp.log(tmp).sum(axis=-2, keepdims=False)  # sum log posterior probs for each individual input sample
-    tmp = jnp.exp(tmp - tmp.max(axis=-1, keepdims=True))  # help with underflow in normalization
-    posteriors = tmp / tmp.sum(axis=-1, keepdims=True)
-    return posteriors
+    posteriors = jnp.stack([posterior_product(pred, n_sequence) for n_sequence in n_sequences], axis=2)
+    assert posteriors.shape == (n_trials, len(phis_true), len(n_sequences), n_phis)
 
+    phi_estimates = estimate(posteriors, phis)
+    biases = bias(phi_estimates, phis_true)
+    variances = variance(posteriors, phi_estimates, phis)
 
-def estimate(posteriors, phis):
-    return phis[jnp.argmax(posteriors, axis=-1)]
+    #%% plot updated posterior distribution for n_trials different sequence samples
+    if plot:
+        fig, axs = plt.subplots(nrows=n_trials, ncols=phis_inds.shape[0], figsize=(10.0, 1.5 * n_trials), sharex=True, sharey=True)
+        colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
+        markers = ["o", "D", 's', "v", "^", "<", ">", ]
 
+        for k in range(phis_inds.shape[0]):
+            for j in range(n_trials):
+                for i, n_sequence in enumerate(n_sequences):
+                    ax = axs[j, k]
+                    ax.axvline(phis_true[k], color='black', ls='-', alpha=1.0)
+                    ax.axvline(phi_estimates[j, k, -1], color='red', ls='-', alpha=1.0)
+                    p = posteriors[j, k, i, :]
+                    ax.plot(
+                        jnp.linspace(phi_range[0], phi_range[1], n_phis),
+                        p / jnp.max(p),
+                        ls=':',
+                        marker=markers[i % len(markers)],
+                        color=colors[i],
+                        alpha=(i+1) / len(n_sequences),
+                        markersize=3,
+                )
+        io.save_figure(fig, 'trials_n_sequences.pdf')
+        del fig
 
-@jax.jit
-def bias(phi_estimates, phis_true):
-    biases = phi_estimates - phis_true[None, :, None]
-    return biases
+    #%% plot posterior, bias, and variance for one phase
+    for k in range(phis_inds.shape[0]):
+        fig, axs = plt.subplots(nrows=3, figsize=(6.5, 6.0))
+        colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
+        markers = ["o", "D", 's', "v", "^", "<", ">", ]
 
+        for i, n_sequence in enumerate(n_sequences):
+            ax = axs[0]
+            ax.axvline(phis_true[k], color=colors[0], ls='--', alpha=0.7)
+            p = posteriors[1, k, i, :]
+            ax.plot(
+                jnp.linspace(phi_range[0], phi_range[1], n_phis),
+                p / jnp.max(p),
+                ls=':',
+                marker=markers[i % len(markers)],
+                color=colors[i],
+                # alpha=(0.1 + i / len(n_sequences) * 0.8),
+                alpha=(i+1) / len(n_sequences),
+                markersize=3,
+                label=r"$\phi_{true}=$" + f"{phis_true[k] / jnp.pi:0.2f}$\pi$",
+            )
 
-@jax.jit
-def variance(posteriors, phi_estimates, phis):
-    variances = (posteriors * jnp.power(phi_estimates[:, :, :, None] - phis[None, None, None, :], 2)).sum(axis=-1)
-    return variances
-
-
-posteriors = jnp.stack([posterior_product(pred, n_sequence) for n_sequence in n_sequences], axis=2)
-assert posteriors.shape == (n_trials, len(phis_true), len(n_sequences), n_phis)
-
-phi_estimates = estimate(posteriors, phis)
-biases = bias(phi_estimates, phis_true)
-variances = variance(posteriors, phi_estimates, phis)
-
-#%% plot posterior
-fig, axs = plt.subplots(nrows=n_trials, figsize=(10.0, 1.5 * n_trials), sharex=True)
-colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
-markers = ["o", "D", 's', "v", "^", "<", ">", ]
-
-k = 0  # which phi to plot
-for j in range(n_trials):
-    for i, n_sequence in enumerate(n_sequences):
-        ax = axs[j]
-        ax.axvline(phis_true[k], color=colors[0], ls='--', alpha=0.7)
-        ax.axvline(phi_estimates[j, k, -1], color='red', ls='-', alpha=1.0)
-        p = posteriors[j, k, i, :]
-        ax.plot(
-            jnp.linspace(phi_range[0], phi_range[1], n_phis),
-            p / jnp.max(p),
+        line_kwargs = dict(color='grey', alpha=0.6, ls='--')
+        ax = axs[1]
+        ax.errorbar(
+            n_sequences,
+            biases[:, k, :].mean(axis=0),
+            xerr=None,
+            yerr=jnp.var(biases[:, k, :], axis=0),
+            color=colors[0],
             ls=':',
-            marker=markers[i % len(markers)],
-            color=colors[i],
-            # alpha=(0.1 + i / len(n_sequences) * 0.8),
-            alpha=(i+1) / len(n_sequences),
-            markersize=3,
-            # label=r"$\phi_{true}=$" + f"{phis_true[k] / jnp.pi:0.2f}$\pi$",
+            marker=markers[0],
         )
-plt.show()
-io.save_figure(fig, 'test.pdf')
+        ax.axhline(0, **line_kwargs)
+        ax.set(xscale="log")
 
-#%% plot posterior, bias, and variance for one phase
-fig, axs = plt.subplots(nrows=3, figsize=(6.5, 6.0))
-colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
-markers = ["o", "D", 's', "v", "^", "<", ">", ]
+        ax = axs[2]
+        ax.plot(
+            n_sequences,
+            variances[:, k, :].mean(axis=0),
+            color=colors[0],
+            ls=':',
+            marker=markers[0],
+        )
+        ax.plot(n_sequences, 1/(n_sequences * fi), label='CRB', **line_kwargs)
+        ax.plot(n_sequences, 1/(n_sequences * n), label='SQL', **dict(color='black', alpha=0.8, ls=':'))
+        ax.plot(n_sequences, 1/(n_sequences * n**2), label='HL', **dict(color='black', alpha=0.8, ls=':'))
+        ax.set(xscale="log", yscale='log')
 
-k = 0  # which phi to plot
+        axs[0].set(xlabel="$\phi_j$", ylabel=r"p($\phi_j | \vec{s}$)")
+        axs[1].set(xlabel="Sequence length, $m$", ylabel=r"Bias, $\langle \hat{\varphi} - \varphi \rangle$")
+        axs[2].set(xlabel="Sequence length, $m$", ylabel=r"Variance, $\langle \Delta^2 \hat{\phi} \rangle$")
 
-for i, n_sequence in enumerate(n_sequences):
-    ax = axs[0]
-    ax.axvline(phis_true[k], color=colors[0], ls='--', alpha=0.7)
-    p = posteriors[1, k, i, :]
-    ax.plot(
-        jnp.linspace(phi_range[0], phi_range[1], n_phis),
-        p / jnp.max(p),
-        ls=':',
-        marker=markers[i % len(markers)],
-        color=colors[i],
-        # alpha=(0.1 + i / len(n_sequences) * 0.8),
-        alpha=(i+1) / len(n_sequences),
-        markersize=3,
-        label=r"$\phi_{true}=$" + f"{phis_true[k] / jnp.pi:0.2f}$\pi$",
-    )
-
-line_kwargs = dict(color='grey', alpha=0.6, ls='--')
-ax = axs[1]
-ax.errorbar(
-    n_sequences,
-    biases[:, k, :].mean(axis=0),
-    xerr=None,
-    yerr=jnp.var(biases[:, k, :], axis=0),
-    color=colors[0],
-    ls=':',
-    marker=markers[0],
-)
-ax.axhline(0, **line_kwargs)
-ax.set(xscale="log")
-
-ax = axs[2]
-ax.plot(
-    n_sequences,
-    variances[:, k, :].mean(axis=0),
-    color=colors[0],
-    ls=':',
-    marker=markers[0],
-)
-ax.plot(n_sequences, 1/(n_sequences * fi), **line_kwargs)
-ax.plot(n_sequences, 1/(n_sequences * n), **dict(color='black', alpha=0.8, ls=':'))
-ax.plot(n_sequences, 1/(n_sequences * n**2), **dict(color='black', alpha=0.8, ls=':'))
-ax.set(xscale="log", yscale='log')
-
-axs[0].set(xlabel="$\phi_j$", ylabel=r"p($\phi_j | \vec{s}$)")
-axs[1].set(xlabel="Sequence length, $m$", ylabel=r"Bias, $\langle \hat{\varphi} - \varphi \rangle$")
-
-io.save_figure(fig, filename="bias-variance.pdf")
-fig.tight_layout()
-plt.show()
+        io.save_figure(fig, filename=f"bias-variance/{k}_{phis_true[k].item()}.png")
+        fig.tight_layout()
+        plt.show()
 

@@ -3,28 +3,32 @@ import jax
 import jax.numpy as jnp
 
 from queso.io import IO
-from train_circuit import train_circuit
-from sample_circuit import sample_circuit
-from train_nn import train_nn
+from experiments.train_circuit import train_circuit
+from experiments.sample_circuit import sample_circuit
+from experiments.train_nn import train_nn
+from experiments.benchmark_estimator import benchmark_estimator
 
 #%%
-n = 4
-k = 4
+n = 2
+k = 2
 
-io = IO(folder=f"circ-nonlocal-detection-n{n}-k{k}/", include_date=True, include_id=False)
+io = IO(folder=f"circ-nonlocal-preparation-n{n}-k{k}/", include_date=True, include_id=False)
 io.path.mkdir(parents=True, exist_ok=True)
 
+key = jax.random.PRNGKey(time.time_ns())
+# key = jax.random.PRNGKey(0)
+
 # %% train circuit settings
+# circ_kwargs = dict(preparation="local_r", interaction="local_rx", detection="brick_wall_cr")
+circ_kwargs = dict(preparation="brick_wall_cr", interaction="local_rx", detection="local_r")
+
 phi_range = (-jnp.pi/4, jnp.pi / 4)
 n_phis = 100
 n_steps = 20000
 lr = 1e-3
-key = jax.random.PRNGKey(time.time_ns())
+_, key = jax.random.split(key)
 progress = True
 plot = True
-# circ_kwargs = dict(preparation="local_r", interaction="local_rx", detection="local_r")
-# circ_kwargs = dict(preparation="brick_wall_cr", interaction="rx", detection="local")
-circ_kwargs = dict(preparation="local_r", interaction="local_rx", detection="brick_wall_cr")
 
 #%%
 if True:
@@ -46,6 +50,7 @@ if True:
 #%% sample circuit settings
 n_shots = 5000
 n_shots_test = 1000
+_, key = jax.random.split(key)
 
 #%%
 if True:
@@ -63,9 +68,7 @@ if True:
     )
 
 #%% train estimator settings
-key = jax.random.PRNGKey(time.time_ns())
-# key = jax.random.PRNGKey(0)
-
+_, key = jax.random.split(key)
 n_epochs = 100
 batch_size = 100
 n_grid = n_phis  # todo: make more general - not requiring matching training phis and grid
@@ -91,5 +94,21 @@ if True:
         from_checkpoint=from_checkpoint,
     )
 
-# %% todo: benchmark estimator
+# %% benchmark estimator
+_, key = jax.random.split(key)
+n_trials = 50
+phis_inds = jnp.array([0, 25, 50])
+n_sequences = jnp.round(jnp.logspace(0, 3, 10)).astype("int")
 
+#%%
+if True:
+    benchmark_estimator(
+        io=io,
+        key=key,
+        n_trials=n_trials,
+        phis_inds=phis_inds,
+        n_sequences=n_sequences,
+        plot=True,
+    )
+
+#%%

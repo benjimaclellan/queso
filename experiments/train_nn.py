@@ -30,8 +30,6 @@ def train_nn(
     lr: float = 1e-2,
     n_epochs: int = 10,
     batch_size: int = 10,
-    # batch_phis: int = 32,
-    # batch_shots: int = 1,
     plot: bool = False,
     progress: bool = True,
     from_checkpoint: bool = True,
@@ -160,31 +158,6 @@ def train_nn(
     pbar.close()
     metrics = pd.DataFrame(metrics)
 
-    #%%
-    #
-    # metrics = []
-    # for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress), mininterval=0.333)):
-    #     # generate batch
-    #     key = jax.random.PRNGKey(time.time_ns())
-    #     subkeys = jax.random.split(key, num=2)
-    #
-    #     inds = jax.random.randint(subkeys[0], minval=0, maxval=n_phis, shape=(batch_phis,))
-    #
-    #     x_batch = x[inds, :, :]
-    #     idx = jax.random.randint(subkeys[1], minval=0, maxval=n_shots, shape=(batch_phis, batch_shots, 1))
-    #     x_batch = jnp.take_along_axis(x_batch, idx, axis=1)
-    #
-    #     y_batch = jnp.repeat(jnp.expand_dims(y[inds], 1), repeats=batch_shots, axis=1)
-    #     batch = (x_batch, y_batch)
-    #
-    #     state, loss = train_step(state, batch)
-    #     if progress:
-    #         pbar.set_description(f"Step {i} | Loss: {loss:.10f}", refresh=False)
-    #
-    #     metrics.append(dict(step=i, loss=loss))
-    #
-    # metrics = pd.DataFrame(metrics)
-
     #%% compute posterior
     assert n_phis == n_grid
 
@@ -232,12 +205,10 @@ def train_nn(
         bit_strings = jnp.expand_dims(jnp.arange(2 ** n), 1).astype(jnp.uint8)
         bit_strings = jnp.unpackbits(bit_strings, axis=1, bitorder='big')[:, -n:]
 
-        # pred = state.apply_fn({'params': state.params}, bit_strings)
         pred = model.apply({'params': state.params}, bit_strings)
         pred = jax.nn.softmax(pred, axis=-1)
-        # pred = nn.activation.softmax(jnp.exp(pred), axis=-1)
 
-        fig, axs = plt.subplots(nrows=3, figsize=[9, 6])
+        fig, axs = plt.subplots(nrows=3, figsize=[9, 6], sharex=True)
         colors = sns.color_palette('deep', n_colors=bit_strings.shape[0])
         markers = cycle(["o", "D", 's', "v", "^", "<", ">", ])
         for i in range(bit_strings.shape[0]):
@@ -256,7 +227,6 @@ def train_nn(
 
         axs[-1].set(xlabel=r"$\phi_j$")
         axs[0].set(ylabel=r"Posterior distribution, Pr($\phi_j | b_i$)")
-        # ax.legend()
         io.save_figure(fig, filename="posterior-dist.png")
 
         plt.show()
@@ -286,7 +256,6 @@ def train_nn(
 
     #%%
     ckpt = {'params': state.params, 'nn_dims': nn_dims}
-
     ckpt_dir = io.path.joinpath("ckpts")
 
     ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.

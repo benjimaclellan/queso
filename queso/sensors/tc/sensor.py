@@ -49,9 +49,11 @@ class Sensor:
         else:
             raise ValueError("Not a valid preparation layer.")
 
+        self.phi = jnp.array(0.0)
         if interaction == "local_rx":
             self.interaction = local_rx
-            self.phi = jnp.array(0.0)
+        elif interaction == "single_rx":
+            self.interaction = single_rx
         else:
             raise ValueError("Not a valid interaction layer.")
 
@@ -171,7 +173,6 @@ def brick_wall_cr(c, theta, n, k):
             )
 
         for i in range(0, n - 1, 2):
-            # c.cnot(i, i + 1)
             c.cr(
                 i,
                 i + 1,
@@ -181,7 +182,6 @@ def brick_wall_cr(c, theta, n, k):
             )
 
         for i in range(1, n - 1, 2):
-            # c.cnot(i, i + 1)
             c.cr(
                 i,
                 i + 1,
@@ -196,6 +196,11 @@ def brick_wall_cr(c, theta, n, k):
 def local_rx(c, phi, n):
     for i in range(n):
         c.rx(i, theta=phi)
+    return c
+
+
+def single_rx(c, phi, n):
+    c.rx(0, theta=phi)
     return c
 
 
