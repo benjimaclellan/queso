@@ -25,6 +25,18 @@ def _default_path():
     return default_path
 
 
+def _default_fig_path():
+    config = pathlib.Path(__file__).parent.parent.joinpath("config.yaml")
+    print(config)
+    try:
+        with open(config, "r") as fid:
+            file = yaml.safe_load(fid)
+            default_path = file["fig_path"]
+    except:
+        default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
+    return default_path
+
+
 def current_time():
     """
     Returns current date and time in a consistent format, used for monitoring long-running measurements

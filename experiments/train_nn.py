@@ -94,7 +94,11 @@ def train_nn(
             #     y_batch
             # ).mean(axis=(0, 1))
 
+            # cross-entropy loss
             loss = -jnp.sum(y_batch[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
+
+            # MSE loss
+            # loss = jnp.sum((y_batch[:, None, :] - jax.nn.log_softmax(logits, axis=-1))**2, axis=-1).mean(axis=(0, 1))
 
             # loss += l2_loss()
             return loss
@@ -202,9 +206,7 @@ def train_nn(
         io.save_figure(fig, filename="nn-loss.png")
 
         # %% run prediction on all possible inputs
-        bit_strings = jnp.expand_dims(jnp.arange(2 ** n), 1).astype(jnp.uint8)
-        bit_strings = jnp.unpackbits(bit_strings, axis=1, bitorder='big')[:, -n:]
-
+        bit_strings = sample_int2bin(jnp.arange(2 ** n), n)
         pred = model.apply({'params': state.params}, bit_strings)
         pred = jax.nn.softmax(pred, axis=-1)
 

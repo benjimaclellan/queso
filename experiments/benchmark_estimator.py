@@ -27,11 +27,6 @@ def benchmark_estimator(
 ):
 
     #%%
-    # io = IO(folder="2023-07-18_fig-example-n2-k1", verbose=False)
-    # io = IO(folder="2023-07-21_estimator-performance-n2-k2", verbose=False)
-    # io = IO(folder="2023-07-21_circ-local-n4-k4", verbose=False)
-
-    #%%
     hf = h5py.File(io.path.joinpath("samples.h5"), "r")
     print(hf.keys())
     shots = jnp.array(hf.get("shots_test"))
@@ -82,6 +77,7 @@ def benchmark_estimator(
 
     #%%
     def posterior_product(pred, n_sequence):
+        # shape is of [n_trials, n_phis_true, n_sequences, n_grid|n_phis]
         tmp = pred[:, :, :n_sequence, :]
         tmp = jnp.log(tmp).sum(axis=-2, keepdims=False)  # sum log posterior probs for each individual input sample
         tmp = jnp.exp(tmp - tmp.max(axis=-1, keepdims=True))  # help with underflow in normalization
@@ -104,9 +100,20 @@ def benchmark_estimator(
     posteriors = jnp.stack([posterior_product(pred, n_sequence) for n_sequence in n_sequences], axis=2)
     assert posteriors.shape == (n_trials, len(phis_true), len(n_sequences), n_phis)
 
-    phi_estimates = estimate(posteriors, phis)
-    biases = bias(phi_estimates, phis_true)
-    variances = variance(posteriors, phi_estimates, phis)
+    phis_estimates = estimate(posteriors, phis)
+    biases = bias(phis_estimates, phis_true)
+    variances = variance(posteriors, phis_estimates, phis)
+
+    #%%
+    hf = h5py.File(io.path.joinpath("estimates.h5"), "w")
+    hf.create_dataset("phis_estimates", data=phis_estimates)
+    hf.create_dataset("phis_true", data=phis_true)
+    hf.create_dataset("n_sequences", data=n_sequences)
+    hf.create_dataset("posteriors", data=posteriors)
+    hf.create_dataset("biases", data=biases)
+    hf.create_dataset("variances", data=variances)
+    hf.create_dataset("phis", data=phis)
+    hf.close()
 
     #%% plot updated posterior distribution for n_trials different sequence samples
     if plot:
@@ -119,10 +126,10 @@ def benchmark_estimator(
                 for i, n_sequence in enumerate(n_sequences):
                     ax = axs[j, k]
                     ax.axvline(phis_true[k], color='black', ls='-', alpha=1.0)
-                    ax.axvline(phi_estimates[j, k, -1], color='red', ls='-', alpha=1.0)
+                    ax.axvline(phis_estimates[j, k, -1], color='red', ls='-', alpha=1.0)
                     p = posteriors[j, k, i, :]
                     ax.plot(
-                        jnp.linspace(phi_range[0], phi_range[1], n_phis),
+                        phis,
                         p / jnp.max(p),
                         ls=':',
                         marker=markers[i % len(markers)],
@@ -189,4 +196,3 @@ def benchmark_estimator(
         io.save_figure(fig, filename=f"bias-variance/{k}_{phis_true[k].item()}.png")
         fig.tight_layout()
         plt.show()
-

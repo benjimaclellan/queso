@@ -11,20 +11,19 @@ from experiments.train_nn import train_nn
 from experiments.benchmark_estimator import benchmark_estimator
 
 
+#%%
 if __name__ == "__main__":
     # %%
     parser = argparse.ArgumentParser()
-    parser.add_argument("--folder", type=str, default="queso")
-    parser.add_argument("--n", type=int, default=2)
-    parser.add_argument("--k", type=int, default=2)
-    parser.add_argument("--ansatz", type=str)
+    parser.add_argument("--folder", type=str, default="nonlocal")
+    parser.add_argument("--n", type=int, default=10)
+    parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--seed", type=int, default=None)
     args = parser.parse_args()
 
     folder = args.folder
     n = args.n
     k = args.k
-    ansatz = args.ansatz
     seed = args.seed if args.seed is not None else time.time_ns()
 
     # %%
@@ -38,12 +37,12 @@ if __name__ == "__main__":
     key = jax.random.PRNGKey(seed)
 
     # %% train circuit settings
-    # circ_kwargs = dict(preparation="local_r", interaction="local_rx", detection="brick_wall_cr")
     circ_kwargs = dict(
         preparation="brick_wall_cr", interaction="local_rx", detection="local_r"
+        # preparation="local_r", interaction="local_rx", detection="local_r"
     )
 
-    phi_range = (-jnp.pi / 4, jnp.pi / 4)
+    phi_range = (-jnp.pi / 12, jnp.pi / 12)
     n_phis = 100
     n_steps = 20000
     lr = 1e-3
@@ -90,11 +89,11 @@ if __name__ == "__main__":
 
     # %% train estimator settings
     _, key = jax.random.split(key)
-    n_epochs = 100
+    n_epochs = 400
     batch_size = 100
     n_grid = n_phis  # todo: make more general - not requiring matching training phis and grid
     nn_dims = [32, 32, 32, n_grid]
-    lr = 1e-3
+    lr = 1e-2
     plot = True
     progress = True
     from_checkpoint = False
@@ -117,9 +116,9 @@ if __name__ == "__main__":
 
     # %% benchmark estimator
     _, key = jax.random.split(key)
-    n_trials = 50
-    phis_inds = jnp.array([0, 25, 50])
-    n_sequences = jnp.round(jnp.logspace(0, 3, 10)).astype("int")
+    n_trials = 100
+    phis_inds = jnp.arange(0, 100, 10)
+    n_sequences = jnp.round(jnp.logspace(0, 4, 20)).astype("int")
 
     # %%
     if True:
@@ -129,7 +128,7 @@ if __name__ == "__main__":
             n_trials=n_trials,
             phis_inds=phis_inds,
             n_sequences=n_sequences,
-            plot=True,
+            plot=False,
         )
 
     # %%
