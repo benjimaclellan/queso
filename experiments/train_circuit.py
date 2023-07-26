@@ -12,6 +12,7 @@ from queso.io import IO
 import h5py
 
 
+#%%
 def train_circuit(
     io: IO,
     n: int,
@@ -26,9 +27,10 @@ def train_circuit(
     progress: bool = True,
     **kwargs,
 ):
+
     #%%
     print(f"Initializing sensor n={n}, k={k}")
-    sensor = Sensor(n, k, backend='ket', **kwargs)
+    sensor = Sensor(n, k, **kwargs)
     phi = jnp.array(0.0)
 
     optimizer = optax.adam(learning_rate=lr)

@@ -20,12 +20,12 @@ class Sensor:
         n,
         k,
         contractor="auto",
-        backend="ket",
         **kwargs,
     ):
         self.n = n
         self.k = k
 
+        backend = kwargs.get('backend', "ket")
         if backend == "ket":
             self._circ = tc.Circuit
         elif backend == "dm":
@@ -196,6 +196,12 @@ def brick_wall_cr(c, theta, n, k):
 def local_rx(c, phi, n):
     for i in range(n):
         c.rx(i, theta=phi)
+    return c
+
+
+def local_depolarizing(c, phi, n):
+    for i in range(n):
+        c.depolarizing(i, phi)
     return c
 
 

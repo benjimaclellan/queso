@@ -1,4 +1,5 @@
 import argparse
+from dataclasses import dataclass, field
 
 import time
 import jax
@@ -13,11 +14,25 @@ from experiments.benchmark_estimator import benchmark_estimator
 
 #%%
 if __name__ == "__main__":
+
+    #%%
+    @dataclass
+    class Configuration:
+        folder: str = None
+        seed: int = None
+
+        n: int = 2
+        k: int = 2
+
+
+    d = Configuration()
+
+
     # %%
     parser = argparse.ArgumentParser()
-    parser.add_argument("--folder", type=str, default="nonlocal")
-    parser.add_argument("--n", type=int, default=10)
-    parser.add_argument("--k", type=int, default=10)
+    parser.add_argument("--folder", type=str, default="nonlocal-det-single-int")
+    parser.add_argument("--n", type=int, default=2)
+    parser.add_argument("--k", type=int, default=2)
     parser.add_argument("--seed", type=int, default=None)
     args = parser.parse_args()
 
@@ -38,9 +53,11 @@ if __name__ == "__main__":
 
     # %% train circuit settings
     circ_kwargs = dict(
-        preparation="brick_wall_cr", interaction="local_rx", detection="local_r"
+        # preparation="brick_wall_cr", interaction="local_rx", detection="local_r"
+        preparation="brick_wall_cr", interaction="single_rx", detection="brick_wall_cr"
         # preparation="local_r", interaction="local_rx", detection="local_r"
     )
+    circ_kwargs.update(dict(backend="dm"))
 
     phi_range = (-jnp.pi / 12, jnp.pi / 12)
     n_phis = 100
@@ -61,7 +78,6 @@ if __name__ == "__main__":
             n_phis=n_phis,
             n_steps=n_steps,
             lr=lr,
-            contractor="plain",
             progress=progress,
             plot=plot,
             **circ_kwargs,
