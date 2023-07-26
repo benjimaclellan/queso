@@ -89,11 +89,11 @@ if __name__ == "__main__":
 
     # %% train estimator settings
     _, key = jax.random.split(key)
-    n_epochs = 400
-    batch_size = 100
+    n_epochs = 1000
+    batch_size = 50
     n_grid = n_phis  # todo: make more general - not requiring matching training phis and grid
-    nn_dims = [32, 32, 32, n_grid]
-    lr = 1e-2
+    nn_dims = [32, 32, n_grid]
+    lr = 1e-3
     plot = True
     progress = True
     from_checkpoint = False

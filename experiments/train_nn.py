@@ -25,7 +25,6 @@ def train_nn(
     io: IO,
     key: jax.random.PRNGKey,  # todo: use provided key for reproducibility
     nn_dims: Sequence[int],
-    n_steps: int = 50000,
     n_grid: int = 50,
     lr: float = 1e-2,
     n_epochs: int = 10,
@@ -122,13 +121,14 @@ def train_nn(
             print(f"Random initialization of parameters")
 
         # print("Initial parameters", params)
-        schedule = optax.polynomial_schedule(
-            init_value=lr,
-            end_value=lr**2,
-            power=1,
-            transition_steps=n_steps,
-            # transition_begin=n_steps//2,
-        )
+        schedule = optax.constant_schedule(lr)
+        # schedule = optax.polynomial_schedule(
+        #     init_value=lr,
+        #     end_value=lr**2,
+        #     power=1,
+        #     transition_steps=n_steps,
+        #     # transition_begin=n_steps//2,
+        # )
         tx = optax.adam(learning_rate=schedule)
         # tx = optax.adamw(learning_rate=learning_rate, weight_decay=1e-5)
 
@@ -145,8 +145,8 @@ def train_nn(
     pbar = tqdm.tqdm(total=n_epochs * n_batches, disable=(not progress), mininterval=0.333)
     for i in range(n_epochs):
         # shuffle shots
-        subkeys = jax.random.split(keys[i], n_phis)
-        x = jnp.stack([jax.random.permutation(subkey, x[k, :, :]) for k, subkey in enumerate(subkeys)])
+        # subkeys = jax.random.split(keys[i], n_phis)
+        # x = jnp.stack([jax.random.permutation(subkey, x[k, :, :]) for k, subkey in enumerate(subkeys)])
 
         for j in range(n_batches):
             x_batch = x[:, j * batch_size : (j + 1) * batch_size, :]
