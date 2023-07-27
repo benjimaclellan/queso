@@ -2,6 +2,7 @@ import time
 import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
+import h5py
 
 import jax
 import jax.numpy as jnp
@@ -9,26 +10,28 @@ import optax
 
 from queso.sensors.tc.sensor import Sensor, sample_bin2int
 from queso.io import IO
-import h5py
+from queso.configs import Configuration
 
 
 # %%
 def sample_circuit(
         io: IO,
-        n: int,
-        k: int,
+        config: Configuration,
         key: jax.random.PRNGKey,
-        phi_range: tuple,
-        n_phis: int = 10,
-        n_shots: int = 1000,
-        n_shots_test: int = 500,
         plot: bool = False,
         progress: bool = True,
-        **kwargs,
 ):
+    n = config.n
+    k = config.k
+    phi_range = config.phi_range
+    n_phis = config.n_phis
+    n_shots = config.n_shots
+    n_shots_test = config.n_shots_test
+    kwargs = dict(preparation=config.preparation, interaction=config.interaction, detection=config.detection, backend=config.backend)
+
     # %%
     print(f"Initializing sensor n={n}, k={k}")
-    sensor = Sensor(n, k, backend='ket', **kwargs)
+    sensor = Sensor(n, k, **kwargs)
 
     #%%
     hf = h5py.File(io.path.joinpath("circ.h5"), "r")
@@ -42,7 +45,7 @@ def sample_circuit(
     phis = (phi_range[1] - phi_range[0]) * jnp.arange(n_phis) / (n_phis - 1) + phi_range[0]
 
     t0 = time.time()
-    shots, probs = sensor.sample_over_phases(theta, phis, mu, n_shots=n_shots + n_shots_test, verbose=True)
+    shots, probs = sensor.sample_over_phases(theta, phis, mu, n_shots=n_shots + n_shots_test, verbose=True, key=key)
     t1 = time.time()
     print(f"Sampling took {t1 - t0} seconds.")
 

@@ -2,6 +2,7 @@ import time
 import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
+import h5py
 
 import jax
 import jax.numpy as jnp
@@ -9,24 +10,25 @@ import optax
 
 from queso.sensors.tc.sensor import Sensor
 from queso.io import IO
-import h5py
+from queso.configs import Configuration
 
 
 #%%
 def train_circuit(
     io: IO,
-    n: int,
-    k: int,
+    config: Configuration,
     key: jax.random.PRNGKey,
-    phi_range: tuple,
-    n_phis: int = 10,
-    lr: float = 1e-2,
-    n_steps: int = 100,
-    contractor: str = "auto",
     plot: bool = False,
     progress: bool = True,
-    **kwargs,
 ):
+
+    n = config.n
+    k = config.k
+    phi_range = config.phi_range
+    n_phis = config.n_phis
+    lr = config.lr_circ
+    n_steps = config.n_steps
+    kwargs = dict(preparation=config.preparation, interaction=config.interaction, detection=config.detection, backend=config.backend)
 
     #%%
     print(f"Initializing sensor n={n}, k={k}")
@@ -126,27 +128,3 @@ def train_circuit(
     hf.close()
 
     return
-
-
-#%%
-if __name__ == "__main__":
-    n = 1
-    k = 1
-
-    io = IO(folder=f"nn-estimator-n{n}-k{k}", include_date=True)
-    io.path.mkdir(parents=True, exist_ok=True)
-
-    # %%
-    key = jax.random.PRNGKey(time.time_ns())
-    plot = True
-    train_circuit(
-        io=io,
-        n=n,
-        k=k,
-        key=key,
-        n_steps=100,
-        lr=1e-1,
-        n_phis=200,
-        plot=plot,
-    )
-    time.sleep(0.1)

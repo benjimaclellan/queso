@@ -14,17 +14,21 @@ from orbax.checkpoint import Checkpointer, PyTreeCheckpointHandler
 
 from queso.estimators.flax.dnn import BayesianDNNEstimator
 from queso.io import IO
+from queso.configs import Configuration
 
 
 #%%
 def benchmark_estimator(
     io: IO,
+    config: Configuration,
     key: jax.random.PRNGKey = None,
-    n_trials: int = 50,
-    phis_inds: jnp.array = jnp.array([0]),
-    n_sequences: jnp.array = jnp.round(jnp.logspace(0, 2, 10)).astype("int"),
     plot: bool = True,
 ):
+
+    #%%
+    n_trials = config.n_trials
+    phis_inds = jnp.array(config.phis_inds)
+    n_sequences = jnp.array(config.n_sequences)
 
     #%%
     hf = h5py.File(io.path.joinpath("samples.h5"), "r")

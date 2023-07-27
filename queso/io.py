@@ -12,13 +12,13 @@ import h5py
 import yaml
 
 
-def _default_path():
-    config = pathlib.Path(__file__).parent.parent.joinpath("config.yaml")
+def _default_data_path():
+    config = pathlib.Path(__file__).parent.parent.joinpath("paths.yaml")
     print(config)
     try:
         with open(config, "r") as fid:
             file = yaml.safe_load(fid)
-            default_path = file["default_path"]
+            default_path = file["data_path"]
             print(file)
     except:
         default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
@@ -26,7 +26,7 @@ def _default_path():
 
 
 def _default_fig_path():
-    config = pathlib.Path(__file__).parent.parent.joinpath("config.yaml")
+    config = pathlib.Path(__file__).parent.parent.joinpath("paths.yaml")
     print(config)
     try:
         with open(config, "r") as fid:
@@ -63,7 +63,7 @@ class IO:
 
     # default save path always points to `data/` no matter where this repository is located
     # default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
-    default_path = _default_path()
+    default_path = _default_data_path()
 
     def __init__(
         self,

@@ -18,21 +18,26 @@ from orbax.checkpoint import PyTreeCheckpointer, Checkpointer, \
 from queso.estimators.flax.dnn import BayesianDNNEstimator
 from queso.sensors.tc.sensor import sample_int2bin
 from queso.io import IO
+from queso.configs import Configuration
 from queso.utils import get_machine_info
+
 
 # %%
 def train_nn(
     io: IO,
-    key: jax.random.PRNGKey,  # todo: use provided key for reproducibility
-    nn_dims: Sequence[int],
-    n_grid: int = 50,
-    lr: float = 1e-2,
-    n_epochs: int = 10,
-    batch_size: int = 10,
+    config: Configuration,
+    key: jax.random.PRNGKey,
     plot: bool = False,
     progress: bool = True,
-    from_checkpoint: bool = True,
 ):
+
+    #%%
+    nn_dims = config.nn_dims + [config.n_grid]
+    n_grid = config.n_grid
+    lr = config.lr_nn
+    n_epochs = config.n_epochs
+    batch_size = config.batch_size
+    from_checkpoint = config.from_checkpoint
 
     # %% extract data from H5 file
     t0 = time.time()
@@ -157,7 +162,7 @@ def train_nn(
             if progress:
                 pbar.update()
                 pbar.set_description(f"Epoch {i} | Batch {j} | Loss: {loss:.10f}", refresh=False)
-            metrics.append(dict(step=i, loss=loss))
+            metrics.append(dict(step=i*n_batches + j, loss=loss))
 
     pbar.close()
     metrics = pd.DataFrame(metrics)
@@ -263,42 +268,3 @@ def train_nn(
     ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.
     ckptr.save(ckpt_dir, ckpt, save_args=orbax_utils.save_args_from_target(ckpt), force=True)
     restored = ckptr.restore(ckpt_dir, item=None)
-
-    #%%
-
-
-if __name__ == "__main__":
-    #%%
-    # io = IO(folder="2023-07-06_nn-estimator-n1-k1")
-    # io = IO(folder="2023-07-11_calibration-samples-n2-ghz-backup")
-    # io = IO(folder="2023-07-13_calibration-samples-n1-ghz")
-    io = IO(folder=f"2023-07-18_fig-example-n{2}-k{1}", include_date=False)
-
-    key = jax.random.PRNGKey(time.time_ns())
-
-    n_steps = 3000
-    lr = 1e-2
-    batch_phis = 128
-    batch_shots = 36
-    plot = True
-    progress = True
-    from_checkpoint = False
-
-    n_grid = 100
-
-    nn_dims = [16, 16, n_grid]
-
-    #%%
-    train_nn(
-        io=io,
-        key=key,
-        nn_dims=nn_dims,
-        n_steps=n_steps,
-        n_grid=n_grid,
-        lr=lr,
-        batch_phis=batch_phis,
-        batch_shots=batch_shots,
-        plot=plot,
-        progress=progress,
-        from_checkpoint=from_checkpoint,
-    )

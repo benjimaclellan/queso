@@ -19,7 +19,6 @@ class Sensor:
         self,
         n,
         k,
-        contractor="auto",
         **kwargs,
     ):
         self.n = n

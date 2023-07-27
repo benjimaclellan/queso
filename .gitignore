@@ -129,3 +129,6 @@ data/
 .DS_Store
 
 *.out
+
+/jobs/configs/*.yaml
+!/jobs/configs/default.yaml
