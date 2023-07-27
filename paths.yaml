@@ -1,2 +1,3 @@
-data_path: "/Users/benjamin/data/queso"
-fig_path: "/Users/benjamin/Library/CloudStorage/OneDrive-UniversityofWaterloo/Desktop/2 - Papers/2023 Quantum sensing/figs/renders/sections"
+data_path: "/home/bmaclell/projects/def-rgmelko/bmaclell/queso/data"
+fig_path: "/home/bmaclell/projects/def-rgmelko/bmaclell/queso/figures"
+module_path: "/home/bmaclell/projects/def-rgmelko/bmaclell/queso"

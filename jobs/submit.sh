@@ -1,12 +1,14 @@
 #!/bin/bash
-#SBATCH --mem=4G
+#SBATCH --mem=1G
 #SBATCH --account=def-rgmelko
 #SBATCH --nodes=1
-#SBATCH --gpus-per-node=1
+###SBATCH --gpus-per-node=1
 #SBATCH --time=0:10:00
 #SBATCH --mail-user=bmaclell@uwaterloo.ca
 #SBATCH --mail-type=FAIL
 #SBATCH --output=slurm_%J.out
+
+FOLDER=$1
 
 module purge
 module load python/3.9 scipy-stack
@@ -15,7 +17,6 @@ module load cudnn/8.2.0
 source ~/bash-profiles/queso
 source ~/venv/queso_venv/bin/activate
 
-echo "${FOLDER}" ${NQUBIT} ${KLAYER} ${ANSATZ}
-
+echo "${FOLDER}"
 cd ~/projects/def-rgmelko/bmaclell/queso
-python experiments/optimize_noisy_cfi.py --folder "${FOLDER}" --n ${NQUBIT} --k ${KLAYER} --ansatz ${ANSATZ} --seed 0
+python queso/train.py --folder "${FOLDER}"

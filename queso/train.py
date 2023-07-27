@@ -85,6 +85,7 @@ if __name__ == "__main__":
     folder = args.folder
 
     io = IO(folder=f"{folder}")
+    print(io)
     config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
-
-    train(io, config)
+    print(f"About to train circuits and NNs. {folder} | {config}")
+    # train(io, config)
