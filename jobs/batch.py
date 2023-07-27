@@ -17,11 +17,14 @@ from queso.configs import Configuration
 base = Configuration()
 
 folders = {}
-for n in (2, 3, 4):
+for n in (2, ):
     config = copy.deepcopy(base)
     config.n = n
     config.train_circuit = False
     config.sample_circuit = False
+    
+    config.n_epochs = 5000
+    config.batch_size = 50
         
     folder = f"2023-07-27_n={config.n}_k={config.k}"
     jobname = f"n{config.n}k{config.k}"
@@ -35,7 +38,7 @@ for n in (2, 3, 4):
     subprocess.run([
         # "pwd"
         "sbatch", 
-        "--time=0:20:00", 
+        "--time=0:60:00", 
         "--account=def-rgmelko",
         "--mem=4000",
         f"--gpus-per-node=1",

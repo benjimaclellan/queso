@@ -179,14 +179,14 @@ def train_nn(
     pred = jax.nn.softmax(pred, axis=-1)
     posterior = pred
 
-    lp = (likelihood @ posterior).T
-    a_jk = jnp.eye(n_phis, n_grid) - lp
+    # lp = (likelihood @ posterior).T
+    # a_jk = jnp.eye(n_phis, n_grid) - lp
 
-    eigenvalues, eigenvectors = jnp.linalg.eig(a_jk)
-    prior = jnp.abs(eigenvectors[:, 0])
-    print(eigenvalues[0])
+    # eigenvalues, eigenvectors = jnp.linalg.eig(a_jk)
+    # prior = jnp.abs(eigenvectors[:, 0])
+    # print(eigenvalues[0])
 
-    assert jnp.all(eigenvalues[0] <= eigenvalues)  # ensure eigenvalue sorting is correct
+    # assert jnp.all(eigenvalues[0] <= eigenvalues)  # ensure eigenvalue sorting is correct
 
     # idx = eigenvalues.real.argsort(order="")
     # eigenvalues = eigenvalues[idx]
@@ -198,10 +198,10 @@ def train_nn(
     #%%
     if plot:
         #%% plot prior
-        fig, ax = plt.subplots()
-        ax.stem(prior)
-        fig.show()
-        io.save_figure(fig, filename="prior.png")
+        # fig, ax = plt.subplots()
+        # ax.stem(prior)
+        # fig.show()
+        # io.save_figure(fig, filename="prior.png")
 
         # %% plot NN loss minimization
         fig, ax = plt.subplots()
