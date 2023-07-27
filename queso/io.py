@@ -3,23 +3,20 @@ import warnings
 import os
 import copy
 import datetime
-import numpy as np
 import json
 import string
-import pandas as pd
 import random
-import h5py
 import yaml
 
 
 def _default_data_path():
     config = pathlib.Path(__file__).parent.parent.joinpath("paths.yaml")
-    print(config)
+    # print(config)
     try:
         with open(config, "r") as fid:
             file = yaml.safe_load(fid)
             default_path = file["data_path"]
-            print(file)
+            # print(file)
     except:
         default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
     return default_path
@@ -27,7 +24,7 @@ def _default_data_path():
 
 def _default_fig_path():
     config = pathlib.Path(__file__).parent.parent.joinpath("paths.yaml")
-    print(config)
+    # print(config)
     try:
         with open(config, "r") as fid:
             file = yaml.safe_load(fid)
@@ -219,6 +216,8 @@ class IO:
         :return: dataframe data
         :rtype: panda dataframe
         """
+        import pandas as pd
+
         ext = ".pkl"
         full_path = self.path.joinpath(filename + ext)
         # df = pd.read_csv(str(full_path), sep=",", header=0)
@@ -255,6 +254,8 @@ class IO:
         :return: the function returns nothing
         :rtype: None
         """
+        import numpy as np
+
         full_path = self.path.joinpath(filename)
         os.makedirs(full_path.parent, exist_ok=True)
         np.savetxt(str(full_path), np_arr)
@@ -272,6 +273,8 @@ class IO:
         :return: the function returns nothing
         :rtype: None
         """
+        import numpy as np
+
         full_path = self.path.joinpath(filename)
         file = np.loadtxt(
             str(full_path), dtype=np.complex if complex_vals else np.float
@@ -298,6 +301,8 @@ class IO:
             print(f"{current_time()} | Saved to {full_path} successfully.")
 
     def load_csv(self, filename):
+        import pandas as pd
+
         """
         Load panda dataframe object from CSV
 

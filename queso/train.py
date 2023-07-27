@@ -67,30 +67,24 @@ def train(io: IO, config: Configuration):
 if __name__ == "__main__":
 
     #%%
-    config = Configuration()
-    config.folder = "2023-07-27_test_pipe"
-    # config.train_circuit = False
-    # config.sample_circuit = False
-    config.n_epochs = 10
-    config.n_steps = 1000
-
-    #%%
-    io = IO(folder=f"{config.folder}")
-    io.path.mkdir(parents=True, exist_ok=True)
-
-    config.to_yaml(io.path.joinpath('config.yaml'))
+    # config = Configuration()
+    # config.folder = "2023-07-27_test_pipe"
+    # # config.train_circuit = False
+    # # config.sample_circuit = False
+    # config.n_epochs = 10
+    # config.n_steps = 1000
+    #
+    # #%%
+    # io = IO(folder=f"{config.folder}")
+    # io.path.mkdir(parents=True, exist_ok=True)
 
     # %%
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--folder", type=str, default="nonlocal-det-single-int")
-    # parser.add_argument("--n", type=int, default=2)
-    # parser.add_argument("--k", type=int, default=2)
-    # parser.add_argument("--seed", type=int, default=None)
-    # args = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--folder", type=str, default="tmp")
+    args = parser.parse_args()
+    folder = args.folder
 
-    # folder = args.folder
-    # n = args.n
-    # k = args.k
-    # seed = args.seed if args.seed is not None else time.time_ns()
+    io = IO(folder=f"{folder}")
+    config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
 
     train(io, config)

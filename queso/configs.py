@@ -4,15 +4,12 @@ import time
 from dataclasses import dataclass, field, fields, asdict
 import yaml
 import pathlib
-import jax.numpy as jnp
-
-from queso.io import IO
 
 
 # %%
 @dataclass
 class Configuration:
-    folder: str = None
+    folder: str = "tmp"
     seed: int = None
 
     train_circuit: bool = True
@@ -49,8 +46,8 @@ class Configuration:
 
     # benchmark estimator args
     n_trials: int = 100
-    phis_inds: list[int] | jnp.ndarray = field(default_factory=lambda: [50])
-    n_sequences: list[int] | jnp.ndarray = field(default_factory=lambda: [1, 10, 100, 1000])
+    phis_inds: list[int] = field(default_factory=lambda: [50])
+    n_sequences: list[int] = field(default_factory=lambda: [1, 10, 100, 1000])
 
     @classmethod
     def from_yaml(cls, file):
@@ -59,8 +56,6 @@ class Configuration:
         return cls(**data)
 
     def __post_init__(self):
-        if self.folder is None:
-            self.folder = IO(folder="data", include_date=True, include_id=True).path.name
         if self.seed is None:
             self.seed = time.time_ns()
 
@@ -76,29 +71,9 @@ class Configuration:
 
     def to_yaml(self, file):
         data = asdict(self)
-        for key, val in data.items():
-            if isinstance(val, jnp.ndarray):
-                data[key] = val.tolist()
+        # for key, val in data.items():
+        #     if isinstance(val, jnp.ndarray):
+        #         data[key] = val.tolist()
         with open(file, "w") as fid:
             yaml.dump(data, fid)
 
-
-#%%
-if __name__ == "__main__":
-    #%%
-    d = Configuration()
-    print(d)
-    file = pathlib.Path(__file__).parent.joinpath("default.yaml")
-    d = Configuration.from_yaml(file)
-    print(d)
-
-    #%%
-    file = pathlib.Path(__file__).parent.joinpath("run1.yaml")
-    d.to_yaml(file)
-
-    #%%
-    file = pathlib.Path(__file__).parent.joinpath("run1.yaml")
-
-    d = Configuration.from_yaml(file)
-    print(d)
-    #%%
