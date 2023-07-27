@@ -130,6 +130,8 @@ data/
 
 *.out
 
+/jobs/out/*.out
+/jobs/out/*.err
 paths.py
 
 /jobs/configs/*.yaml

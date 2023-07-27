@@ -87,5 +87,6 @@ if __name__ == "__main__":
     io = IO(folder=f"{folder}")
     print(io)
     config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
-    print(f"About to train circuits and NNs. {folder} | {config}")
-    # train(io, config)
+    print(f"Initializing sensor training: {folder} | Devices {jax.devices()} | Full path {io.path}")
+    print(f"Config: {config}")
+    train(io, config)
