@@ -1,6 +1,6 @@
 # #!/bin/bash
 # Starts an interactive job on Graham with one GPU
-srun  --time=02:00:00 --mem=3000M --gres=gpu:1 --account=def-rgmelko --pty /bin/bash
+srun  --time=03:00:00 --mem=3000M --gres=gpu:1 --account=def-rgmelko --pty /bin/bash
 
 salloc  --time=03:00:00 --mem=3000M --gres=gpu:1
 

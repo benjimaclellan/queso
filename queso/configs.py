@@ -14,6 +14,8 @@ class Configuration:
 
     train_circuit: bool = True
     sample_circuit: bool = True
+    sample_circuit_training_data: bool = True
+    sample_circuit_testing_data: bool = True
     train_nn: bool = True
     benchmark_estimator: bool = True
 
@@ -35,6 +37,7 @@ class Configuration:
     # sample circuit args
     n_shots: int = 5000
     n_shots_test: int = 1000
+    phis_test: list = field(default_factory=lambda: [0, 1.157])
 
     # train estimator args
     n_epochs: int = 1000
