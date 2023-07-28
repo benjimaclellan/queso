@@ -126,14 +126,14 @@ def train_nn(
             print(f"Random initialization of parameters")
 
         # print("Initial parameters", params)
-        schedule = optax.constant_schedule(lr)
-        # schedule = optax.polynomial_schedule(
-        #     init_value=lr,
-        #     end_value=lr**2,
-        #     power=1,
-        #     transition_steps=n_steps,
-        #     # transition_begin=n_steps//2,
-        # )
+        # schedule = optax.constant_schedule(lr)
+        schedule = optax.polynomial_schedule(
+            init_value=lr,
+            end_value=lr**2,
+            power=1,
+            transition_steps=n_steps//4,
+            transition_begin=3 * n_steps//2,
+        )
         tx = optax.adam(learning_rate=schedule)
         # tx = optax.adamw(learning_rate=learning_rate, weight_decay=1e-5)
 

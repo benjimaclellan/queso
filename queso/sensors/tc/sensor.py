@@ -91,7 +91,7 @@ class Sensor:
         c = self.detection(c, mu, self.n, self.k)
         return c.probability()
 
-    @partial(jax.jit, static_argnums=(0,))
+    @partial(jax.jit, static_argnums=(0,), backend='cpu')
     def _sample(self, theta, phi, mu, key):
         c = self._circ(self.n)
         c = self.preparation(c, theta, self.n, self.k)
@@ -110,6 +110,7 @@ class Sensor:
         shots = jnp.array([self._sample(theta, phi, mu, key) for key in keys]).astype(
             "bool"
         )
+        print(shots.device())
         return shots
 
     @partial(jax.jit, static_argnums=(0,))
