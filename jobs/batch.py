@@ -18,7 +18,7 @@ from queso.train import train
 base = Configuration()
 
 folders = {}
-for n in (8, 10):
+for n in (6, 8,):
     config = copy.deepcopy(base)
     config.n = n
     config.k = n
@@ -51,7 +51,7 @@ for n in (8, 10):
         "--time=0:120:00", 
         "--account=def-rgmelko",
         "--mem=8000",
-        # f"--gpus-per-node=1",
+        f"--gpus-per-node=1",
         f"--job-name={jobname}.job",
         f"--output=out/{jobname}.out",
         f"--error=out/{jobname}.err",
