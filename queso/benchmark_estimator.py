@@ -31,10 +31,16 @@ def benchmark_estimator(
     n_sequences = jnp.array(config.n_sequences)
 
     #%%
-    hf = h5py.File(io.path.joinpath("samples.h5"), "r")
+    hf = h5py.File(io.path.joinpath("train_samples.h5"), "r")
     print(hf.keys())
-    shots = jnp.array(hf.get("shots_test"))
     phis = jnp.array(hf.get("phis"))
+    hf.close()
+
+    hf = h5py.File(io.path.joinpath("test_samples.h5"), "r")
+    print(hf.keys())
+    shots_test = jnp.array(hf.get("shots_test"))
+    shots = shots_test
+    phis_test = jnp.array(hf.get("phis_test"))
     hf.close()
 
     hf = h5py.File(io.path.joinpath("circ.h5"), "r")
@@ -42,8 +48,8 @@ def benchmark_estimator(
     fi = jnp.array(hf.get("fi_train"))[-1]
     hf.close()
 
-    n = shots.shape[2]
-    n_phis = shots.shape[0]
+    n = config.n
+    n_phis = config.n_phis
     phi_range = (jnp.min(phis), jnp.max(phis))
 
     #%%
@@ -56,7 +62,7 @@ def benchmark_estimator(
     model = BayesianDNNEstimator(nn_dims)
 
     #%%
-    phis_true = phis[phis_inds]
+    phis_true = phis_test
     n_sequence_max = n_sequences[-1]
 
     #%%

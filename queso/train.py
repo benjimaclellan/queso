@@ -8,6 +8,7 @@ from queso.io import IO
 from queso.configs import Configuration
 from queso.train_circuit import train_circuit
 from queso.sample_circuit import sample_circuit
+from queso.sample_circuit_testing import sample_circuit_testing
 from queso.train_nn import train_nn
 from queso.benchmark_estimator import benchmark_estimator
 
@@ -31,9 +32,21 @@ def train(io: IO, config: Configuration):
         )
 
     # %% sample circuit settings
+    # _, key = jax.random.split(key)
+    # if config.sample_circuit:
     _, key = jax.random.split(key)
-    if config.sample_circuit:
+    if config.sample_circuit_training_data:
         sample_circuit(
+            io=io,
+            config=config,
+            key=key,
+            plot=plot,
+        )
+
+    # %% sample circuit settings
+    _, key = jax.random.split(key)
+    if config.sample_circuit_testing_data:
+        sample_circuit_testing(
             io=io,
             config=config,
             key=key,

@@ -42,10 +42,9 @@ def train_nn(
     # %% extract data from H5 file
     t0 = time.time()
 
-    hf = h5py.File(io.path.joinpath("samples.h5"), "r")
+    hf = h5py.File(io.path.joinpath("train_samples.h5"), "r")
     shots = jnp.array(hf.get("shots"))
     counts = jnp.array(hf.get("counts"))
-    shots_test = jnp.array(hf.get("shots_test"))
     probs = jnp.array(hf.get("probs"))
     phis = jnp.array(hf.get("phis"))
     hf.close()
