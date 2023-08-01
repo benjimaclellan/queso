@@ -136,3 +136,4 @@ paths.py
 
 /jobs/configs/*.yaml
 !/jobs/configs/default.yaml
+paths.yaml
