@@ -18,23 +18,23 @@ from queso.train import train
 base = Configuration()
 
 folders = {}
-for n in (6, 8,):
+for n in (6,):
     config = copy.deepcopy(base)
     config.n = n
     config.k = n
-    config.train_circuit = True
-    config.sample_circuit_training_data = True
-    config.sample_circuit_testing_data = True
+    config.train_circuit = False
+    config.sample_circuit_training_data = False
+    config.sample_circuit_testing_data = False
     config.n_shots_test = 10000
     config.train_nn = True
     config.benchmark_estimator = True
     config.phi_range = [-pi/n/2, pi/n/2]
     config.phis_test = [0.1 * pi/n/2]
     
-    config.n_epochs = 1000
+    config.n_epochs = 10000
     config.batch_size = 50
         
-    folder = f"2023-07-28_n{config.n}_k{config.k}"
+    folder = f"2023-07-31_n{config.n}_k{config.k}"
     jobname = f"n{config.n}k{config.k}"
 
     io = IO(folder=folder)
