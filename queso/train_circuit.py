@@ -3,6 +3,7 @@ import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
 import h5py
+import argparse
 
 import jax
 import jax.numpy as jnp
@@ -21,19 +22,27 @@ def train_circuit(
     plot: bool = False,
     progress: bool = True,
 ):
-
+    #%%
     n = config.n
     k = config.k
     phi_range = config.phi_range
     n_phis = config.n_phis
     lr = config.lr_circ
     n_steps = config.n_steps
-    kwargs = dict(preparation=config.preparation, interaction=config.interaction, detection=config.detection, backend=config.backend)
+    kwargs = dict(
+        preparation=config.preparation,
+        interaction=config.interaction,
+        detection=config.detection,
+        backend=config.backend,
+        n_ancilla=config.n_ancilla
+    )
 
     #%%
     print(f"Initializing sensor n={n}, k={k}")
     sensor = Sensor(n, k, **kwargs)
     phi = jnp.array(0.0)
+    theta = jax.random.uniform(key, shape=sensor.theta.shape)
+    mu = jax.random.uniform(key, shape=sensor.mu.shape)
 
     optimizer = optax.adam(learning_rate=lr)
 
@@ -52,8 +61,6 @@ def train_circuit(
         return val, params, updates, opt_state
 
     # %%
-    theta = jax.random.uniform(key, shape=sensor.theta.shape)
-    mu = jax.random.uniform(key, shape=sensor.mu.shape)
 
     loss = loss_cfi
     params = {"theta": theta, "mu": mu}
@@ -98,7 +105,9 @@ def train_circuit(
         fig.show()
 
         #%%
-        sensor.circuit(theta, phi, mu).draw(output="text")
+        fig = sensor.circuit(theta, phi, mu).draw(output='mpl')
+        io.save_figure(fig, filename="circuit")
+        fig.show()
 
         #%%
         fig, axs = plt.subplots(ncols=1, nrows=2, sharex=True)
@@ -128,3 +137,20 @@ def train_circuit(
     hf.close()
 
     return
+
+
+#%%
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--folder", type=str, default="tmp")
+    args = parser.parse_args()
+    folder = args.folder
+
+    io = IO(folder=f"{folder}")
+    print(io)
+    config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
+    key = jax.random.PRNGKey(config.seed)
+    print(f"Training circuit: {folder} | Devices {jax.devices()} | Full path {io.path}")
+    print(f"Config: {config}")
+    train_circuit(io, config, key, progress=True, plot=True)

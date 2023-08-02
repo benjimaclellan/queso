@@ -216,7 +216,7 @@ def brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=1):
                 phi=theta[i, j, 2],
             )
 
-        for i in range(0, n-n_ancilla, 2):
+        for i in range(0, n-n_ancilla-1, 2):
             c.cr(
                 i,
                 i + 1,
@@ -225,7 +225,7 @@ def brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=1):
                 phi=theta[i, j, 5],
             )
 
-        for i in range(1, n-n_ancilla, 2):
+        for i in range(1, n-n_ancilla-1, 2):
             c.cr(
                 i,
                 i + 1,

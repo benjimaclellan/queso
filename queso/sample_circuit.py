@@ -3,6 +3,7 @@ import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
 import h5py
+import argparse
 
 import jax
 import jax.numpy as jnp
@@ -70,3 +71,20 @@ def sample_circuit(
     hf.close()
 
     return
+
+
+#%%
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--folder", type=str, default="tmp")
+    args = parser.parse_args()
+    folder = args.folder
+
+    io = IO(folder=f"{folder}")
+    print(io)
+    config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
+    key = jax.random.PRNGKey(config.seed)
+    print(f"Sampling circuit: {folder} | Devices {jax.devices()} | Full path {io.path}")
+    print(f"Config: {config}")
+    sample_circuit(io, config, key, progress=True, plot=True)

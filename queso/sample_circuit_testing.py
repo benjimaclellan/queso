@@ -3,6 +3,7 @@ import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
 import h5py
+import argparse
 
 import jax
 import jax.numpy as jnp
@@ -55,13 +56,18 @@ def sample_circuit_testing(
     return
 
 
+#%%
 if __name__ == "__main__":
-    n = 1
-    k = 1
 
-    io = IO(folder=f"test-n{n}-k{k}", include_date=False)
-    io.path.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--folder", type=str, default="tmp")
+    args = parser.parse_args()
+    folder = args.folder
 
-    # %%
-    key = jax.random.PRNGKey(time.time_ns())
-    plot = True
+    io = IO(folder=f"{folder}")
+    print(io)
+    config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
+    key = jax.random.PRNGKey(config.seed)
+    print(f"Sampling circuit for testing data: {folder} | Devices {jax.devices()} | Full path {io.path}")
+    print(f"Config: {config}")
+    sample_circuit_testing(io, config, key, progress=True, plot=True)

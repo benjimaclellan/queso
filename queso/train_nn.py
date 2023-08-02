@@ -6,6 +6,7 @@ import seaborn as sns
 from typing import Sequence
 import pandas as pd
 import h5py
+import argparse
 
 import jax
 import jax.numpy as jnp
@@ -164,7 +165,7 @@ def train_nn(
             state, loss = train_step(state, batch)
             if progress:
                 pbar.update()
-                pbar.set_description(f"Epoch {i} | Batch {j} | Loss: {loss:.10f}", refresh=False)
+                pbar.set_description(f"Epoch {i} | Batch {j:04d} | Loss: {loss:.10f}", refresh=False)
             metrics.append(dict(step=i*n_batches + j, loss=loss))
 
     pbar.close()
@@ -271,3 +272,20 @@ def train_nn(
     ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.
     ckptr.save(ckpt_dir, ckpt, save_args=orbax_utils.save_args_from_target(ckpt), force=True)
     restored = ckptr.restore(ckpt_dir, item=None)
+
+
+#%%
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--folder", type=str, default="tmp")
+    args = parser.parse_args()
+    folder = args.folder
+
+    io = IO(folder=f"{folder}")
+    print(io)
+    config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
+    key = jax.random.PRNGKey(config.seed)
+    print(f"Training NN: {folder} | Devices {jax.devices()} | Full path {io.path}")
+    print(f"Config: {config}")
+    train_nn(io, config, key, progress=True, plot=True)

@@ -6,6 +6,7 @@ from itertools import cycle
 import seaborn as sns
 import pandas as pd
 import h5py
+import argparse
 
 import jax
 import jax.numpy as jnp
@@ -221,3 +222,21 @@ def benchmark_estimator(
         io.save_figure(fig, filename=f"bias-variance/{k}_{phis_true[k].item()}.png")
         fig.tight_layout()
         plt.show()
+
+
+#%%
+#%%
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--folder", type=str, default="tmp")
+    args = parser.parse_args()
+    folder = args.folder
+
+    io = IO(folder=f"{folder}")
+    print(io)
+    config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
+    key = jax.random.PRNGKey(config.seed)
+    print(f"Benchmarking NN: {folder} | Devices {jax.devices()} | Full path {io.path}")
+    print(f"Config: {config}")
+    benchmark_estimator(io, config, key)

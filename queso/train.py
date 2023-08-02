@@ -79,19 +79,6 @@ def train(io: IO, config: Configuration):
 #%%
 if __name__ == "__main__":
 
-    #%%
-    # config = Configuration()
-    # config.folder = "2023-07-27_test_pipe"
-    # # config.train_circuit = False
-    # # config.sample_circuit = False
-    # config.n_epochs = 10
-    # config.n_steps = 1000
-    #
-    # #%%
-    # io = IO(folder=f"{config.folder}")
-    # io.path.mkdir(parents=True, exist_ok=True)
-
-    # %%
     parser = argparse.ArgumentParser()
     parser.add_argument("--folder", type=str, default="tmp")
     args = parser.parse_args()
