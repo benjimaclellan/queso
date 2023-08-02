@@ -38,6 +38,7 @@ def train_nn(
     n_epochs = config.n_epochs
     batch_size = config.batch_size
     from_checkpoint = config.from_checkpoint
+    logit_norm = False
 
     # %% extract data from H5 file
     t0 = time.time()
@@ -97,7 +98,10 @@ def train_nn(
             #     y_batch
             # ).mean(axis=(0, 1))
 
-            # cross-entropy loss
+            if logit_norm:
+                eps = 1e-10
+                tau = 10.0
+                logits = (logits + eps) / (jnp.sqrt((logits ** 2 + eps).sum(axis=-1, keepdims=True))) / tau
             loss = -jnp.sum(y_batch[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
 
             # MSE loss

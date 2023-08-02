@@ -63,13 +63,13 @@ def benchmark_estimator(
 
     #%%
     phis_true = phis_test
-    n_sequence_max = n_sequences[-1]
+    n_sequence_max = jnp.max(n_sequences)
 
     #%%
     def select_sample_sequence(shots, key):
         shot_inds = jax.random.randint(key, shape=(n_sequence_max,), minval=0, maxval=shots.shape[1])
-        shots_phis = shots[phis_inds, :, :]
-        sequences = shots_phis[:, shot_inds, :]
+        # shots_phis = shots[phis_inds, :, :, :]
+        sequences = shots[:, shot_inds, :]
         return sequences
 
     if key is None:
@@ -98,13 +98,28 @@ def benchmark_estimator(
         return phis[jnp.argmax(posteriors, axis=-1)]
 
     @jax.jit
-    def bias(phi_estimates, phis_true):
-        biases = phi_estimates - phis_true[None, :, None]
+    def bias(phis_estimates, phis_true):
+        # bias in Euclidean space
+        # biases = phis_estimates - phis_true[None, :, None]
+
+        # bias on a circular manifold
+        vecs_true = jnp.exp(1j * phis_true[None, :, None])
+        vecs_est = jnp.exp(1j * phis_estimates)
+        biases = jnp.arccos(vecs_true.real * vecs_est.real + vecs_true.imag * vecs_est.imag)
         return biases
 
     @jax.jit
-    def variance(posteriors, phi_estimates, phis):
-        variances = (posteriors * jnp.power(phi_estimates[:, :, :, None] - phis[None, None, None, :], 2)).sum(axis=-1)
+    def variance(posteriors, phis_estimates, phis):
+        # over a euclidean space
+        # variances = (posteriors * jnp.power(phi_estimates[:, :, :, None] - phis[None, None, None, :], 2)).sum(axis=-1)
+
+        # over a circular space
+        vecs_est = jnp.exp(1j * phis_estimates[:, :, :, None])
+        vecs_out = jnp.exp(1j * phis[None, None, None, :])
+        tmp = jnp.clip(vecs_out.real * vecs_est.real + vecs_out.imag * vecs_est.imag, -1, 1)
+        diff = jnp.arccos(tmp)
+        # print(jnp.count_nonzero(jnp.isnan(diff)))
+        variances = (posteriors * jnp.power(diff, 2)).sum(axis=-1)
         return variances
 
     posteriors = jnp.stack([posterior_product(pred, n_sequence) for n_sequence in n_sequences], axis=2)
@@ -151,14 +166,14 @@ def benchmark_estimator(
         del fig
 
     #%% plot posterior, bias, and variance for one phase
-    for k in range(phis_inds.shape[0]):
+    for k in range(phis_true.shape[0]):
         fig, axs = plt.subplots(nrows=3, figsize=(6.5, 6.0))
         colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
         markers = ["o", "D", 's', "v", "^", "<", ">", ]
+        axs[0].axvline(phis_true[k], color='black', ls='--', alpha=1.0, lw=2)
 
         for i, n_sequence in enumerate(n_sequences):
             ax = axs[0]
-            ax.axvline(phis_true[k], color=colors[0], ls='--', alpha=0.7)
             p = posteriors[1, k, i, :]
             ax.plot(
                 jnp.linspace(phi_range[0], phi_range[1], n_phis),

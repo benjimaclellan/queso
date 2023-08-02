@@ -98,7 +98,7 @@ def train_circuit(
         fig.show()
 
         #%%
-        # sensor.circuit(theta, phi, mu).draw(output="text")
+        sensor.circuit(theta, phi, mu).draw(output="text")
 
         #%%
         fig, axs = plt.subplots(ncols=1, nrows=2, sharex=True)
@@ -107,8 +107,8 @@ def train_circuit(
         axs[0].set(ylabel="QFI")
         axs[1].set(ylabel="CFI")
         axs[-1].set(xlabel=r"$\phi$ (rad/$\pi$)")
-        for ax in axs:
-            ax.set(ylim=[0, 1.1 * n**2])
+        # for ax in axs:
+        #     ax.set(ylim=[0, 1.1 * n**2])
         io.save_figure(fig, filename="qfi-cfi-phi")
         fig.show()
 

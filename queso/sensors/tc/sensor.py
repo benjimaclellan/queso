@@ -42,6 +42,10 @@ class Sensor:
         if preparation == "brick_wall_cr":
             self.preparation = brick_wall_cr
             self.theta = jnp.zeros([n, k, 6])
+        elif preparation == "brick_wall_cr_ancillas":
+            n_ancilla = kwargs.get('n_ancilla', n//2)
+            self.preparation = lambda c, theta, n, k: brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=n_ancilla)
+            self.theta = jnp.zeros([n, k, 6])
         elif preparation == "local_r":
             self.preparation = local_r
             self.theta = jnp.zeros([n, 3])
@@ -53,6 +57,8 @@ class Sensor:
             self.interaction = local_rx
         elif interaction == "single_rx":
             self.interaction = single_rx
+        elif interaction == "fourier_rx":
+            self.interaction = fourier_rx
         else:
             raise ValueError("Not a valid interaction layer.")
 
@@ -192,10 +198,56 @@ def brick_wall_cr(c, theta, n, k):
     return c
 
 
+def brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=1):
+    for i in range(n-n_ancilla, n):
+        c.r(
+            i,
+            theta=theta[i, 0, 0],
+            alpha=theta[i, 0, 1],
+            phi=theta[i, 0, 2],
+        )
+
+    for j in range(k):
+        for i in range(n - n_ancilla):
+            c.r(
+                i,
+                theta=theta[i, j, 0],
+                alpha=theta[i, j, 1],
+                phi=theta[i, j, 2],
+            )
+
+        for i in range(0, n-n_ancilla, 2):
+            c.cr(
+                i,
+                i + 1,
+                theta=theta[i, j, 3],
+                alpha=theta[i, j, 4],
+                phi=theta[i, j, 5],
+            )
+
+        for i in range(1, n-n_ancilla, 2):
+            c.cr(
+                i,
+                i + 1,
+                theta=theta[i, j, 3],
+                alpha=theta[i, j, 4],
+                phi=theta[i, j, 5],
+            )
+    return c
+
+
 # interaction layers
 def local_rx(c, phi, n):
     for i in range(n):
         c.rx(i, theta=phi)
+    return c
+
+
+def fourier_rx(c, phi, n):
+    for i in range(0, n, 2):
+        c.rx(i, theta=phi)
+    for i in range(1, n, 2):
+        c.rz(i, theta=-phi)
     return c
 
 
