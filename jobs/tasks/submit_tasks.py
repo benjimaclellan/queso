@@ -5,6 +5,7 @@ import pathlib
 import subprocess
 from math import pi
 import platform
+import time
 import numpy as np
 
 
@@ -18,12 +19,13 @@ from queso.configs import Configuration
 base = Configuration()
 
 folders = {}
-for n in (4,):
+for n in (10, ):
     config = copy.deepcopy(base)
     config.n = n
     config.k = n
     folder = f"2023-08-02_nonlocal_prep_n{config.n}_k{config.k}"
 
+    config.folder = folder
     config.train_circuit = False
     config.sample_circuit_training_data = False
     config.sample_circuit_testing_data = False
@@ -59,45 +61,56 @@ for n in (4,):
     print(path.name)
 
     # SUBMIT CIRCUIT TRAINING
-    subprocess.run([
+    result = subprocess.run([
         "sbatch",
-        "--time=0:30:00",
+        f"--time=0:{n//2}0:00",
         "--account=def-rgmelko",
-        "--mem=4000",
+        "--mem=6000",
         f"--gpus-per-node=1",
         f"--job-name={jobname_circ}.job",
         f"--output=out/{jobname_circ}.out",
         f"--error=out/{jobname_circ}.err",
         "submit_circ.sh", str(folder)
-        ]
+        ],
+        capture_output = True
     )
-
+    print(result)
+    job_id_circ = str(result.stdout.decode()).split()[-1]
+    
     # SUBMIT CIRCUIT SAMPLING
-    subprocess.run([
+    result = subprocess.run([
         "sbatch",
-        "--time=0:30:00",
+        f"--time=0:{n//2}0:00",
         "--account=def-rgmelko",
-        "--mem=4000",
+        "--mem=6000",
         # f"--gpus-per-node=1",
         f"--job-name={jobname_sample}.job",
-        f"--output=out/{jobname_sample}-sample.out",
+        f"--output=out/{jobname_sample}.out",
         f"--error=out/{jobname_sample}.err",
-        f"--dependency=afterok:<{jobname_circ}>"
-        "submit_sample.sh", str(folder)
-    ]
+        f"--dependency=afterok:{job_id_circ}",
+        "submit_sample.sh", str(folder),
+        ],
+        capture_output = True
     )
-
+    print(result)
+    job_id_sample = str(result.stdout.decode()).split()[-1]
+    
     # SUBMIT NN TRAINING & BENCHMARKING
-    subprocess.run([
+    result = subprocess.run([
         "sbatch",
-        "--time=0:80:00",
+        f"--time=0:80:00",
         "--account=def-rgmelko",
-        "--mem=4000",
+        "--mem=6000",
         f"--gpus-per-node=1",
-        f"--job-name={jobname_nn}-nn.job",
-        f"--output=out/{jobname_nn}-nn.out",
-        f"--error=out/{jobname_nn}-nn.err",
-        f"--dependency=afterok:<{jobname_circ}:{jobname_sample}>"
+        f"--job-name={jobname_nn}.job",
+        f"--output=out/{jobname_nn}.out",
+        f"--error=out/{jobname_nn}.err",
+        f"--dependency=afterok:{job_id_circ},{job_id_sample}",
         "submit_nn.sh", str(folder)
-    ]
+        ],
+        capture_output = True
     )
+    
+    print(result)
+    job_id_sample = str(result.stdout.decode()).split()[-1]
+    

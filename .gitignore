@@ -128,7 +128,6 @@ data/
 .scratch/
 .DS_Store
 
-*.out
 
 /jobs/out/*.out
 /jobs/out/*.err
@@ -137,3 +136,6 @@ paths.py
 /jobs/configs/*.yaml
 !/jobs/configs/default.yaml
 paths.yaml
+
+*.out
+*.err

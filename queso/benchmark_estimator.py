@@ -23,7 +23,7 @@ def benchmark_estimator(
     io: IO,
     config: Configuration,
     key: jax.random.PRNGKey = None,
-    plot: bool = True,
+    plot: bool = False,
 ):
 
     #%%

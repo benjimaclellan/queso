@@ -27,13 +27,14 @@ class Configuration:
     interaction: str = "local_rx"
     detection: str = 'local_r'
     backend: str = 'ket'
-
+    n_ancilla: int = 0
+    
     # training circuit args
     n_phis: int = 100
     n_steps: int = 20000
     lr_circ: float = 1e-3
     phi_range: list[float] = field(default_factory=lambda: [-1.157, 1.157])
-
+    
     # sample circuit args
     n_shots: int = 5000
     n_shots_test: int = 1000

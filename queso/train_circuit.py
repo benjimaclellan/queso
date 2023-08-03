@@ -44,6 +44,13 @@ def train_circuit(
     theta = jax.random.uniform(key, shape=sensor.theta.shape)
     mu = jax.random.uniform(key, shape=sensor.mu.shape)
 
+    #%%
+    # if plot:
+    #     fig = sensor.circuit(theta, phi, mu).draw(output='mpl')
+    #     io.save_figure(fig, filename="circuit")
+    #     fig.show()
+        
+    #%%
     optimizer = optax.adam(learning_rate=lr)
 
     def loss_cfi(params, phi):
@@ -102,11 +109,6 @@ def train_circuit(
         axs[1].plot(vn_ent_train)
         axs[1].set(ylabel="Entropy of entanglement", xlabel="Optimization Step")
         io.save_figure(fig, filename="fi-entropy-optimization")
-        fig.show()
-
-        #%%
-        fig = sensor.circuit(theta, phi, mu).draw(output='mpl')
-        io.save_figure(fig, filename="circuit")
         fig.show()
 
         #%%

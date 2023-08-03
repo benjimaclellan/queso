@@ -14,3 +14,4 @@ source ~/venv/queso_venv/bin/activate
 echo "${FOLDER}"
 cd ~/projects/def-rgmelko/bmaclell/queso
 python queso/train_nn.py --folder "${FOLDER}"
+python queso/benchmark_estimator.py --folder "${FOLDER}"
