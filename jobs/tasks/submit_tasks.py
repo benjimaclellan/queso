@@ -19,6 +19,9 @@ from queso.configs import Configuration
 base = Configuration()
 
 folders = {}
+# account = "rrg-rgmelko-ab"
+account = "def-rgmelko"
+
 for n in (10, ):
     config = copy.deepcopy(base)
     config.n = n
@@ -45,7 +48,7 @@ for n in (10, ):
     config.phi_range = [-pi, pi]
     config.phis_test = (np.arange(-4, 5) / 10 * pi).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
     config.n_sequences = np.logspace(0, 3, 10, dtype='int').tolist()
-    config.n_epochs = 1000
+    config.n_epochs = 10000
     config.lr_nn = 5e-3
     config.nn_dims = [128, 128, 128]
     config.batch_size = 50
@@ -61,56 +64,58 @@ for n in (10, ):
     print(path.name)
 
     # SUBMIT CIRCUIT TRAINING
-    result = subprocess.run([
-        "sbatch",
-        f"--time=0:{n//2}0:00",
-        "--account=def-rgmelko",
-        "--mem=6000",
-        f"--gpus-per-node=1",
-        f"--job-name={jobname_circ}.job",
-        f"--output=out/{jobname_circ}.out",
-        f"--error=out/{jobname_circ}.err",
-        "submit_circ.sh", str(folder)
-        ],
-        capture_output = True
-    )
-    print(result)
-    job_id_circ = str(result.stdout.decode()).split()[-1]
+    flags = [False, False, True]
     
-    # SUBMIT CIRCUIT SAMPLING
-    result = subprocess.run([
-        "sbatch",
-        f"--time=0:{n//2}0:00",
-        "--account=def-rgmelko",
-        "--mem=6000",
-        # f"--gpus-per-node=1",
-        f"--job-name={jobname_sample}.job",
-        f"--output=out/{jobname_sample}.out",
-        f"--error=out/{jobname_sample}.err",
-        f"--dependency=afterok:{job_id_circ}",
-        "submit_sample.sh", str(folder),
-        ],
-        capture_output = True
-    )
-    print(result)
-    job_id_sample = str(result.stdout.decode()).split()[-1]
+    if flags[0]:
+        result = subprocess.run([
+            "sbatch",
+            f"--time=0:{n//2}0:00",
+            f"--account={account}",
+            "--mem=6000",
+            f"--gpus-per-node=1",
+            f"--job-name={jobname_circ}.job",
+            f"--output=out/{jobname_circ}.out",
+            f"--error=out/{jobname_circ}.err",
+            "submit_circ.sh", str(folder)
+            ],
+            capture_output = True
+        )
+        print(result)
+        job_id_circ = str(result.stdout.decode()).split()[-1]
     
-    # SUBMIT NN TRAINING & BENCHMARKING
-    result = subprocess.run([
-        "sbatch",
-        f"--time=0:80:00",
-        "--account=def-rgmelko",
-        "--mem=6000",
-        f"--gpus-per-node=1",
-        f"--job-name={jobname_nn}.job",
-        f"--output=out/{jobname_nn}.out",
-        f"--error=out/{jobname_nn}.err",
-        f"--dependency=afterok:{job_id_circ},{job_id_sample}",
-        "submit_nn.sh", str(folder)
-        ],
-        capture_output = True
-    )
+    if flags[1]:
+        # SUBMIT CIRCUIT SAMPLING
+        opts = [
+            f"--time=0:{n//2}0:00",
+            f"--account={account}",
+            "--mem=6000",
+            # f"--gpus-per-node=1",
+            f"--job-name={jobname_sample}.job",
+            f"--output=out/{jobname_sample}.out",
+            f"--error=out/{jobname_sample}.err",
+        ]
+        if flags[0]:
+            opts.append(f"--dependency=afterok:{job_id_circ}")
+            
+        result = subprocess.run(["sbatch"] + opts + ["submit_nn.sh", str(folder)], capture_output = True)
+        print(result)
+        job_id_sample = str(result.stdout.decode()).split()[-1]
     
-    print(result)
-    job_id_sample = str(result.stdout.decode()).split()[-1]
-    
+    if flags[2]:
+        # SUBMIT NN TRAINING & BENCHMARKING
+        opts = [
+            "--time=0:100:00",
+            f"--account={account}",
+            "--mem=4000",
+            f"--gpus-per-node=1",
+            f"--job-name={jobname_nn}.job",
+            f"--output=out/{jobname_nn}.out",
+            f"--error=out/{jobname_nn}.err",
+        ]
+        if flags[0] and flags[1]:
+            opts.append(f"--dependency=afterok:<{jobname_circ}:{jobname_sample}>")
+            
+        result = subprocess.run(["sbatch"] + opts + ["submit_nn.sh", str(folder)], capture_output = True)
+        print(result)
+        job_id_ = str(result.stdout.decode()).split()[-1]
+        

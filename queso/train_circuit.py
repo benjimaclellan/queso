@@ -45,10 +45,13 @@ def train_circuit(
     mu = jax.random.uniform(key, shape=sensor.mu.shape)
 
     #%%
-    # if plot:
-    #     fig = sensor.circuit(theta, phi, mu).draw(output='mpl')
-    #     io.save_figure(fig, filename="circuit")
-    #     fig.show()
+    if plot:
+        try:
+            fig = sensor.circuit(theta, phi, mu).draw(output='mpl')
+            io.save_figure(fig, filename="circuit")
+            fig.show()
+        except:
+            pass
         
     #%%
     optimizer = optax.adam(learning_rate=lr)
@@ -96,10 +99,27 @@ def train_circuit(
 
     # %% compute other quantities of interest and save
     phis = (phi_range[1] - phi_range[0]) * jnp.arange(n_phis) / (n_phis - 1) + phi_range[0]
-    qfi_phis = jax.vmap(lambda phi: -loss_qfi(params={'theta': theta}, phi=phi))(phis)
-    cfi_phis = jax.vmap(lambda phi: -loss_cfi(params={'theta': theta, "mu": mu}, phi=phi))(phis)
+    # qfi_phis = jax.vmap(lambda phi: -loss_qfi(params={'theta': theta}, phi=phi))(phis)  # causes memory issues sometimes
+    # cfi_phis = jax.vmap(lambda phi: -loss_cfi(params={'theta': theta, "mu": mu}, phi=phi))(phis)
+    
+    qfi_phis = jnp.array([-loss_qfi(params={'theta': theta}, phi=phi) for phi in phis])
+    cfi_phis = jnp.array([-loss_cfi(params={'theta': theta, "mu": mu}, phi=phi) for phi in phis])
 
-    #%%
+    # %%
+    metadata = dict(n=n, k=k, lr=lr)
+    metadata.update(sensor.layers)
+    io.save_json(metadata, filename="circ-metadata.json")
+
+    hf = h5py.File(io.path.joinpath("circ.h5"), "w")
+    hf.create_dataset("theta", data=theta)
+    hf.create_dataset("mu", data=mu)
+    hf.create_dataset("fi_train", data=fi_train)
+    hf.create_dataset("vn_ent_train", data=vn_ent_train)
+    hf.create_dataset("phis", data=phis)
+    hf.create_dataset("qfi_phis", data=qfi_phis)
+    hf.create_dataset("cfi_phis", data=cfi_phis)
+    hf.close()
+
     if plot:
         # %% visualize
         fig, axs = plt.subplots(ncols=1, nrows=2, sharex=True)
@@ -122,21 +142,6 @@ def train_circuit(
         #     ax.set(ylim=[0, 1.1 * n**2])
         io.save_figure(fig, filename="qfi-cfi-phi")
         fig.show()
-
-    # %%
-    metadata = dict(n=n, k=k, lr=lr)
-    metadata.update(sensor.layers)
-    io.save_json(metadata, filename="circ-metadata.json")
-
-    hf = h5py.File(io.path.joinpath("circ.h5"), "w")
-    hf.create_dataset("theta", data=theta)
-    hf.create_dataset("mu", data=mu)
-    hf.create_dataset("fi_train", data=fi_train)
-    hf.create_dataset("vn_ent_train", data=vn_ent_train)
-    hf.create_dataset("phis", data=phis)
-    hf.create_dataset("qfi_phis", data=qfi_phis)
-    hf.create_dataset("cfi_phis", data=cfi_phis)
-    hf.close()
 
     return
 
