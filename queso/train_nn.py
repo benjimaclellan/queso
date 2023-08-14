@@ -7,6 +7,7 @@ from typing import Sequence
 import pandas as pd
 import h5py
 import argparse
+import warnings
 
 import jax
 import jax.numpy as jnp
@@ -65,9 +66,11 @@ def train_nn(
     dphi = phis[1] - phis[0]
     phi_range = (jnp.min(phis), jnp.max(phis))
 
-    index = jnp.arange(n_grid)
-    phis = (phi_range[1] - phi_range[0]) * index / (n_grid - 1) + phi_range[0]
-    assert n_phis == n_grid
+    grid = (phi_range[1] - phi_range[0]) * jnp.arange(n_grid) / (n_grid - 1) + phi_range[0]
+    index = jnp.stack([jnp.argmin(jnp.abs(grid - phi)) for phi in phis])
+
+    if n_phis != n_grid:
+        warnings.warn("Grid and training data do not match. untested behaviour.")
 
     labels = jax.nn.one_hot(index, num_classes=n_grid)
 
@@ -80,13 +83,20 @@ def train_nn(
     x = shots
     y = labels
 
+    mu, sig = 0.0, 0.05
+    g = (1/sig/jnp.sqrt(2 * jnp.pi)) * jnp.exp(- (jnp.linspace(-1, 1, n_grid) - mu) ** 2 / 2 / sig**2)
+    yg = jnp.fft.ifft(jnp.fft.fft(y, axis=1) * jnp.fft.fft(jnp.fft.fftshift(g)), axis=1).real
+    fig, ax = plt.subplots()
+    sns.heatmap(yg, ax=ax)
+    plt.show()
+
     #%%
     x_init = x[1:10, 1:10, :]
     print(model.tabulate(jax.random.PRNGKey(0), x_init))
 
     # %%
-    def l2_loss(params, alpha):
-        return alpha * (params ** 2).mean()
+    def l2_loss(w, alpha):
+        return alpha * (w ** 2).mean()
 
     @jax.jit
     def train_step(state, batch):
@@ -103,12 +113,20 @@ def train_nn(
                 eps = 1e-10
                 tau = 10.0
                 logits = (logits + eps) / (jnp.sqrt((logits ** 2 + eps).sum(axis=-1, keepdims=True))) / tau
-            loss = -jnp.sum(y_batch[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
+
+            # standard cross-entropy
+            # loss = -jnp.sum(y_batch[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
 
             # MSE loss
-            # loss = jnp.sum((y_batch[:, None, :] - jax.nn.log_softmax(logits, axis=-1))**2, axis=-1).mean(axis=(0, 1))
+            loss = jnp.sum((y_batch[:, None, :] - jax.nn.softmax(logits, axis=-1))**2, axis=-1).mean(axis=(0, 1))
 
-            # loss += l2_loss()
+            # CE loss + convolution w/ Gaussian
+            # loss = -jnp.sum(yg[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
+
+            # loss += sum(
+            #     l2_loss(w, alpha=0.01)
+            #     for w in jax.tree_leaves(params)
+            # )
             return loss
 
         loss_val_grad_fn = jax.value_and_grad(loss_fn)
@@ -148,6 +166,13 @@ def train_nn(
     state = create_train_state(model, init_key, x_init, learning_rate=lr)
     # del init_key
 
+    #%%
+    x_batch = x[:, 0:batch_size, :]
+    y_batch = y
+    batch = (x_batch, y_batch)
+
+    state, loss = train_step(state, batch)
+
     # %%
     keys = jax.random.split(key, (n_epochs))
     metrics = []
@@ -171,9 +196,12 @@ def train_nn(
     pbar.close()
     metrics = pd.DataFrame(metrics)
 
-    #%% compute posterior
-    assert n_phis == n_grid
+    #%%
+    hf = h5py.File(io.path.joinpath("nn.h5"), "w")
+    hf.create_dataset("grid", data=grid)
+    hf.close()
 
+    #%% compute posterior
     # approx likelihood from relative frequencies
     freqs = counts / counts.sum(axis=1, keepdims=True)
     likelihood = freqs

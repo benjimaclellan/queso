@@ -30,11 +30,11 @@ from queso.configs import Configuration
 base = Configuration()
 
 folders = {}
-for n in (8,):
+for n in (6,):
     config = copy.deepcopy(base)
     config.n = n
     config.k = n
-    folder = f"2023-08-01_nonlocal_prep_n{config.n}_k{config.k}"
+    folder = f"2023-08-14_debug_bias_n{config.n}_k{config.k}"
 
     config.train_circuit = False
     config.sample_circuit_training_data = False
@@ -53,11 +53,13 @@ for n in (8,):
     config.n_shots_test = 10000
 
     config.phi_range = [-pi, pi]
-    config.phis_test = (np.arange(-4, 5) / 10 * pi).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
+    # config.phis_test = (np.arange(-4, 5) / 10 * pi).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
+    config.phis_test = np.linspace(-pi, pi, 5).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
     config.n_sequences = np.logspace(0, 3, 10, dtype='int').tolist()
-    config.n_epochs = 1000
+    config.n_epochs = 25
     config.lr_nn = 5e-3
-    config.nn_dims = [128, 128, 128]
+    config.n_grid = 100
+    config.nn_dims = [32, 32]
     config.batch_size = 50
         
     jobname = f"n{config.n}k{config.k}"

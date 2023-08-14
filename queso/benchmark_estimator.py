@@ -28,8 +28,8 @@ def benchmark_estimator(
 
     #%%
     n_trials = config.n_trials
-    phis_inds = jnp.array(config.phis_inds)
     n_sequences = jnp.array(config.n_sequences)
+    n_grid = config.n_grid
 
     #%%
     hf = h5py.File(io.path.joinpath("train_samples.h5"), "r")
@@ -47,6 +47,11 @@ def benchmark_estimator(
     hf = h5py.File(io.path.joinpath("circ.h5"), "r")
     print(hf.keys())
     fi = jnp.array(hf.get("fi_train"))[-1]
+    hf.close()
+
+    hf = h5py.File(io.path.joinpath("nn.h5"), "r")
+    print(hf.keys())
+    grid = jnp.array(hf.get("grid"))
     hf.close()
 
     n = config.n
@@ -82,9 +87,11 @@ def benchmark_estimator(
 
     #%%
     pred = model.apply({'params': restored['params']}, sequences)
+    # T =
+    # pred = nn.activation.softmax(pred / T, axis=-1)  # use temperature scaling to smooth
     pred = nn.activation.softmax(pred, axis=-1)
     print(pred.shape)
-    assert pred.shape == (n_trials, len(phis_true), n_sequence_max, n_phis)
+    assert pred.shape == (n_trials, len(phis_true), n_sequence_max, n_grid)
 
     #%%
     def posterior_product(pred, n_sequence):
@@ -92,6 +99,8 @@ def benchmark_estimator(
         tmp = pred[:, :, :n_sequence, :]
         tmp = jnp.log(tmp).sum(axis=-2, keepdims=False)  # sum log posterior probs for each individual input sample
         tmp = jnp.exp(tmp - tmp.max(axis=-1, keepdims=True))  # help with underflow in normalization
+
+
         posteriors = tmp / tmp.sum(axis=-1, keepdims=True)
         return posteriors
 
@@ -101,30 +110,30 @@ def benchmark_estimator(
     @jax.jit
     def bias(phis_estimates, phis_true):
         # bias in Euclidean space
-        # biases = phis_estimates - phis_true[None, :, None]
+        biases = phis_estimates - phis_true[None, :, None]
 
         # bias on a circular manifold
-        vecs_true = jnp.exp(1j * phis_true[None, :, None])
-        vecs_est = jnp.exp(1j * phis_estimates)
-        biases = jnp.arccos(vecs_true.real * vecs_est.real + vecs_true.imag * vecs_est.imag)
+        # vecs_true = jnp.exp(1j * phis_true[None, :, None])
+        # vecs_est = jnp.exp(1j * phis_estimates)
+        # biases = jnp.arccos(vecs_true.real * vecs_est.real + vecs_true.imag * vecs_est.imag)
         return biases
 
     @jax.jit
     def variance(posteriors, phis_estimates, phis):
         # over a euclidean space
-        # variances = (posteriors * jnp.power(phi_estimates[:, :, :, None] - phis[None, None, None, :], 2)).sum(axis=-1)
+        variances = (posteriors * jnp.power(phis_estimates[:, :, :, None] - grid[None, None, None, :], 2)).sum(axis=-1)
 
         # over a circular space
-        vecs_est = jnp.exp(1j * phis_estimates[:, :, :, None])
-        vecs_out = jnp.exp(1j * phis[None, None, None, :])
-        tmp = jnp.clip(vecs_out.real * vecs_est.real + vecs_out.imag * vecs_est.imag, -1, 1)
-        diff = jnp.arccos(tmp)
-        # print(jnp.count_nonzero(jnp.isnan(diff)))
-        variances = (posteriors * jnp.power(diff, 2)).sum(axis=-1)
+        # vecs_est = jnp.exp(1j * phis_estimates[:, :, :, None])
+        # vecs_out = jnp.exp(1j * phis[None, None, None, :])
+        # tmp = jnp.clip(vecs_out.real * vecs_est.real + vecs_out.imag * vecs_est.imag, -1, 1)
+        # diff = jnp.arccos(tmp)
+        # # print(jnp.count_nonzero(jnp.isnan(diff)))
+        # variances = (posteriors * jnp.power(diff, 2)).sum(axis=-1)
         return variances
 
     posteriors = jnp.stack([posterior_product(pred, n_sequence) for n_sequence in n_sequences], axis=2)
-    assert posteriors.shape == (n_trials, len(phis_true), len(n_sequences), n_phis)
+    assert posteriors.shape == (n_trials, len(phis_true), len(n_sequences), n_grid)
 
     phis_estimates = estimate(posteriors, phis)
     biases = bias(phis_estimates, phis_true)
@@ -142,27 +151,37 @@ def benchmark_estimator(
     hf.close()
 
     #%% plot updated posterior distribution for n_trials different sequence samples
+    ncols = phis_test.size
+    nrows = 8
     if plot:
-        fig, axs = plt.subplots(nrows=n_trials, ncols=phis_inds.shape[0], figsize=(10.0, 1.5 * n_trials), sharex=True, sharey=True)
+        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(3.5*ncols, 1.5 * nrows), sharex=True, sharey=True, gridspec_kw=dict(hspace=0, wspace=0))
         colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
-        markers = ["o", "D", 's', "v", "^", "<", ">", ]
 
-        for k in range(phis_inds.shape[0]):
-            for j in range(n_trials):
+        for k in range(ncols):
+            z = k * (phis_true.shape[0] // ncols)
+            print(f"Closest grid point is {jnp.min(jnp.abs(phis - phis_true[z]))}")
+            for j in range(nrows):
                 for i, n_sequence in enumerate(n_sequences):
+                    # print(k, j, i)
                     ax = axs[j, k]
-                    ax.axvline(phis_true[k], color='black', ls='-', alpha=1.0)
-                    ax.axvline(phis_estimates[j, k, -1], color='red', ls='-', alpha=1.0)
-                    p = posteriors[j, k, i, :]
+                    ax.axvline(phis_estimates[j, z, -1], color='red', ls='-', lw=1, alpha=1.0)
+                    ax.axvline(phis_true[z], color='gray', ls='--', lw=1, alpha=0.6)
+                    p = posteriors[j, z, i, :]
                     ax.plot(
-                        phis,
+                        grid,
                         p / jnp.max(p),
-                        ls=':',
-                        marker=markers[i % len(markers)],
+                        ls='-',
+                        lw=1,
                         color=colors[i],
                         alpha=(i+1) / len(n_sequences),
-                        markersize=3,
-                )
+                    )
+                    b = phis_true[z] - phis_estimates[j, z, -1]
+                    ax.annotate(text=f"{b:2.6f}",
+                                xy=(0.9, 0.9),
+                                xycoords='axes fraction',
+                                **dict(ha='right', va='top'))
+                    ax.set(xticks=[], yticks=[])
+
         io.save_figure(fig, 'trials_n_sequences.pdf')
         del fig
 
@@ -177,7 +196,7 @@ def benchmark_estimator(
             ax = axs[0]
             p = posteriors[1, k, i, :]
             ax.plot(
-                jnp.linspace(phi_range[0], phi_range[1], n_phis),
+                grid,
                 p / jnp.max(p),
                 ls=':',
                 marker=markers[i % len(markers)],
@@ -225,7 +244,6 @@ def benchmark_estimator(
 
 
 #%%
-#%%
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -239,4 +257,4 @@ if __name__ == "__main__":
     key = jax.random.PRNGKey(config.seed)
     print(f"Benchmarking NN: {folder} | Devices {jax.devices()} | Full path {io.path}")
     print(f"Config: {config}")
-    benchmark_estimator(io, config, key)
+    benchmark_estimator(io, config, key, plot=True)

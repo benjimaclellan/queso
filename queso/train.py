@@ -71,7 +71,7 @@ def train(io: IO, config: Configuration):
             io=io,
             config=config,
             key=key,
-            plot=False,
+            plot=True,
         )
     return
 

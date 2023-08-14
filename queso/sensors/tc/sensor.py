@@ -1,5 +1,6 @@
 from functools import partial
 import time
+from tqdm import tqdm
 import itertools
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -47,6 +48,7 @@ class Sensor:
             self.preparation = lambda c, theta, n, k: brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=n_ancilla)
             self.theta = jnp.zeros([n, k, 6])
         elif preparation == "local_r":
+            self.preparation = local_r
             self.preparation = local_r
             self.theta = jnp.zeros([n, 3])
         else:
@@ -109,14 +111,12 @@ class Sensor:
 
     # @partial(jax.jit, static_argnums=(0,))
     def sample(self, theta, phi, mu, key=None, n_shots=100, verbose=False):
-        print(f"Sampling {phi}")
         if key is None:
             key = jax.random.PRNGKey(time.time_ns())
         keys = jax.random.split(key, n_shots)
         shots = jnp.array([self._sample(theta, phi, mu, key) for key in keys]).astype(
             "bool"
         )
-        print(shots.device())
         return shots
 
     @partial(jax.jit, static_argnums=(0,))
@@ -153,16 +153,17 @@ class Sensor:
         return entropy
 
     def sample_over_phases(self, theta, phis, mu, n_shots, key=None, verbose=False):
+        check = self.sample(theta, 0.0, mu, key=key, n_shots=1, verbose=verbose)
+        print(f"Sampling at φ = {phis}")
+        print(check.device())
         if key is None:
             key = jax.random.PRNGKey(time.time_ns())
         keys = jax.random.split(key, phis.shape[0])
-        data = jnp.stack(
-            [
+        data = [
                 self.sample(theta, phi, mu, key=key, n_shots=n_shots, verbose=verbose)
-                for (phi, key) in zip(phis, keys)
-            ],
-            axis=0,
-        )
+                for (phi, key) in tqdm(zip(phis, keys), total=phis.size)
+        ]
+        data = jnp.stack(data, axis=0)
         probs = jnp.stack([self.probs(theta, phi, mu) for phi in phis], axis=0)
         return data, probs
 
@@ -195,6 +196,7 @@ def brick_wall_cr(c, theta, n, k):
                 alpha=theta[i, j, 4],
                 phi=theta[i, j, 5],
             )
+    c.barrier_instruction()
     return c
 
 
@@ -233,6 +235,7 @@ def brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=1):
                 alpha=theta[i, j, 4],
                 phi=theta[i, j, 5],
             )
+    c.barrier_instruction()
     return c
 
 
@@ -240,6 +243,7 @@ def brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=1):
 def local_rx(c, phi, n):
     for i in range(n):
         c.rx(i, theta=phi)
+    c.barrier_instruction()
     return c
 
 
@@ -248,17 +252,20 @@ def fourier_rx(c, phi, n):
         c.rx(i, theta=phi)
     for i in range(1, n, 2):
         c.rz(i, theta=-phi)
+    c.barrier_instruction()
     return c
 
 
 def local_depolarizing(c, phi, n):
     for i in range(n):
         c.depolarizing(i, phi)
+    c.barrier_instruction()
     return c
 
 
 def single_rx(c, phi, n):
     c.rx(0, theta=phi)
+    c.barrier_instruction()
     return c
 
 
@@ -271,6 +278,7 @@ def local_r(c, mu, n, k):
             alpha=mu[i, 1],
             phi=mu[i, 2],
         )
+    c.barrier_instruction()
     return c
 
 
