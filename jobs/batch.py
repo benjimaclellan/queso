@@ -34,7 +34,7 @@ for n in (6,):
     config = copy.deepcopy(base)
     config.n = n
     config.k = n
-    folder = f"2023-08-14_debug_bias_n{config.n}_k{config.k}"
+    folder = f"2023-08-14_grid_phi_n{config.n}_k{config.k}"
 
     config.train_circuit = False
     config.sample_circuit_training_data = False
@@ -49,9 +49,9 @@ for n in (6,):
     config.detection = 'local_r'
     config.n_ancilla = 2
 
-    config.n_shots = 5000
+    config.n_shots = 1000
     config.n_shots_test = 10000
-
+    config.n_phis = 500
     config.phi_range = [-pi, pi]
     # config.phis_test = (np.arange(-4, 5) / 10 * pi).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
     config.phis_test = np.linspace(-pi, pi, 5).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
