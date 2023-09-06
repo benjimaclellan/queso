@@ -87,7 +87,7 @@ def benchmark_estimator(
 
     #%%
     pred = model.apply({'params': restored['params']}, sequences)
-    # T =
+    # T = 1
     # pred = nn.activation.softmax(pred / T, axis=-1)  # use temperature scaling to smooth
     pred = nn.activation.softmax(pred, axis=-1)
     print(pred.shape)
@@ -102,8 +102,8 @@ def benchmark_estimator(
         posteriors = tmp / tmp.sum(axis=-1, keepdims=True)
         return posteriors
 
-    def estimate(posteriors, phis):
-        return phis[jnp.argmax(posteriors, axis=-1)]
+    def estimate(posteriors, grid):
+        return grid[jnp.argmax(posteriors, axis=-1)]
 
     @jax.jit
     def bias(phis_estimates, phis_true):
@@ -117,7 +117,7 @@ def benchmark_estimator(
         return biases
 
     @jax.jit
-    def variance(posteriors, phis_estimates, phis):
+    def variance(posteriors, phis_estimates, grid):
         # over a euclidean space
         variances = (posteriors * jnp.power(phis_estimates[:, :, :, None] - grid[None, None, None, :], 2)).sum(axis=-1)
 
@@ -133,9 +133,9 @@ def benchmark_estimator(
     posteriors = jnp.stack([posterior_product(pred, n_sequence) for n_sequence in n_sequences], axis=2)
     assert posteriors.shape == (n_trials, len(phis_true), len(n_sequences), n_grid)
 
-    phis_estimates = estimate(posteriors, phis)
+    phis_estimates = estimate(posteriors, grid)
     biases = bias(phis_estimates, phis_true)
-    variances = variance(posteriors, phis_estimates, phis)
+    variances = variance(posteriors, phis_estimates, grid)
 
     #%%
     hf = h5py.File(io.path.joinpath("estimates.h5"), "w")
@@ -158,7 +158,7 @@ def benchmark_estimator(
 
         for k in range(ncols):
             z = k * (phis_true.shape[0] // ncols)
-            print(f"Closest grid point is {jnp.min(jnp.abs(phis - phis_true[z]))}")
+            print(f"Closest grid point is {jnp.min(jnp.abs(phis - phis_true[z]))} rads away")
             for j in range(nrows):
                 for i, n_sequence in enumerate(n_sequences):
                     # print(k, j, i)
@@ -219,7 +219,6 @@ def benchmark_estimator(
         io.save_figure(fig, 'all_trials_one_phase.pdf')
         del fig
 
-
     #%% plot posterior, bias, and variance for one phase
     for k in range(phis_true.shape[0]):
         fig, axs = plt.subplots(nrows=3, figsize=(6.5, 6.0))
@@ -268,6 +267,7 @@ def benchmark_estimator(
         ax.plot(n_sequences, 1/(n_sequences * n), label='SQL', **dict(color='black', alpha=0.8, ls=':'))
         ax.plot(n_sequences, 1/(n_sequences * n**2), label='HL', **dict(color='black', alpha=0.8, ls=':'))
         ax.set(xscale="log", yscale='log')
+        ax.legend()
 
         axs[0].set(xlabel="$\phi_j$", ylabel=r"p($\phi_j | \vec{s}$)")
         axs[1].set(xlabel="Sequence length, $m$", ylabel=r"Bias, $\langle \hat{\varphi} - \varphi \rangle$")

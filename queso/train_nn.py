@@ -83,12 +83,12 @@ def train_nn(
     x = shots
     y = labels
 
-    mu, sig = 0.0, 0.05
-    g = (1/sig/jnp.sqrt(2 * jnp.pi)) * jnp.exp(- (jnp.linspace(-1, 1, n_grid) - mu) ** 2 / 2 / sig**2)
-    yg = jnp.fft.ifft(jnp.fft.fft(y, axis=1) * jnp.fft.fft(jnp.fft.fftshift(g)), axis=1).real
-    fig, ax = plt.subplots()
-    sns.heatmap(yg, ax=ax)
-    plt.show()
+    # mu, sig = 0.0, 0.05
+    # g = (1/sig/jnp.sqrt(2 * jnp.pi)) * jnp.exp(- (jnp.linspace(-1, 1, n_grid) - mu) ** 2 / 2 / sig**2)
+    # yg = jnp.fft.ifft(jnp.fft.fft(y, axis=1) * jnp.fft.fft(jnp.fft.fftshift(g)), axis=1).real
+    # fig, ax = plt.subplots()
+    # sns.heatmap(yg, ax=ax)
+    # plt.show()
 
     #%%
     x_init = x[1:10, 1:10, :]
