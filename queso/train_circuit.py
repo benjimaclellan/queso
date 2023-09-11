@@ -72,12 +72,15 @@ def train_circuit(
 
     # %%
 
-    loss = loss_cfi
-    params = {"theta": theta, "mu": mu}
-
-    # loss = loss_qfi
-    # params = {'theta': theta}
-
+    if config.loss_fi == "loss_cfi":
+        loss = loss_cfi
+        params = {"theta": theta, "mu": mu}
+    elif config.loss_fi == "loss_qfi":
+        loss = loss_qfi
+        params = {'theta': theta}
+    else:
+        raise ValueError("Not a valid Fisher Information loss function. Use loss_cfi or loss_qfi.")
+    
     loss_val_grad = jax.value_and_grad(loss, argnums=0)
 
     opt_state = optimizer.init(params)
@@ -95,7 +98,16 @@ def train_circuit(
     losses = jnp.array(losses)
     fi_train = losses  # set FI to the losses
     theta = params["theta"]
-    mu = params["mu"]
+    
+    if config.loss_fi == "loss_cfi":
+        mu = params["mu"]
+        
+    hf = h5py.File(io.path.joinpath("circ.h5"), "w")
+    hf.create_dataset("theta", data=theta)
+    hf.create_dataset("mu", data=mu)
+    hf.create_dataset("fi_train", data=fi_train)
+    hf.create_dataset("vn_ent_train", data=vn_ent_train)
+    hf.close()
 
     # %% compute other quantities of interest and save
     phis = (phi_range[1] - phi_range[0]) * jnp.arange(n_phis) / (n_phis - 1) + phi_range[0]
@@ -110,11 +122,7 @@ def train_circuit(
     metadata.update(sensor.layers)
     io.save_json(metadata, filename="circ-metadata.json")
 
-    hf = h5py.File(io.path.joinpath("circ.h5"), "w")
-    hf.create_dataset("theta", data=theta)
-    hf.create_dataset("mu", data=mu)
-    hf.create_dataset("fi_train", data=fi_train)
-    hf.create_dataset("vn_ent_train", data=vn_ent_train)
+    hf = h5py.File(io.path.joinpath("circ.h5"), "a")
     hf.create_dataset("phis", data=phis)
     hf.create_dataset("qfi_phis", data=qfi_phis)
     hf.create_dataset("cfi_phis", data=cfi_phis)

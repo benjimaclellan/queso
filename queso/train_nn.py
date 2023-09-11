@@ -115,10 +115,10 @@ def train_nn(
                 logits = (logits + eps) / (jnp.sqrt((logits ** 2 + eps).sum(axis=-1, keepdims=True))) / tau
 
             # standard cross-entropy
-            # loss = -jnp.sum(y_batch[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
+            loss = -jnp.sum(y_batch[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
 
             # MSE loss
-            loss = jnp.sum((y_batch[:, None, :] - jax.nn.softmax(logits, axis=-1))**2, axis=-1).mean(axis=(0, 1))
+            # loss = jnp.sum((y_batch[:, None, :] - jax.nn.softmax(logits, axis=-1))**2, axis=-1).mean(axis=(0, 1))
 
             # CE loss + convolution w/ Gaussian
             # loss = -jnp.sum(yg[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))

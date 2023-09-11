@@ -28,6 +28,7 @@ class Configuration:
     detection: str = 'local_r'
     backend: str = 'ket'
     n_ancilla: int = 0
+    loss_fi: str = "loss_cfi"
     
     # training circuit args
     n_phis: int = 100
@@ -63,8 +64,8 @@ class Configuration:
         if self.seed is None:
             self.seed = time.time_ns()
 
-        if self.n_grid != self.n_phis:
-            raise Warning("should be the same")
+        # if self.n_grid != self.n_phis:
+            # raise Warning("should be the same")
 
         # convert all lists to jax.numpy arrays
         # for field in fields(self.__class__):
