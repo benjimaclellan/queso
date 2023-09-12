@@ -26,9 +26,12 @@ class Configuration:
     preparation: str = 'brick_wall_cr'
     interaction: str = "local_rx"
     detection: str = 'local_r'
-    backend: str = 'ket'
-    n_ancilla: int = 0
     loss_fi: str = "loss_cfi"
+    backend: str = 'ket'
+    
+    # optional circuit args    
+    gamma_dephasing: float = 0.0
+    n_ancilla: int = 0
     
     # training circuit args
     n_phis: int = 100
@@ -47,6 +50,7 @@ class Configuration:
     n_grid: int = 100  # todo: make more general - not requiring matching training phis and grid
     nn_dims: list[int] = field(default_factory=lambda: [32, 32])
     lr_nn: float = 1e-3
+    l2_regularization: float = 0.0  # L2 regularization for NN estimator
     from_checkpoint: bool = False
 
     # benchmark estimator args

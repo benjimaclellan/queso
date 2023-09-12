@@ -37,6 +37,7 @@ def train_nn(
     nn_dims = config.nn_dims + [config.n_grid]
     n_grid = config.n_grid
     lr = config.lr_nn
+    l2_regularization = config.l2_regularization
     n_epochs = config.n_epochs
     batch_size = config.batch_size
     from_checkpoint = config.from_checkpoint
@@ -123,10 +124,10 @@ def train_nn(
             # CE loss + convolution w/ Gaussian
             # loss = -jnp.sum(yg[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
 
-            # loss += sum(
-            #     l2_loss(w, alpha=0.01)
-            #     for w in jax.tree_leaves(params)
-            # )
+            loss += sum(
+                l2_loss(w, alpha=l2_regularization)
+                for w in jax.tree_leaves(params)
+            )
             return loss
 
         loss_val_grad_fn = jax.value_and_grad(loss_fn)

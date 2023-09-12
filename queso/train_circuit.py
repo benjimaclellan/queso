@@ -34,7 +34,8 @@ def train_circuit(
         interaction=config.interaction,
         detection=config.detection,
         backend=config.backend,
-        n_ancilla=config.n_ancilla
+        n_ancilla=config.n_ancilla,
+        gamma_dephasing=config.gamma_dephasing,
     )
 
     #%%
@@ -114,8 +115,8 @@ def train_circuit(
     # qfi_phis = jax.vmap(lambda phi: -loss_qfi(params={'theta': theta}, phi=phi))(phis)  # causes memory issues sometimes
     # cfi_phis = jax.vmap(lambda phi: -loss_cfi(params={'theta': theta, "mu": mu}, phi=phi))(phis)
     
-    qfi_phis = jnp.array([-loss_qfi(params={'theta': theta}, phi=phi) for phi in phis])
-    cfi_phis = jnp.array([-loss_cfi(params={'theta': theta, "mu": mu}, phi=phi) for phi in phis])
+    # qfi_phis = jnp.array([-loss_qfi(params={'theta': theta}, phi=phi) for phi in phis])
+    # cfi_phis = jnp.array([-loss_cfi(params={'theta': theta, "mu": mu}, phi=phi) for phi in phis])
 
     # %%
     metadata = dict(n=n, k=k, lr=lr)
@@ -124,8 +125,8 @@ def train_circuit(
 
     hf = h5py.File(io.path.joinpath("circ.h5"), "a")
     hf.create_dataset("phis", data=phis)
-    hf.create_dataset("qfi_phis", data=qfi_phis)
-    hf.create_dataset("cfi_phis", data=cfi_phis)
+    # hf.create_dataset("qfi_phis", data=qfi_phis)
+    # hf.create_dataset("cfi_phis", data=cfi_phis)
     hf.close()
 
     if plot:
@@ -141,9 +142,9 @@ def train_circuit(
 
         #%%
         fig, axs = plt.subplots(ncols=1, nrows=2, sharex=True)
-        axs[0].plot(phis / jnp.pi, qfi_phis)
+        # axs[0].plot(phis / jnp.pi, qfi_phis)
         axs[1].plot(phis / jnp.pi, cfi_phis)
-        axs[0].set(ylabel="QFI")
+        # axs[0].set(ylabel="QFI")
         axs[1].set(ylabel="CFI")
         axs[-1].set(xlabel=r"$\phi$ (rad/$\pi$)")
         # for ax in axs:

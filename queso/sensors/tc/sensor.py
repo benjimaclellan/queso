@@ -47,6 +47,12 @@ class Sensor:
             n_ancilla = kwargs.get('n_ancilla', n//2)
             self.preparation = lambda c, theta, n, k: brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=n_ancilla)
             self.theta = jnp.zeros([n, k, 6])
+            
+        elif preparation == "brick_wall_cr_dephasing":
+            gamma_dephasing = kwargs.get('gamma_dephasing', 0.0)
+            self.preparation = lambda c, theta, n, k: brick_wall_cr_dephasing(c, theta, n, k, gamma=gamma_dephasing)
+            self.theta = jnp.zeros([n, k, 6])
+            
         elif preparation == "local_r":
             self.preparation = local_r
             self.preparation = local_r
@@ -237,6 +243,41 @@ def brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=1):
             )
     c.barrier_instruction()
     return c
+
+
+def brick_wall_cr_dephasing(c, theta, n, k, gamma=0.0):
+    for j in range(k):
+        for i in range(n):
+            c.r(
+                i,
+                theta=theta[i, j, 0],
+                alpha=theta[i, j, 1],
+                phi=theta[i, j, 2],
+            )
+
+        for i in range(0, n - 1, 2):
+            c.cr(
+                i,
+                i + 1,
+                theta=theta[i, j, 3],
+                alpha=theta[i, j, 4],
+                phi=theta[i, j, 5],
+            )
+
+        for i in range(1, n - 1, 2):
+            c.cr(
+                i,
+                i + 1,
+                theta=theta[i, j, 3],
+                alpha=theta[i, j, 4],
+                phi=theta[i, j, 5],
+            )
+        
+        for i in range(n):
+            c.phasedamping(i, gamma=gamma)
+    c.barrier_instruction()
+    return c
+
 
 
 # interaction layers
