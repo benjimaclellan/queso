@@ -140,17 +140,19 @@ def train_circuit(
         io.save_figure(fig, filename="fi-entropy-optimization")
         fig.show()
 
-        #%%
-        fig, axs = plt.subplots(ncols=1, nrows=2, sharex=True)
-        # axs[0].plot(phis / jnp.pi, qfi_phis)
-        axs[1].plot(phis / jnp.pi, cfi_phis)
-        # axs[0].set(ylabel="QFI")
-        axs[1].set(ylabel="CFI")
-        axs[-1].set(xlabel=r"$\phi$ (rad/$\pi$)")
-        # for ax in axs:
-        #     ax.set(ylim=[0, 1.1 * n**2])
-        io.save_figure(fig, filename="qfi-cfi-phi")
-        fig.show()
+        # #%%
+        # fig, axs = plt.subplots(ncols=1, nrows=2, sharex=True)
+        # # axs[0].plot(phis / jnp.pi, qfi_phis)
+        # axs[1].plot(phis / jnp.pi, cfi_phis)
+        # # axs[0].set(ylabel="QFI")
+        # axs[1].set(ylabel="CFI")
+        # axs[-1].set(xlabel=r"$\phi$ (rad/$\pi$)")
+        # # for ax in axs:
+        # #     ax.set(ylim=[0, 1.1 * n**2])
+        # io.save_figure(fig, filename="qfi-cfi-phi")
+        # fig.show()
+
+    print(f"Finished training the circuits.")
 
     return
 

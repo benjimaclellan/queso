@@ -53,6 +53,8 @@ def sample_circuit_testing(
     hf.close()
 
     #%%
+    print(f"Finished sampling the circuits for test data.")
+    
     return
 
 

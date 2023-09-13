@@ -9,7 +9,7 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from queso.sensors.tc.sensor import Sensor, sample_bin2int
+from queso.sensors.tc.sensor import Sensor, sample_bin2int, sample_int2bin
 from queso.io import IO
 from queso.configs import Configuration
 
@@ -52,6 +52,7 @@ def sample_circuit(
     outcomes = sample_bin2int(shots, n)
     counts = jnp.stack([jnp.count_nonzero(outcomes == x, axis=(1,), keepdims=True).squeeze() for x in range(2 ** n)], axis=1)
     freqs = counts / counts.sum(axis=-1, keepdims=True)
+    bit_strings = sample_int2bin(jnp.arange(2**n), n)
 
     # %%
     if plot:
@@ -62,6 +63,14 @@ def sample_circuit(
         plt.show()
         io.save_figure(fig, filename="probs_freqs.png")
 
+        colors = sns.color_palette('deep', n_colors=bit_strings.shape[0])
+        fig, ax = plt.subplots()
+        for i in range(bit_strings.shape[0]):
+            xdata = jnp.linspace(phi_range[0], phi_range[1], probs.shape[0], endpoint=False)
+            ax.plot(xdata, freqs[:, i], color=colors[i], ls='--', alpha=0.3)
+        io.save_figure(fig, filename="liklihoods.png")
+
+        
     # %%
     hf = h5py.File(io.path.joinpath("train_samples.h5"), "w")
     hf.create_dataset("probs", data=probs)
@@ -70,6 +79,7 @@ def sample_circuit(
     hf.create_dataset("phis", data=phis)
     hf.close()
 
+    print(f"Finished sampling the circuits.")
     return
 
 

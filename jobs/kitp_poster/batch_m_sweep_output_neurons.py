@@ -30,23 +30,25 @@ from queso.configs import Configuration
 base = Configuration()
 
 folders = {}
-for n in (4,):
+n = 6
+for m in (100,):
+# for m in (10, 50, 100, 250, 500, 1000,):
     
     config = copy.deepcopy(base)
     config.n = n
     config.k = n
-    config.n_grid = 500
+    config.n_grid = m
     
     config.seed = 122344
     
-    prefix = f"est_ex_cfi_m{config.n_grid}"
-    folder = f"2023-09-13_poster_estimation_example_n{config.n}_k{config.k}_m{config.n_grid}"
+    prefix = f"sweep_m_{config.n_grid}"
+    folder = f"2023-09-13_sweep_m_{config.n}_k{config.k}/m{config.n_grid}"
 
     config.train_circuit = True
     config.sample_circuit_training_data = True
     config.sample_circuit_testing_data = True
-    config.train_nn = True
-    config.benchmark_estimator = True
+    config.train_nn = False
+    config.benchmark_estimator = False
 
     config.preparation = 'brick_wall_cr'
     config.interaction = 'local_rx'

@@ -116,7 +116,7 @@ for batch_size in (10, 100, 250, 500, 1000):
             "sbatch",
             "--time=0:30:00",
             "--account=def-rgmelko",
-            "--mem=3000",
+            "--mem=8000",
             f"--gpus-per-node=1",
             f"--job-name={jobname}.job",
             f"--output=out/{jobname}.out",

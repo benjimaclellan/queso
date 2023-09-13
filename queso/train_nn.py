@@ -302,6 +302,8 @@ def train_nn(
     ckptr.save(ckpt_dir, ckpt, save_args=orbax_utils.save_args_from_target(ckpt), force=True)
     restored = ckptr.restore(ckpt_dir, item=None)
 
+    print(f"Finished training the estimator.")
+
 
 #%%
 if __name__ == "__main__":

@@ -25,6 +25,8 @@ def benchmark_estimator(
     key: jax.random.PRNGKey = None,
     plot: bool = False,
 ):
+    print(f"Beginning to benchmark estimator.")
+    
 
     #%%
     n_trials = config.n_trials
@@ -276,6 +278,9 @@ def benchmark_estimator(
         io.save_figure(fig, filename=f"bias-variance/{k}_{phis_true[k].item()}.png")
         fig.tight_layout()
         plt.show()
+
+
+    print(f"Finished benchmarking the estimator.")
 
 
 #%%
