@@ -30,14 +30,17 @@ from queso.configs import Configuration
 base = Configuration()
 
 folders = {}
-for n in (6,):
+n = 8
+for n_ancilla in (4,):
+# for n_ancilla in (0, 1, 2, 3, 4):
+
     prefix = "full_range_est"
     
     config = copy.deepcopy(base)
     config.n = n
     config.k = n
-    config.seed = 22
-    folder = f"2023-09-12_poster_full_range_n{config.n}_k{config.k}"
+    config.seed = 12234
+    folder = f"2023-09-18_full_range_n{config.n}_k{config.k}/n_ancilla_{n_ancilla}"
 
     config.train_circuit = True
     config.sample_circuit_training_data = True
@@ -48,16 +51,17 @@ for n in (6,):
     config.preparation = 'brick_wall_cr_ancillas'
     config.interaction = 'local_rx'
     config.detection = 'local_r'
-    config.n_ancilla = 1
+    config.n_ancilla = n_ancilla
     config.loss_fi = "loss_cfi"
-    config.backend = "dm"
+    config.backend = "ket"
     
     config.n_shots = 1000
     config.n_shots_test = 10000
     config.n_phis = 200
-    config.phi_range = [-pi/2, pi/2]
+    config.phi_offset = 0.0
+    config.phi_range = [-pi/2 + config.phi_offset, pi/2 + config.phi_offset]
 
-    config.phis_test = np.linspace(-pi/3, pi/3, 6).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
+    config.phis_test = (np.linspace(-pi/3, pi/3, 6) + config.phi_offset).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
     config.n_sequences = np.logspace(0, 3, 10, dtype='int').tolist()
     config.n_epochs = 10000
     config.lr_nn = 1e-4
