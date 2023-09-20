@@ -129,6 +129,9 @@ def train_circuit(
     # hf.create_dataset("cfi_phis", data=cfi_phis)
     hf.close()
 
+    qasm = sensor.circuit(theta, phi, mu).to_openqasm()
+    io.save_txt(qasm, filename='circ.qasm')
+
     if plot:
         # %% visualize
         fig, axs = plt.subplots(ncols=1, nrows=2, sharex=True)

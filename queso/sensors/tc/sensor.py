@@ -47,7 +47,9 @@ class Sensor:
             n_ancilla = kwargs.get('n_ancilla', n//2)
             self.preparation = lambda c, theta, n, k: brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=n_ancilla)
             self.theta = jnp.zeros([n, k, 6])
-            
+        elif preparation == "brick_wall_rx_ry_cnot":
+            self.preparation = brick_wall_rx_ry_cnot
+            self.theta = jnp.zeros([n, k, 3])
         elif preparation == "brick_wall_cr_dephasing":
             gamma_dephasing = kwargs.get('gamma_dephasing', 0.0)
             self.preparation = lambda c, theta, n, k: brick_wall_cr_dephasing(c, theta, n, k, gamma=gamma_dephasing)
@@ -81,6 +83,10 @@ class Sensor:
         elif detection == "brick_wall_cr":
             self.detection = brick_wall_cr
             self.mu = jnp.zeros([n, k, 6])
+
+        elif detection == "local_rx_ry_ry":
+            self.detection = local_rx_ry_ry
+            self.mu = jnp.zeros([n, 3])
         else:
             raise ValueError("Not a valid detection layer.")
 
@@ -206,6 +212,38 @@ def brick_wall_cr(c, theta, n, k):
                 theta=theta[i, j, 3],
                 alpha=theta[i, j, 4],
                 phi=theta[i, j, 5],
+            )
+    c.barrier_instruction()
+    return c
+
+
+# preparation layers
+def brick_wall_rx_ry_cnot(c, theta, n, k):
+    for j in range(k):
+        for i in range(n):
+            c.rx(
+                i,
+                theta=theta[i, j, 0],
+            )
+            c.ry(
+                i,
+                theta=theta[i, j, 1],
+            )
+            c.ry(
+                i,
+                theta=theta[i, j, 2],
+            )
+
+        for i in range(0, n - 1, 2):
+            c.cnot(
+                i,
+                i + 1,
+            )
+
+        for i in range(1, n - 1, 2):
+            c.cnot(
+                i,
+                i + 1,
             )
     c.barrier_instruction()
     return c
@@ -359,6 +397,15 @@ def local_r(c, mu, n, k):
             alpha=mu[i, 1],
             phi=mu[i, 2],
         )
+    c.barrier_instruction()
+    return c
+
+
+def local_rx_ry_ry(c, mu, n, k):
+    for i in range(n):
+        c.rx(i, theta=mu[i, 0])
+        c.ry(i,theta=mu[i, 1],)
+        c.ry(i,theta=mu[i, 2],)
     c.barrier_instruction()
     return c
 

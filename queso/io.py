@@ -360,4 +360,6 @@ class IO:
         # with open(path) as json_file:
         #     data = json.load(json_file)
         # return data
-        raise NotImplementedError("Loading text files not implemented")
+        with open(path) as txt_file:
+            txt_str = txt_file.read()
+        return txt_str
