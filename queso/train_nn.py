@@ -228,6 +228,39 @@ def train_nn(
     # eigenvalues[-1].real
     # prior = eigenvectors[:, -1].real
 
+    # %% save to disk
+    metadata = dict(nn_dims=nn_dims, lr=lr, time=time.time() - t0)
+    io.save_json(metadata, filename="nn-metadata.json")
+    io.save_csv(metrics, filename="metrics")
+
+    # %%
+    info = get_machine_info()
+    io.save_json(info, filename="machine-info.json")
+
+    # %%
+    # ckpt = {'params': state, 'nn_dims': nn_dims}
+    # ckpt_dir = io.path.joinpath("ckpts")
+    #
+    # orbax_checkpointer = PyTreeCheckpointer()
+    # options = CheckpointManagerOptions(max_to_keep=2)
+    # checkpoint_manager = CheckpointManager(ckpt_dir, orbax_checkpointer, options)
+    # save_args = orbax_utils.save_args_from_target(ckpt)
+    #
+    # # doesn't overwrite
+    # check = checkpoint_manager.save(0, ckpt, save_kwargs={'save_args': save_args})
+    # print(check)
+    # restored = checkpoint_manager.restore(0)
+
+    # %%
+    ckpt = {'params': state.params, 'nn_dims': nn_dims}
+    ckpt_dir = io.path.joinpath("ckpts")
+
+    ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.
+    ckptr.save(ckpt_dir, ckpt, save_args=orbax_utils.save_args_from_target(ckpt), force=True)
+    restored = ckptr.restore(ckpt_dir, item=None)
+
+    print(f"Finished training the estimator.")
+
     #%%
     if plot:
         #%% plot prior
@@ -261,8 +294,9 @@ def train_nn(
                     color=colors[i],
                     label=r"Pr($\phi_j | "+"b_{"+str(i)+"}$)")
 
-            xdata = jnp.linspace(phi_range[0], phi_range[1], probs.shape[0], endpoint=False)
-            axs[1].plot(xdata, probs[:, i], color=colors[i])
+            xdata = jnp.linspace(phi_range[0], phi_range[1], counts.shape[0], endpoint=False)
+            if not jnp.isnan(probs).item():
+                axs[1].plot(xdata, probs[:, i], color=colors[i])
             axs[2].plot(xdata, freqs[:, i], color=colors[i], ls='--', alpha=0.3)
 
         axs[-1].set(xlabel=r"$\phi_j$")
@@ -270,39 +304,6 @@ def train_nn(
         io.save_figure(fig, filename="posterior-dist.png")
 
         plt.show()
-
-    # %% save to disk
-    metadata = dict(nn_dims=nn_dims, lr=lr, time=time.time() - t0)
-    io.save_json(metadata, filename="nn-metadata.json")
-    io.save_csv(metrics, filename="metrics")
-
-    #%%
-    info = get_machine_info()
-    io.save_json(info, filename="machine-info.json")
-
-    #%%
-    # ckpt = {'params': state, 'nn_dims': nn_dims}
-    # ckpt_dir = io.path.joinpath("ckpts")
-    #
-    # orbax_checkpointer = PyTreeCheckpointer()
-    # options = CheckpointManagerOptions(max_to_keep=2)
-    # checkpoint_manager = CheckpointManager(ckpt_dir, orbax_checkpointer, options)
-    # save_args = orbax_utils.save_args_from_target(ckpt)
-    #
-    # # doesn't overwrite
-    # check = checkpoint_manager.save(0, ckpt, save_kwargs={'save_args': save_args})
-    # print(check)
-    # restored = checkpoint_manager.restore(0)
-
-    #%%
-    ckpt = {'params': state.params, 'nn_dims': nn_dims}
-    ckpt_dir = io.path.joinpath("ckpts")
-
-    ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.
-    ckptr.save(ckpt_dir, ckpt, save_args=orbax_utils.save_args_from_target(ckpt), force=True)
-    restored = ckptr.restore(ckpt_dir, item=None)
-
-    print(f"Finished training the estimator.")
 
 
 #%%
