@@ -46,17 +46,17 @@ for ind, gamma in enumerate(np.logspace(-8, 0, 10).tolist(), 1):
 
     folder = f"2023-09-18_noise_n{config.n}_k{config.k}/{ind}_gamma{gamma}"
 
-    base_folder = f"2023-09-18_noise_n{config.n}_k{config.k}/base"
-    base_dir = pathlib.Path(data_path).joinpath(base_folder)
-    new_dir = pathlib.Path(data_path).joinpath(folder)
-    if new_dir.exists():
-        shutil.rmtree(new_dir)
-    shutil.copytree(base_dir, new_dir)
+    # base_folder = f"2023-09-18_noise_n{config.n}_k{config.k}/base"
+    # base_dir = pathlib.Path(data_path).joinpath(base_folder)
+    # new_dir = pathlib.Path(data_path).joinpath(folder)
+    # if new_dir.exists():
+    #     shutil.rmtree(new_dir)
+    # shutil.copytree(base_dir, new_dir)
 
     config.train_circuit = False
-    config.sample_circuit_training_data = True
-    config.sample_circuit_testing_data = True
-    config.train_nn = True
+    config.sample_circuit_training_data = False
+    config.sample_circuit_testing_data = False
+    config.train_nn = False
     config.benchmark_estimator = True
 
     # config.preparation = 'brick_wall_cr_depolarizing'

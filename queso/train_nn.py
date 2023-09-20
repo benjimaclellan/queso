@@ -295,8 +295,8 @@ def train_nn(
                     label=r"Pr($\phi_j | "+"b_{"+str(i)+"}$)")
 
             xdata = jnp.linspace(phi_range[0], phi_range[1], counts.shape[0], endpoint=False)
-            if not jnp.isnan(probs).item():
-                axs[1].plot(xdata, probs[:, i], color=colors[i])
+            # if not jnp.all(jnp.isnan(probs)).item():
+            #     axs[1].plot(xdata, probs[:, i], color=colors[i])
             axs[2].plot(xdata, freqs[:, i], color=colors[i], ls='--', alpha=0.3)
 
         axs[-1].set(xlabel=r"$\phi_j$")
