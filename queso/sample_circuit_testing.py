@@ -26,7 +26,7 @@ def sample_circuit_testing(
     k = config.k
     phis_test = jnp.array(config.phis_test)
     n_shots_test = config.n_shots_test
-    kwargs = dict(preparation=config.preparation, interaction=config.interaction, detection=config.detection, backend=config.backend)
+    kwargs = dict(preparation=config.preparation, interaction=config.interaction, detection=config.detection, backend=config.backend, gamma_dephasing=config.gamma_dephasing)
 
     # %%
     print(f"Initializing sensor n={n}, k={k}")
