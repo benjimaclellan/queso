@@ -1,5 +1,3 @@
-
-
 #%%
 import copy
 import os
@@ -25,9 +23,11 @@ from queso.sensors.tc.sensor import Sensor, sample_bin2int, sample_int2bin
 module_path = "/Users/benjamin/Library/CloudStorage/OneDrive-UniversityofWaterloo/Desktop/1 - Projects/Quantum Intelligence Lab/queso"
 data_path = "/Users/benjamin/data/queso"
 
-def convert_results(results, phis):
-    def hex_to_str(hex):
-        return "{0:05b}".format(int(hex, 16))
+
+#%%
+def convert_results(results, phis, n):
+    def hex_to_str(hx):
+        return ("{0:0"+str(n)+"b}").format(int(hx, 16))
 
     def str_to_array(string):
         return np.array(list(map(int, string)))
@@ -54,16 +54,23 @@ def convert_results(results, phis):
 
     return shots, counts
 
-#%%
-folder = f"2023-09-19_ibmq"
-io = IO(path=data_path, folder=folder)
 
 #%%
-n = 5
+# backend = "ibm_lagos"
+# backend = "ibm_perth"
+backend = "ibmq_manila"
+# backend = "ibmq_qasm_simulator"
+n = 4
+folder = f"2023-09-19_ibmq_{backend}_n{n}"
+io = IO(path=data_path, folder=folder)
+io.path.mkdir(parents=True, exist_ok=True)
+
+#%%
+n = n
 config = Configuration()
 config.n = n
-config.k = 4
-config.seed = 1234
+config.k = n-1
+config.seed = 12345
 
 config.train_circuit = True
 config.sample_circuit_training_data = False
@@ -80,8 +87,9 @@ config.n_shots = 1000
 config.n_shots_test = 10000
 config.n_phis = 100
 config.n_grid = 100
-config.phi_range = [-pi/2/n, pi/2/n]
-config.phis_test = np.linspace(-pi/3/n, pi/3/n, 6).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
+config.phi_offset = pi/2/n
+config.phi_range = [-pi/2/n + config.phi_offset, pi/2/n + config.phi_offset]
+config.phis_test = (np.linspace(-pi/3/n, pi/3/n, 6) + config.phi_offset).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
 
 config.to_yaml(io.path.joinpath("config.yaml"))
 
@@ -121,9 +129,7 @@ for phi in phis_test:
 provider = IBMQ.load_account()
 
 #%%
-backend = provider.get_backend("ibmq_qasm_simulator")
-# backend = provider.get_backend('ibm_lagos')
-# backend = provider.get_backend('ibm_perth')
+backend = provider.get_backend(backend)
 
 #%%
 print("Beginning sampling from IBMQ device")
@@ -138,12 +144,11 @@ job_train = execute(circuits_train, backend, shots=config.n_shots)
 print(job_train.job_id())
 
 #%%
-job = backend.retrieve_job(job_train.job_id())
-job.status()
+job_train.status()
 
 #%%
-results = job.result().results
-shots, counts = convert_results(results, phis)
+results = job_train.result().results
+shots, counts = convert_results(results, phis, n)
 
 #%%
 hf = h5py.File(io.path.joinpath("train_samples.h5"), "w")
@@ -152,10 +157,18 @@ hf.create_dataset("phis", data=phis)
 hf.create_dataset("counts", data=counts)
 hf.close()
 
+fig, ax = plt.subplots()
+sns.heatmap(counts, ax=ax, cbar_kws={'label': 'Rel. Freqs.'})
+plt.show()
+io.save_figure(fig, filename="probs_freqs.png")
 print(f"Finished sampling the circuits.")
-#%%
-# Testing data
-# %%
+
+fig, ax = plt.subplots()
+for i in range(counts.shape[1]):
+    ax.plot(counts[:, i])
+plt.show()
+
+# %% Testing data
 circuits_test = []
 for phi in phis_test:
     qc = QuantumCircuit.from_qasm_file(io.path.joinpath(f"test/{phi}"))
@@ -167,12 +180,12 @@ job_test = execute(circuits_test, backend, shots=config.n_shots_test)
 print(job_test.job_id())
 
 # %%
-job = backend.retrieve_job(job_test.job_id())
-job.status()
+# job = backend.retrieve_job(job_test.job_id())
+job_test.status()
 
 # %%
-results = job.result().results
-shots_test, counts_test = convert_results(results, phis)
+results = job_test.result().results
+shots_test, counts_test = convert_results(results, phis, n)
 
 hf = h5py.File(io.path.joinpath("test_samples.h5"), "w")
 hf.create_dataset("shots_test", data=shots_test)
@@ -181,6 +194,10 @@ hf.create_dataset("phis_test", data=phis_test)
 hf.close()
 
 #%%
+config.lr_nn = 1e-4
+config.nn_dims = [64, 64]
+config.batch_size = 250
+
 config.train_circuit = False
 config.train_nn = True
 config.benchmark_estimator = True
@@ -188,16 +205,15 @@ config.benchmark_estimator = True
 train(io, config)
 
 
-
 #%%
-outcomes = sample_bin2int(shots, n)
-counts = np.stack([np.count_nonzero(outcomes == x, axis=(1,), keepdims=True).squeeze() for x in range(2 ** n)],
-                   axis=1)
-freqs = counts / counts.sum(axis=-1, keepdims=True)
-bit_strings = sample_int2bin(np.arange(2 ** n), n)
-
-fig, axs = plt.subplots(nrows=2)
-# sns.heatmap(probs, ax=axs[0], cbar_kws={'label': 'True Probs.'})
-sns.heatmap(freqs, ax=axs[1], cbar_kws={'label': 'Rel. Freqs.'})
-plt.show()
-# io.save_figure(fig, filename="probs_freqs.png")
+# outcomes = sample_bin2int(shots, n)
+# counts = np.stack([np.count_nonzero(outcomes == x, axis=(1,), keepdims=True).squeeze() for x in range(2 ** n)],
+#                    axis=1)
+# freqs = counts / counts.sum(axis=-1, keepdims=True)
+# bit_strings = sample_int2bin(np.arange(2 ** n), n)
+#
+# fig, axs = plt.subplots(nrows=2)
+# # sns.heatmap(probs, ax=axs[0], cbar_kws={'label': 'True Probs.'})
+# sns.heatmap(freqs, ax=axs[1], cbar_kws={'label': 'Rel. Freqs.'})
+# plt.show()
+# # io.save_figure(fig, filename="probs_freqs.png")
