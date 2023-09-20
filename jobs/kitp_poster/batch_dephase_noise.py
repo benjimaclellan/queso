@@ -32,8 +32,8 @@ base = Configuration()
 folders = {}
 n = 4
 
-# for ind, gamma in enumerate(np.logspace(-8, 0, 10).tolist(), 1):
-for ind, gamma in enumerate([0.1]):
+for ind, gamma in enumerate(np.logspace(-8, 0, 10).tolist(), 1):
+# for ind, gamma in enumerate([0.1]):
 
     # gam_str = str(int(round(gamma * 100)))
     prefix = f"dephase{ind}_gam_{gamma}"
@@ -95,7 +95,7 @@ for ind, gamma in enumerate([0.1]):
         subprocess.run([
             # "pwd"
             "sbatch",
-            "--time=0:20:00",
+            "--time=0:30:00",
             "--account=def-rgmelko",
             "--mem=4000",
             f"--gpus-per-node=1",
