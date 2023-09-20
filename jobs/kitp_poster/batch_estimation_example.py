@@ -42,7 +42,7 @@ for n in (4,):
     prefix = f"est_ex_cfi_m{config.n_grid}"
     folder = f"2023-09-13_poster_estimation_example_n{config.n}_k{config.k}_m{config.n_grid}"
 
-    config.train_circuit = True
+    config.train_circuit = False
     config.sample_circuit_training_data = True
     config.sample_circuit_testing_data = True
     config.train_nn = True
