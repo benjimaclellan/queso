@@ -6,7 +6,7 @@ import subprocess
 from math import pi
 import platform
 import numpy as np
- 
+import shutil 
 
 current_os = platform.system()
 if current_os == "Linux":
@@ -32,11 +32,11 @@ base = Configuration()
 folders = {}
 n = 4
 
-# for gamma in np.logspace(-8, 0, 10).tolist():
-for gamma in (0.0,):
+# for ind, gamma in enumerate(np.logspace(-8, 0, 10).tolist(), 1):
+for ind, gamma in enumerate([0.1]):
 
-    gam_str = str(int(round(gamma * 100)))
-    prefix = f"dephase_gam_{gam_str}"
+    # gam_str = str(int(round(gamma * 100)))
+    prefix = f"dephase{ind}_gam_{gamma}"
     
     config = copy.deepcopy(base)
     config.n = n
@@ -44,14 +44,22 @@ for gamma in (0.0,):
     config.seed = 123456
     config.gamma_dephasing = gamma
 
-    folder = f"2023-09-18_noise_n{config.n}_k{config.k}/gamma_{gam_str}"
+    folder = f"2023-09-18_noise_n{config.n}_k{config.k}/{ind}_gamma{gamma}"
 
-    config.train_circuit = True
+    base_folder = f"2023-09-18_noise_n{config.n}_k{config.k}/base"
+    base_dir = pathlib.Path(data_path).joinpath(base_folder)
+    new_dir = pathlib.Path(data_path).joinpath(folder)
+    if new_dir.exists():
+        shutil.rmtree(new_dir)
+    shutil.copytree(base_dir, new_dir)
+
+    config.train_circuit = False
     config.sample_circuit_training_data = True
     config.sample_circuit_testing_data = True
     config.train_nn = True
     config.benchmark_estimator = True
 
+    # config.preparation = 'brick_wall_cr_depolarizing'
     config.preparation = 'brick_wall_cr_dephasing'
     config.interaction = 'local_rx'
     config.detection = 'local_r'
@@ -63,7 +71,7 @@ for gamma in (0.0,):
     config.n_shots_test = 10000
     config.n_phis = 200
 
-    config.phi_offset = 0.0
+    config.phi_offset = 0.4
     config.phi_range = [-pi/2/n + config.phi_offset, pi/2/n + config.phi_offset]
 
     config.phis_test = (np.linspace(-pi/3/n, pi/3/n, 6) + config.phi_offset).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
@@ -87,7 +95,7 @@ for gamma in (0.0,):
         subprocess.run([
             # "pwd"
             "sbatch",
-            "--time=0:40:00",
+            "--time=0:20:00",
             "--account=def-rgmelko",
             "--mem=4000",
             f"--gpus-per-node=1",

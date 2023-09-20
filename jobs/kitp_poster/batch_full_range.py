@@ -6,7 +6,7 @@ import subprocess
 from math import pi
 import platform
 import numpy as np
- 
+import shutil
 
 current_os = platform.system()
 if current_os == "Linux":
@@ -31,8 +31,9 @@ base = Configuration()
 
 folders = {}
 n = 8
+
 for n_ancilla in (4,):
-# for n_ancilla in (0, 1, 2, 3, 4):
+# for n_ancilla in (0, 1, 2, 3, 5, 6):
 
     prefix = "full_range_est"
     
@@ -40,7 +41,7 @@ for n_ancilla in (4,):
     config.n = n
     config.k = n
     config.seed = 12234
-    folder = f"2023-09-18_full_range_n{config.n}_k{config.k}/n_ancilla_{n_ancilla}"
+    folder = f"2023-09-18_full_range_n{config.n}_k{config.k}/no_ancilla"
 
     config.train_circuit = True
     config.sample_circuit_training_data = True
@@ -48,10 +49,11 @@ for n_ancilla in (4,):
     config.train_nn = True
     config.benchmark_estimator = True
 
-    config.preparation = 'brick_wall_cr_ancillas'
+    config.preparation = 'brick_wall_cr'
+    # config.preparation = 'brick_wall_cr_ancillas'
     config.interaction = 'local_rx'
     config.detection = 'local_r'
-    config.n_ancilla = n_ancilla
+    # config.n_ancilla = n_ancilla
     config.loss_fi = "loss_cfi"
     config.backend = "ket"
     
@@ -80,9 +82,9 @@ for n_ancilla in (4,):
         subprocess.run([
             # "pwd"
             "sbatch",
-            "--time=0:60:00",
+            "--time=0:30:00",
             "--account=def-rgmelko",
-            "--mem=8000",
+            "--mem=4000",
             f"--gpus-per-node=1",
             f"--job-name={jobname}.job",
             f"--output=out/{jobname}.out",

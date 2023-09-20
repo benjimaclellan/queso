@@ -27,7 +27,7 @@ def sample_circuit(
     phi_range = config.phi_range
     n_phis = config.n_phis
     n_shots = config.n_shots
-    kwargs = dict(preparation=config.preparation, interaction=config.interaction, detection=config.detection, backend=config.backend)
+    kwargs = dict(preparation=config.preparation, interaction=config.interaction, detection=config.detection, backend=config.backend, gamma_dephasing=config.gamma_dephasing)
 
     # %%
     print(f"Initializing sensor n={n}, k={k}")
