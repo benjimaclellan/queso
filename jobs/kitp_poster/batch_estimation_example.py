@@ -35,18 +35,18 @@ for n in (4,):
     config = copy.deepcopy(base)
     config.n = n
     config.k = n
-    config.n_grid = 500
+    config.n_grid = 250
     
     config.seed = 122344
     
     prefix = f"est_ex_cfi_m{config.n_grid}"
-    folder = f"2023-09-13_poster_estimation_example_n{config.n}_k{config.k}_m{config.n_grid}"
+    folder = f"2023-09-21_poster_estimation_example/n{config.n}_k{config.k}_m{config.n_grid}"
 
-    config.train_circuit = False
+    config.train_circuit = True
     config.sample_circuit_training_data = True
     config.sample_circuit_testing_data = True
-    config.train_nn = True
-    config.benchmark_estimator = True
+    config.train_nn = False
+    config.benchmark_estimator = False
 
     config.preparation = 'brick_wall_cr'
     config.interaction = 'local_rx'
@@ -55,7 +55,7 @@ for n in (4,):
     
     config.n_shots = 1000
     config.n_shots_test = 10000
-    config.n_phis = 500
+    config.n_phis = 250
     config.phi_range = [-pi/2/n, pi/2/n]
 
     config.phis_test = np.linspace(-pi/3/n, pi/3/n, 5).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
@@ -82,7 +82,7 @@ for n in (4,):
             "--time=0:30:00",
             "--account=def-rgmelko",
             "--mem=4000",
-            f"--gpus-per-node=1",
+            # f"--gpus-per-node=1",
             f"--job-name={jobname}.job",
             f"--output=out/{jobname}.out",
             f"--error=out/{jobname}.err",
