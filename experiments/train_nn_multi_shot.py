@@ -109,9 +109,11 @@ def train_step(state, batch):
         logits_multi = state.apply_fn({'params': params}, shots_multi)
         log_probs_multi = jax.nn.log_softmax(logits_multi, axis=-1)
         prod_logits_multi = log_probs_multi.sum(axis=0, keepdims=False)  # sum log posterior probs for each individual input sample
-        prod_logits_multi = prod_logits_multi - prod_logits_multi.max(axis=-1, keepdims=True)
+        prod_logits_multi = prod_logits_multi / n_splits #- prod_logits_multi.max(axis=-1, keepdims=True)
 
         # standard cross-entropy
+        print(prod_logits_multi.shape)
+
         loss = -jnp.sum(y_batch[:, None, :] * prod_logits_multi, axis=-1).mean(axis=(0, 1))
 
         loss += sum(
@@ -137,7 +139,9 @@ def prod(logits_multi):
     return posteriors
 
 
-def shuffle_split_stack_shots(shots, n_splits=1):
+def shuffle_split_stack_shots(shots, n_splits=1, key=None):
+    if key is None:
+        key = jax.random.PRNGKey(time.time_ns())
     shots_multi = copy.deepcopy(shots)
     shots_multi = jax.random.shuffle(key, shots_multi, axis=1)
     splits = jnp.split(
@@ -148,40 +152,6 @@ def shuffle_split_stack_shots(shots, n_splits=1):
     shots_multi = jnp.stack(splits, axis=0)
     return shots_multi
 
-
-#%%
-lr = 0.01
-n_splits = 1
-keys = jax.random.split(key, (n_epochs))
-metrics = []
-pbar = tqdm.tqdm(total=n_epochs, disable=(not progress), mininterval=0.333)
-for i in range(1000):  # number of epochs
-    shots_multi = shuffle_split_stack_shots(shots, n_splits=n_splits)
-
-    batch = (shots_multi, y)
-
-    state, loss = train_step(state, batch)
-    if progress:
-        pbar.update()
-        pbar.set_description(f"Epoch {i} | Loss: {loss:.10f}", refresh=False)
-    metrics.append(dict(step=i, loss=loss))
-
-pbar.close()
-metrics = pd.DataFrame(metrics)
-
-#%%
-fig, ax = plt.subplots()
-ax.plot(metrics.step, metrics.loss)
-fig.show()
-
-#%%
-logits_multi = state.apply_fn({'params': state.params}, shots_multi)
-log_probs_multi = jax.nn.log_softmax(logits_multi, axis=-1)
-prod_logits_multi = prod(log_probs_multi)
-
-fig, ax = plt.subplots()
-ax.plot(prod_logits_multi[0, 0, :])
-fig.show()
 
 # %%
 def create_train_state(model, init_key, x, learning_rate):
@@ -215,34 +185,48 @@ state = create_train_state(model, init_key, x_init, learning_rate=lr)
 # del init_key
 
 #%%
+lr = 0.1
+n_epochs = 100
+n_splits = 2
+
+keys = jax.random.split(key, (n_epochs))
+metrics = []
+pbar = tqdm.tqdm(total=n_epochs, disable=(not progress), mininterval=0.333)
+for i in range(n_epochs):  # number of epochs
+    shots_multi = shuffle_split_stack_shots(shots, n_splits=n_splits)
+
+    batch = (shots_multi, y)
+
+    state, loss = train_step(state, batch)
+    if progress:
+        pbar.update()
+        pbar.set_description(f"Epoch {i} | Loss: {loss:.10f}", refresh=False)
+    metrics.append(dict(step=i, loss=loss))
+
+pbar.close()
+metrics = pd.DataFrame(metrics)
+
+#%%
+fig, ax = plt.subplots()
+ax.plot(metrics.step, metrics.loss)
+io.save_figure(fig, filename='nn_loss.png')
+
+#%%
+logits_multi = state.apply_fn({'params': state.params}, shots_multi)
+# log_probs_multi = jax.nn.log_softmax(logits_multi, axis=-1)
+# probs = jax.nn.softmax(logits_multi, axis=-1).squeeze()
+prod_logits_multi = prod(logits_multi)
+
+fig, ax = plt.subplots()
+ax.plot(prod_logits_multi[0, 0, :])
+io.save_figure(fig, filename="test_probs.png")
+
+#%%
 x_batch = x[:, 0:batch_size, :]
 y_batch = y
 batch = (x_batch, y_batch)
 
 state, loss = train_step(state, batch)
-
-# %%
-keys = jax.random.split(key, (n_epochs))
-metrics = []
-pbar = tqdm.tqdm(total=n_epochs * n_batches, disable=(not progress), mininterval=0.333)
-for i in range(n_epochs):
-    # shuffle shots
-    # subkeys = jax.random.split(keys[i], n_phis)
-    # x = jnp.stack([jax.random.permutation(subkey, x[k, :, :]) for k, subkey in enumerate(subkeys)])
-
-    for j in range(n_batches):
-        x_batch = x[:, j * batch_size : (j + 1) * batch_size, :]
-        y_batch = y  # use all phases each batch, but not all shots per phase
-        batch = (x_batch, y_batch)
-
-        state, loss = train_step(state, batch)
-        if progress:
-            pbar.update()
-            pbar.set_description(f"Epoch {i} | Batch {j:04d} | Loss: {loss:.10f}", refresh=False)
-        metrics.append(dict(step=i*n_batches + j, loss=loss))
-
-pbar.close()
-metrics = pd.DataFrame(metrics)
 
 #%%
 hf = h5py.File(io.path.joinpath("nn.h5"), "w")
@@ -259,21 +243,6 @@ pred = model.apply({'params': state.params}, bit_strings)
 pred = jax.nn.softmax(pred, axis=-1)
 posterior = pred
 
-# lp = (likelihood @ posterior).T
-# a_jk = jnp.eye(n_phis, n_grid) - lp
-
-# eigenvalues, eigenvectors = jnp.linalg.eig(a_jk)
-# prior = jnp.abs(eigenvectors[:, 0])
-# print(eigenvalues[0])
-
-# assert jnp.all(eigenvalues[0] <= eigenvalues)  # ensure eigenvalue sorting is correct
-
-# idx = eigenvalues.real.argsort(order="")
-# eigenvalues = eigenvalues[idx]
-# eigenvectors = eigenvectors[:, idx]
-
-# eigenvalues[-1].real
-# prior = eigenvectors[:, -1].real
 
 # %% save to disk
 metadata = dict(nn_dims=nn_dims, lr=lr, time=time.time() - t0)
@@ -283,20 +252,6 @@ io.save_csv(metrics, filename="metrics")
 # %%
 info = get_machine_info()
 io.save_json(info, filename="machine-info.json")
-
-# %%
-# ckpt = {'params': state, 'nn_dims': nn_dims}
-# ckpt_dir = io.path.joinpath("ckpts")
-#
-# orbax_checkpointer = PyTreeCheckpointer()
-# options = CheckpointManagerOptions(max_to_keep=2)
-# checkpoint_manager = CheckpointManager(ckpt_dir, orbax_checkpointer, options)
-# save_args = orbax_utils.save_args_from_target(ckpt)
-#
-# # doesn't overwrite
-# check = checkpoint_manager.save(0, ckpt, save_kwargs={'save_args': save_args})
-# print(check)
-# restored = checkpoint_manager.restore(0)
 
 # %%
 ckpt = {'params': state.params, 'nn_dims': nn_dims}
