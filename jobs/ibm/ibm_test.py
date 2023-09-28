@@ -97,6 +97,7 @@ config.to_yaml(io.path.joinpath("config.yaml"))
 train(io, config)
 
 #%% make QASM files
+config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
 n = config.n
 k = config.k
 phi_range = config.phi_range
@@ -104,10 +105,7 @@ n_phis = config.n_phis
 n_shots = config.n_shots
 kwargs = dict(preparation=config.preparation, interaction=config.interaction, detection=config.detection, backend=config.backend)
 
-# %%
-print(f"Initializing sensor n={n}, k={k}")
-sensor = Sensor(n, k, **kwargs)
-
+#%%
 hf = h5py.File(io.path.joinpath("circ.h5"), "r")
 # print(hf.keys())
 theta = np.array(hf.get("theta"))
@@ -115,6 +113,10 @@ mu = np.array(hf.get("mu"))
 phis = np.array(hf.get("phis"))
 phis_test = config.phis_test
 hf.close()
+
+# %%
+print(f"Initializing sensor n={n}, k={k}")
+sensor = Sensor(n, k, **kwargs)
 
 for phi in phis:
     qasm = sensor.circuit(theta, phi, mu).to_openqasm()
@@ -144,6 +146,7 @@ job_train = execute(circuits_train, backend, shots=config.n_shots)
 print(job_train.job_id())
 
 #%%
+job_train = backend.retrieve_job('ck5f69eoocd5f7jo4rn0')
 job_train.status()
 
 #%%
@@ -180,7 +183,7 @@ job_test = execute(circuits_test, backend, shots=config.n_shots_test)
 print(job_test.job_id())
 
 # %%
-# job = backend.retrieve_job(job_test.job_id())
+job_test = backend.retrieve_job('ck5f6ceoocd5f7jo5bl0')
 job_test.status()
 
 # %%
