@@ -32,11 +32,11 @@ plot = False
 progress = True
 
 #%%
-# n_grid = config.n_grid
+n_grid = config.n_grid
 n_grid = 200
 nn_dims = config.nn_dims + [n_grid]
 lr = config.lr_nn
-l2_regularization = 0.0  #config.l2_regularization
+l2_regularization = config.l2_regularization
 n_epochs = config.n_epochs
 batch_size = config.batch_size
 from_checkpoint = config.from_checkpoint
@@ -98,36 +98,17 @@ def train_step(state, batch):
     x_batch, y_batch = batch
 
     def loss_fn(params):
-        # logits = state.apply_fn({'params': params}, x_batch)
-        # prod_logits_multi = prod(logits_multi)
+        logits = state.apply_fn({'params': params}, x_batch)
 
-        logits_multi = state.apply_fn({'params': params}, x_batch)
-        log_probs_multi = jax.nn.log_softmax(logits_multi, axis=-1)
-        prod_logits_multi = log_probs_multi.sum(axis=0, keepdims=False)  # sum log posterior probs for each individual input sample
-        
-        # CE
-        # prod_logits_multi = prod_logits_multi / n_splits #- prod_logits_multi.max(axis=-1, keepdims=True)
-        # loss = -jnp.sum(y_batch[:, None, :] * prod_logits_multi, axis=-1).mean(axis=(0, 1))
-        
-        # MSE
-        # prod_logits_multi = prod_logits_multi - prod_logits_multi.max(axis=-1, keepdims=True)
-        # prod_logits_multi = jnp.exp(prod_logits_multi)
-        # prod_logits_multi = prod_logits_multi / prod_logits_multi.sum(axis=-1, keepdims=True)
-        # loss = jnp.sum((y_batch[:, None, :] - prod_logits_multi)**2, axis=-1).mean(axis=(0, 1))
+        log_probs = jax.nn.log_softmax(logits_multi, axis=-1)
 
-        # other defn of MSE, using phi value rather than Dirac delta one-hot encoding
-        # prod_logits_multi = prod_logits_multi - prod_logits_multi.max(axis=-1, keepdims=True)
-        prod_logits_multi = jnp.exp(prod_logits_multi)
-        # prod_logits_multi = prod_logits_multi / prod_logits_multi.sum(axis=-1, keepdims=True)
-        loss = jnp.sum((phis[None, None, None, :] - grid[None, None, :, None]) ** 2 * prod_logits_multi[:, :, :, None] , axis=(-1, -2)).mean(axis=(0, 1))
+        # standard cross-entropy
+        loss = -jnp.sum(y_batch[:, None, :] * log_probs, axis=-1).mean(axis=(0, 1))
 
-        # loss += sum(
-        #     l2_loss(w, alpha=l2_regularization)
-        #     for w in jax.tree_leaves(params)
-        # )
-
-
-
+        loss += sum(
+            l2_loss(w, alpha=l2_regularization)
+            for w in jax.tree_leaves(params)
+        )
         return loss
 
     loss_val_grad_fn = jax.value_and_grad(loss_fn)
@@ -138,21 +119,11 @@ def train_step(state, batch):
 
 
 #%%
-
-def prod(logits_multi):
-    log_probs_multi = jax.nn.log_softmax(logits_multi, axis=-1)
-    tmp = log_probs_multi.sum(axis=0, keepdims=False)  # sum log posterior probs for each individual input sample
-    tmp = jnp.exp(tmp - tmp.max(axis=-1, keepdims=True))  # help with underflow in normalization
-    posteriors = tmp / tmp.sum(axis=-1, keepdims=True)
-    return posteriors
-
-
-def shuffle_split_stack_shots(shots, n_splits=1, key=None):
+def shuffle_shots(shots, key=None):
     if key is None:
         key = jax.random.PRNGKey(time.time_ns())
     shots_multi = copy.deepcopy(shots)
-    permutation = jax.random.permutation(key, shots_multi.shape[1])  # shuffle only along the second axis
-    shots_multi = jnp.take(shots_multi, permutation, axis=1)
+    shots_multi = jax.random.shuffle(key, shots_multi, axis=1)
     splits = jnp.split(
         shots_multi[:, :jnp.floor(shots_multi.shape[1]/n_splits).astype('int') * n_splits, :],
         n_splits,
@@ -195,8 +166,8 @@ state = create_train_state(model, init_key, x_init, learning_rate=lr)
 
 #%%
 lr = 0.1
-n_epochs = 500
-n_splits = 10
+n_epochs = 100
+n_splits = 2
 
 keys = jax.random.split(key, (n_epochs))
 metrics = []
@@ -205,7 +176,6 @@ for i in range(n_epochs):  # number of epochs
     shots_multi = shuffle_split_stack_shots(shots, n_splits=n_splits)
 
     batch = (shots_multi, y)
-    # batch = (shots, y)
 
     state, loss = train_step(state, batch)
     if progress:
@@ -222,13 +192,13 @@ ax.plot(metrics.step, metrics.loss)
 io.save_figure(fig, filename='nn_loss.png')
 
 #%%
-logits = state.apply_fn({'params': state.params}, shots)
-probs = jax.nn.softmax(logits, axis=-1)
+logits_multi = state.apply_fn({'params': state.params}, shots_multi)
+# log_probs_multi = jax.nn.log_softmax(logits_multi, axis=-1)
 # probs = jax.nn.softmax(logits_multi, axis=-1).squeeze()
-# prod_logits_multi = prod(logits_multi)
+prod_logits_multi = prod(logits_multi)
 
 fig, ax = plt.subplots()
-ax.plot(probs[0, 0, :])
+ax.plot(prod_logits_multi[0, 0, :])
 io.save_figure(fig, filename="test_probs.png")
 
 #%%
@@ -319,8 +289,3 @@ if plot:
 
 
 
-# from queso.benchmark_estimator import benchmark_estimator
-
-# benchmark_estimator(
-#     io, config, key,
-# )
