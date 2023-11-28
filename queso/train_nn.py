@@ -116,7 +116,13 @@ def train_nn(
                 logits = (logits + eps) / (jnp.sqrt((logits ** 2 + eps).sum(axis=-1, keepdims=True))) / tau
 
             # standard cross-entropy
+            print('softmax', jax.nn.log_softmax(logits, axis=-1).shape)
             loss = -jnp.sum(y_batch[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
+
+            # cross-entropy with ReLUmax instead of softmax
+            # log_relumax = jnp.log(jax.nn.relu(logits) / jnp.sum(jax.nn.relu(logits), axis=-1, keepdims=True))
+            # print('relumax', log_relumax)
+            # loss = -jnp.sum(y_batch[:, None, :] * log_relumax, axis=-1).mean(axis=(0, 1))
 
             # MSE loss
             # loss = jnp.sum((y_batch[:, None, :] - jax.nn.softmax(logits, axis=-1))**2, axis=-1).mean(axis=(0, 1))
