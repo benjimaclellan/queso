@@ -150,137 +150,137 @@ def benchmark_estimator(
     hf.create_dataset("phis", data=phis)
     hf.close()
 
-    #%% plot updated posterior distribution for n_trials different sequence samples
-    ncols = phis_test.size
-    nrows = 8
-    if plot:
-        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(3.5*ncols, 1.5 * nrows),
-                                sharex=True, sharey=True, gridspec_kw=dict(hspace=0, wspace=0))
-        colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
+    # #%% plot updated posterior distribution for n_trials different sequence samples
+    # ncols = phis_test.size
+    # nrows = 8
+    # if plot:
+    #     fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(3.5*ncols, 1.5 * nrows),
+    #                             sharex=True, sharey=True, gridspec_kw=dict(hspace=0, wspace=0))
+    #     colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
+    #
+    #     for k in range(ncols):
+    #         z = k * (phis_true.shape[0] // ncols)
+    #         print(f"Closest grid point is {jnp.min(jnp.abs(phis - phis_true[z]))} rads away")
+    #         for j in range(nrows):
+    #             for i, n_sequence in enumerate(n_sequences):
+    #                 # print(k, j, i)
+    #                 ax = axs[j, k]
+    #                 ax.axvline(phis_estimates[j, z, -1], color='red', ls='-', lw=1, alpha=1.0)
+    #                 ax.axvline(phis_true[z], color='gray', ls='--', lw=1, alpha=0.6)
+    #                 p = posteriors[j, z, i, :]
+    #                 ax.plot(
+    #                     grid,
+    #                     p / jnp.max(p),
+    #                     ls='-',
+    #                     lw=1,
+    #                     color=colors[i],
+    #                     alpha=(i+1) / len(n_sequences),
+    #                 )
+    #                 b = phis_true[z] - phis_estimates[j, z, -1]
+    #                 ax.annotate(text=f"{b:2.6f}",
+    #                             xy=(0.9, 0.9),
+    #                             xycoords='axes fraction',
+    #                             **dict(ha='right', va='top'))
+    #                 ax.set(xticks=[], yticks=[])
+    #
+    #     io.save_figure(fig, 'trials_n_sequences_m_phases.pdf')
+    #     del fig
 
-        for k in range(ncols):
-            z = k * (phis_true.shape[0] // ncols)
-            print(f"Closest grid point is {jnp.min(jnp.abs(phis - phis_true[z]))} rads away")
-            for j in range(nrows):
-                for i, n_sequence in enumerate(n_sequences):
-                    # print(k, j, i)
-                    ax = axs[j, k]
-                    ax.axvline(phis_estimates[j, z, -1], color='red', ls='-', lw=1, alpha=1.0)
-                    ax.axvline(phis_true[z], color='gray', ls='--', lw=1, alpha=0.6)
-                    p = posteriors[j, z, i, :]
-                    ax.plot(
-                        grid,
-                        p / jnp.max(p),
-                        ls='-',
-                        lw=1,
-                        color=colors[i],
-                        alpha=(i+1) / len(n_sequences),
-                    )
-                    b = phis_true[z] - phis_estimates[j, z, -1]
-                    ax.annotate(text=f"{b:2.6f}",
-                                xy=(0.9, 0.9),
-                                xycoords='axes fraction',
-                                **dict(ha='right', va='top'))
-                    ax.set(xticks=[], yticks=[])
-
-        io.save_figure(fig, 'trials_n_sequences_m_phases.pdf')
-        del fig
-
-    #%%
-    if plot:
-        ncols = 1
-        nrows = n_trials
-
-        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(3.5 * ncols, 1.5 * nrows), sharex=True, sharey=True,
-                                gridspec_kw=dict(hspace=0, wspace=0))
-        colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
-        k = phis_true.shape[0] // 2
-        print(f"Closest grid point is {jnp.min(jnp.abs(phis - phis_true[z]))}")
-        for j in range(nrows):
-            for i, n_sequence in enumerate(n_sequences):
-                # print(k, j, i)
-                ax = axs[j]
-                ax.axvline(phis_estimates[j, k, -1], color='red', ls='-', lw=1, alpha=1.0)
-                ax.axvline(phis_true[k], color='gray', ls='--', lw=1, alpha=0.6)
-                p = posteriors[j, k, i, :]
-                ax.plot(
-                    grid,
-                    p / jnp.max(p),
-                    ls='-',
-                    lw=1,
-                    color=colors[i],
-                    alpha=(i + 1) / len(n_sequences),
-                )
-                b = phis_true[k] - phis_estimates[j, k, -1]
-                ax.annotate(text=f"{b:2.6f}",
-                            xy=(0.9, 0.9),
-                            xycoords='axes fraction',
-                            **dict(ha='right', va='top'))
-                ax.set(xticks=[], yticks=[])
-
-        io.save_figure(fig, 'all_trials_one_phase.pdf')
-        del fig
-
-    #%% plot posterior, bias, and variance for one phase
-    for k in range(phis_true.shape[0]):
-        fig, axs = plt.subplots(nrows=3, figsize=(6.5, 6.0))
-        colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
-        markers = ["o", "D", 's', "v", "^", "<", ">", ]
-        axs[0].axvline(phis_true[k], color='black', ls='--', alpha=1.0, lw=2)
-
-        for i, n_sequence in enumerate(n_sequences):
-            ax = axs[0]
-            p = posteriors[1, k, i, :]
-            ax.plot(
-                grid,
-                p / jnp.max(p),
-                ls=':',
-                marker=markers[i % len(markers)],
-                color=colors[i],
-                # alpha=(0.1 + i / len(n_sequences) * 0.8),
-                alpha=(i+1) / len(n_sequences),
-                markersize=3,
-                label=r"$\phi_{true}=$" + f"{phis_true[k] / jnp.pi:0.2f}$\pi$",
-            )
-
-        line_kwargs = dict(color='grey', alpha=0.6, ls='--')
-        ax = axs[1]
-        ax.errorbar(
-            n_sequences,
-            biases[:, k, :].mean(axis=0),
-            xerr=None,
-            yerr=jnp.var(biases[:, k, :], axis=0),
-            color=colors[0],
-            ls=':',
-            marker=markers[0],
-        )
-        ax.axhline(0, **line_kwargs)
-        ax.set(xscale="log")
-
-        ax = axs[2]
-        ax.plot(
-            n_sequences,
-            variances[:, k, :].mean(axis=0),
-            color=colors[0],
-            ls=':',
-            marker=markers[0],
-        )
-        ax.plot(n_sequences, 1/(n_sequences * fi), label='CRB', **line_kwargs)
-        ax.plot(n_sequences, 1/(n_sequences * n), label='SQL', **dict(color='black', alpha=0.8, ls=':'))
-        ax.plot(n_sequences, 1/(n_sequences * n**2), label='HL', **dict(color='black', alpha=0.8, ls=':'))
-        ax.set(xscale="log", yscale='log')
-        ax.legend()
-
-        axs[0].set(xlabel="$\phi_j$", ylabel=r"p($\phi_j | \vec{s}$)")
-        axs[1].set(xlabel="Sequence length, $m$", ylabel=r"Bias, $\langle \hat{\varphi} - \varphi \rangle$")
-        axs[2].set(xlabel="Sequence length, $m$", ylabel=r"Variance, $\langle \Delta^2 \hat{\phi} \rangle$")
-
-        io.save_figure(fig, filename=f"bias-variance/{k}_{phis_true[k].item()}.png")
-        fig.tight_layout()
-        plt.show()
-
-
-    print(f"Finished benchmarking the estimator.")
+    # #%%
+    # if plot:
+    #     ncols = 1
+    #     nrows = n_trials
+    #
+    #     fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(3.5 * ncols, 1.5 * nrows), sharex=True, sharey=True,
+    #                             gridspec_kw=dict(hspace=0, wspace=0))
+    #     colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
+    #     k = phis_true.shape[0] // 2
+    #     print(f"Closest grid point is {jnp.min(jnp.abs(phis - phis_true[z]))}")
+    #     for j in range(nrows):
+    #         for i, n_sequence in enumerate(n_sequences):
+    #             # print(k, j, i)
+    #             ax = axs[j]
+    #             ax.axvline(phis_estimates[j, k, -1], color='red', ls='-', lw=1, alpha=1.0)
+    #             ax.axvline(phis_true[k], color='gray', ls='--', lw=1, alpha=0.6)
+    #             p = posteriors[j, k, i, :]
+    #             ax.plot(
+    #                 grid,
+    #                 p / jnp.max(p),
+    #                 ls='-',
+    #                 lw=1,
+    #                 color=colors[i],
+    #                 alpha=(i + 1) / len(n_sequences),
+    #             )
+    #             b = phis_true[k] - phis_estimates[j, k, -1]
+    #             ax.annotate(text=f"{b:2.6f}",
+    #                         xy=(0.9, 0.9),
+    #                         xycoords='axes fraction',
+    #                         **dict(ha='right', va='top'))
+    #             ax.set(xticks=[], yticks=[])
+    #
+    #     io.save_figure(fig, 'all_trials_one_phase.pdf')
+    #     del fig
+    #
+    # #%% plot posterior, bias, and variance for one phase
+    # for k in range(phis_true.shape[0]):
+    #     fig, axs = plt.subplots(nrows=3, figsize=(6.5, 6.0))
+    #     colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
+    #     markers = ["o", "D", 's', "v", "^", "<", ">", ]
+    #     axs[0].axvline(phis_true[k], color='black', ls='--', alpha=1.0, lw=2)
+    #
+    #     for i, n_sequence in enumerate(n_sequences):
+    #         ax = axs[0]
+    #         p = posteriors[1, k, i, :]
+    #         ax.plot(
+    #             grid,
+    #             p / jnp.max(p),
+    #             ls=':',
+    #             marker=markers[i % len(markers)],
+    #             color=colors[i],
+    #             # alpha=(0.1 + i / len(n_sequences) * 0.8),
+    #             alpha=(i+1) / len(n_sequences),
+    #             markersize=3,
+    #             label=r"$\phi_{true}=$" + f"{phis_true[k] / jnp.pi:0.2f}$\pi$",
+    #         )
+    #
+    #     line_kwargs = dict(color='grey', alpha=0.6, ls='--')
+    #     ax = axs[1]
+    #     ax.errorbar(
+    #         n_sequences,
+    #         biases[:, k, :].mean(axis=0),
+    #         xerr=None,
+    #         yerr=jnp.var(biases[:, k, :], axis=0),
+    #         color=colors[0],
+    #         ls=':',
+    #         marker=markers[0],
+    #     )
+    #     ax.axhline(0, **line_kwargs)
+    #     ax.set(xscale="log")
+    #
+    #     ax = axs[2]
+    #     ax.plot(
+    #         n_sequences,
+    #         variances[:, k, :].mean(axis=0),
+    #         color=colors[0],
+    #         ls=':',
+    #         marker=markers[0],
+    #     )
+    #     ax.plot(n_sequences, 1/(n_sequences * fi), label='CRB', **line_kwargs)
+    #     ax.plot(n_sequences, 1/(n_sequences * n), label='SQL', **dict(color='black', alpha=0.8, ls=':'))
+    #     ax.plot(n_sequences, 1/(n_sequences * n**2), label='HL', **dict(color='black', alpha=0.8, ls=':'))
+    #     ax.set(xscale="log", yscale='log')
+    #     ax.legend()
+    #
+    #     axs[0].set(xlabel="$\phi_j$", ylabel=r"p($\phi_j | \vec{s}$)")
+    #     axs[1].set(xlabel="Sequence length, $m$", ylabel=r"Bias, $\langle \hat{\varphi} - \varphi \rangle$")
+    #     axs[2].set(xlabel="Sequence length, $m$", ylabel=r"Variance, $\langle \Delta^2 \hat{\phi} \rangle$")
+    #
+    #     io.save_figure(fig, filename=f"bias-variance/{k}_{phis_true[k].item()}.png")
+    #     fig.tight_layout()
+    #     plt.show()
+    #
+    #
+    # print(f"Finished benchmarking the estimator.")
 
 
 #%%
