@@ -28,12 +28,12 @@ from queso.utils import get_machine_info
 io = IO(folder="test_softmax_annealing", include_date=True)
 config = Configuration()
 key = jax.random.PRNGKey(1234)
-plot = False
+plot = True
 progress = True
 
 # %%
-# n_grid = config.n_grid
-n_grid = 200
+n_grid = config.n_grid
+# n_grid = 200
 nn_dims = config.nn_dims + [n_grid]
 lr = config.lr_nn
 l2_regularization = 0.0  # config.l2_regularization
@@ -129,13 +129,12 @@ def l2_loss(w, alpha):
 
 
 @jax.jit
-def train_step(state, batch, epoch):
+def train_step(state, batch, epoch, temp):
     x_batch, y_batch = batch
 
     def loss_fn(params):
         logits = state.apply_fn({'params': params}, x_batch)
 
-        temp = annealing_schedule(epoch)
         log_probs = jax.nn.log_softmax(logits / temp, axis=-1)
 
         # CE
@@ -165,18 +164,18 @@ def shuffle_shots(shots, key=None):
 
 
 # %%
-lr = 0.1
-n_epochs = 500
+lr = 0.001
+n_epochs = 2000
 
 init_key = jax.random.PRNGKey(time.time_ns())
 state = create_train_state(model, init_key, x_init, lr=lr)
 
 annealing_schedule = optax.polynomial_schedule(
-    init_value=1.0,
-    end_value=0.01,
-    power=1,
-    transition_steps=n_epochs // 2,
-    transition_begin=n_epochs // 2,
+    init_value=5.0,
+    end_value=1.0,
+    power=2, 
+    transition_steps=n_epochs,
+    transition_begin=0,
 )
 
 keys = jax.random.split(key, (n_epochs))
@@ -185,8 +184,9 @@ pbar = tqdm.tqdm(total=n_epochs, disable=(not progress), mininterval=0.333)
 for epoch in range(n_epochs):  # number of epochs
     shots = shuffle_shots(shots)
     batch = (shots, y)
+    temp = annealing_schedule(epoch)
 
-    state, loss = train_step(state, batch, epoch)
+    state, loss = train_step(state, batch, epoch, temp)
     if progress:
         pbar.update()
         pbar.set_description(f"Epoch {epoch} | Loss: {loss:.10f}", refresh=False)
@@ -203,19 +203,10 @@ io.save_figure(fig, filename='nn_loss.png')
 # %%
 logits = state.apply_fn({'params': state.params}, shots)
 probs = jax.nn.softmax(logits, axis=-1)
-# probs = jax.nn.softmax(logits_multi, axis=-1).squeeze()
-# prod_logits_multi = prod(logits_multi)
 
 fig, ax = plt.subplots()
 ax.plot(probs[0, 0, :])
 io.save_figure(fig, filename="test_probs.png")
-
-# %%
-x_batch = x[:, 0:batch_size, :]
-y_batch = y
-batch = (x_batch, y_batch)
-
-state, loss = train_step(state, batch)
 
 # %%
 hf = h5py.File(io.path.joinpath("nn.h5"), "w")
@@ -295,8 +286,9 @@ if plot:
 
     plt.show()
 
-# from queso.benchmark_estimator import benchmark_estimator
 
-# benchmark_estimator(
-#     io, config, key,
-# )
+from queso.benchmark_estimator import benchmark_estimator
+
+benchmark_estimator(
+    io, config, key,
+)
