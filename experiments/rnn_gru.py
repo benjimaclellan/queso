@@ -6,16 +6,16 @@ import torch.optim as optim
 import numpy as np
 
 #%%
-n_qubits = 4
-n_shots = 100
-n_grid = 20
-n_phases = 20
+n_qubits = 6
+n_shots = 1000
+n_grid = 50
+n_phases = 50
 
 n_batch = n_grid
 n_seq = n_shots
 n_feature = n_qubits
 n_hidden = n_phases
-num_layers = 10
+num_layers = 3
 
 #%%
 rnn = nn.GRU(
@@ -25,6 +25,9 @@ rnn = nn.GRU(
     batch_first=True,
     dropout=0.1,
 )
+n_trainable_params = sum([p.numel() for p in rnn.parameters()])
+print(f"Number of parameters: {n_trainable_params}")
+
 
 #%% create minimal dataset for GHZ state
 def sample(phase: float, n_samples: int):
@@ -47,13 +50,13 @@ print(shots.shape)
 
 #%%
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(rnn.parameters(), lr=0.01)
+optimizer = optim.Adam(rnn.parameters(), lr=0.001)
 
 torch.manual_seed(1234)
 
 #%%
-for n_seq in (1, 2, 5,):
-    for epoch in range(150):
+for n_seq in (5,):
+    for epoch in range(550):
         shots_batch = shots[:, torch.randperm(shots.shape[1]), :]
         output, hn = rnn(shots_batch)
         loss = criterion(hn[-1, :, :], labels)
@@ -65,17 +68,19 @@ for n_seq in (1, 2, 5,):
         print(f'Epoch [{epoch + 1}], Loss: {loss.item()}')
 
 #%%
-n_seq_test = 5
-index = 10
+n_seq_test = 6
+index = 5
 with torch.no_grad():
     shots_batch = shots[index:index+1, torch.randperm(shots.shape[1])[:n_seq_test], :]
+    print(shots_batch)
     output, hn = rnn(shots_batch)
-
+    # prob_test = torch.softmax(torch.prod(output, dim=1).squeeze(), dim=0)
+    # prob = prob_test
     prob = torch.softmax(hn[-1, :, :], dim=-1)
     print(f"argmax {torch.argmax(prob)}")
     fig, axs = plt.subplots(1, 1)
     axs.plot(prob.detach().numpy().squeeze())
-    fig.show()
+    plt.show()
     print(prob)
 
     # todo: calculate variance and bias
