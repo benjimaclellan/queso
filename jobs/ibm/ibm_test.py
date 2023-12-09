@@ -102,7 +102,7 @@ n = config.n
 k = config.k
 phi_range = config.phi_range
 n_phis = config.n_phis
-n_shots = config.n_shots
+n_shots = config.n_seq
 kwargs = dict(preparation=config.preparation, interaction=config.interaction, detection=config.detection, backend=config.backend)
 
 #%%
@@ -142,7 +142,7 @@ for phi in phis:
     circuits_train.append(qc)
 
 #%%
-job_train = execute(circuits_train, backend, shots=config.n_shots)
+job_train = execute(circuits_train, backend, shots=config.n_seq)
 print(job_train.job_id())
 
 #%%
