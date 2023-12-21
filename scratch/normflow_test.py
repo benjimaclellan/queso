@@ -13,14 +13,16 @@ import einops
 #%%
 # Move model on GPU if available
 enable_cuda = True
-device = torch.device('cuda' if torch.cuda.is_available() and enable_cuda else 'cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() and enable_cuda else 'cpu')
+device = 'cpu'
+# device = 'cuda'
 
 #%%
 # target = nf.distributions.GaussianMixture(n_modes=2, dim=1, loc=[[-1], [1]], scale=[[0.3], [0.3]])
-target = nf.distributions.GaussianMixture(n_modes=1, dim=1, loc=[[1]], scale=[[0.3]])
+target = nf.distributions.GaussianMixture(n_modes=1, dim=1, loc=[[1]], scale=[[0.3]]).to(device)
 y = target.sample(1000)
 plt.figure()
-plt.hist(y[:, 0].detach(), bins=100)
+plt.hist(y[:, 0].cpu().detach(), bins=100)
 plt.show()
 
 #%%
@@ -30,16 +32,16 @@ zz = torch.linspace(-3, 3, grid_size)
 zz = zz.view(-1, 1)
 zz = zz.to(device)
 
-log_prob = target.log_prob(zz).to('cpu')  #.view(*xx.shape)
+log_prob = target.log_prob(zz)  #.view(*xx.shape)
 prob = torch.exp(log_prob)
 prob[torch.isnan(prob)] = 0
 
 plt.figure()
-plt.plot(zz, prob.data.numpy())
+plt.plot(zz.cpu(), prob.cpu().data.numpy())
 plt.show()
 
 #%%
-base = nf.distributions.base.DiagGaussian(1, trainable=False)
+base = nf.distributions.base.DiagGaussian(1, trainable=False).to(device)
 
 # Define list of flows
 num_layers = 12
@@ -56,7 +58,7 @@ model = model.to(device)
 #%%
 # Plot initial flow distribution
 model.eval()
-log_prob = model.log_prob(zz).to('cpu')  #.view(*xx.shape)
+log_prob = model.log_prob(zz).cpu()  #.view(*xx.shape)
 model.train()
 prob = torch.exp(log_prob)
 prob[torch.isnan(prob)] = 0
@@ -68,9 +70,9 @@ y = target.sample(n_samples).detach()
 z, _ = model.sample(n_samples)
 z = z.detach()
 plt.figure()
-plt.hist(x[:, 0], bins=100, alpha=0.3, label='base')
-plt.hist(y[:, 0], bins=100, alpha=0.3, label='target')
-plt.hist(z[:, 0], bins=100, alpha=0.3, label='flow')
+plt.hist(x[:, 0].cpu(), bins=100, alpha=0.3, label='base')
+plt.hist(y[:, 0].cpu(), bins=100, alpha=0.3, label='target')
+plt.hist(z[:, 0].cpu(), bins=100, alpha=0.3, label='flow')
 plt.legend()
 plt.show()
 
@@ -98,13 +100,6 @@ for it in tqdm(range(max_iter)):
     # Log loss
     loss_hist = np.append(loss_hist, loss.to('cpu').data.numpy())
 
-    # # Plot learned distribution
-    # if (it + 1) % show_iter == 0:
-    #     model.eval()
-    #     log_prob = model.log_prob(zz)
-    #     model.train()
-    #     prob = torch.exp(log_prob.to('cpu').view(*xx.shape))
-    #     prob[torch.isnan(prob)] = 0
 
 #%% Plot loss
 plt.figure(figsize=(10, 10))

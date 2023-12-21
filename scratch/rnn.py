@@ -13,10 +13,10 @@ learning_rate = 0.001
 
 # Define the RNN model
 class SimpleRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, num_classes):
+    def __init__(self, dim_input: int, dim_hidden: int, dim_output: int, num_layers: int):
         super(SimpleRNN, self).__init__()
-        self.rnn = nn.RNN(input_size, hidden_size, batch_first=True)
-        self.fc = nn.Linear(hidden_size, num_classes)
+        self.rnn = nn.RNN(dim_input, dim_hidden, num_layers=num_layers, batch_first=True)
+        self.fc = nn.Linear(dim_hidden, dim_output)
 
     def forward(self, x):
         out, _ = self.rnn(x, None)
