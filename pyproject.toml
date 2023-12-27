@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "quantumion"
+version = "0.0.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.23.2",
+    "starlette>=0.27.0",
+    "pydantic>=2.4",
+    "pydantic-numpy",
+    "h5py",
+    "redis",
+    "rq",
+    "requests",
+]
+
+[project.optional-dependencies]
+qutip = ["qutip"]
+tensorcircuit = ["tensorcircuit", "matplotlib", "qiskit"]
+all = ["qutip", "tensorcircuit", "matplotlib", "qiskit"]
+
+
+[tool.setuptools]
+packages = ["quantumion", "backends"]
