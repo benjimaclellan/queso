@@ -1,20 +1,18 @@
 import argparse
 
-import time
 import jax
-import jax.numpy as jnp
 
 from queso.io import IO
 from queso.configs import Configuration
-from queso.train_circuit import train_circuit
-from queso.sample_circuit import sample_circuit
-from queso.sample_circuit_testing import sample_circuit_testing
-from queso.train_nn import train_nn
-from queso.benchmark_estimator import benchmark_estimator
+from queso.train.train_circuit import train_circuit
+from queso.sample.circuit import sample_circuit
+from queso.sample.circuit_test import sample_circuit_testing
+from queso.train.train_nn import train_nn
+from queso.benchmark.estimator import benchmark_estimator
 
 
 #%%
-def train(io: IO, config: Configuration):
+def vqs(io: IO, config: Configuration):
     # %%
     key = jax.random.PRNGKey(config.seed)
     progress = True
@@ -89,4 +87,4 @@ if __name__ == "__main__":
     config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
     print(f"Initializing sensor training: {folder} | Devices {jax.devices()} | Full path {io.path}")
     print(f"Config: {config}")
-    train(io, config)
+    vqs(io, config)
