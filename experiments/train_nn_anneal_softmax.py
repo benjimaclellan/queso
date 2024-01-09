@@ -1,22 +1,17 @@
-import copy
 import time
 import tqdm
 import matplotlib.pyplot as plt
 from itertools import cycle
 import seaborn as sns
-from typing import Sequence
 import pandas as pd
 import h5py
-import argparse
 import warnings
 
 import jax
 import jax.numpy as jnp
 import optax
-from flax import linen as nn
 from flax.training import train_state, orbax_utils
-from orbax.checkpoint import PyTreeCheckpointer, Checkpointer, CheckpointManager, CheckpointManagerOptions, \
-    PyTreeCheckpointHandler
+from orbax.checkpoint import Checkpointer, PyTreeCheckpointHandler
 
 from queso.estimators.flax.dnn import BayesianDNNEstimator
 from queso.sensors.tc.sensor import sample_int2bin
@@ -287,7 +282,7 @@ if plot:
     plt.show()
 
 
-from queso.benchmark_estimator import benchmark_estimator
+from queso.benchmark.estimator import benchmark_estimator
 
 benchmark_estimator(
     io, config, key,
