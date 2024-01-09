@@ -11,10 +11,14 @@ class BayesianDNNEstimator(nn.Module):
     @nn.compact
     def __call__(self, x):
         for dim in self.nn_dims[:-1]:
-            x = nn.relu(nn.Dense(dim, kernel_init=jax.nn.initializers.glorot_normal())(x))
+            x = nn.relu(
+                nn.Dense(dim, kernel_init=jax.nn.initializers.glorot_normal())(x)
+            )
             # x = self.mish(nn.Dense(dim, kernel_init=jax.nn.initializers.glorot_normal())(x))
             # x = nn.BatchNorm(use_running_average=not train)(x)
-        x = nn.Dense(self.nn_dims[-1], kernel_init=jax.nn.initializers.glorot_normal())(x)
+        x = nn.Dense(self.nn_dims[-1], kernel_init=jax.nn.initializers.glorot_normal())(
+            x
+        )
         # x = nn.activation.softmax(x, axis=-1)
         return x
 

@@ -22,14 +22,12 @@ class Dense(nn.Module):
 
 class RNN(nn.Module):
     def __init__(
-            self,
-            dim_input: int,
-            dim_hidden: int,
-            dim_output: int,
-            num_layers: int
+        self, dim_input: int, dim_hidden: int, dim_output: int, num_layers: int
     ):
         super(RNN, self).__init__()
-        self.rnn = nn.RNN(dim_input, dim_hidden, num_layers=num_layers, batch_first=True)
+        self.rnn = nn.RNN(
+            dim_input, dim_hidden, num_layers=num_layers, batch_first=True
+        )
         self.fc = nn.Linear(dim_hidden, dim_output)
 
     def forward(self, x):
@@ -40,13 +38,13 @@ class RNN(nn.Module):
 
 class Flow(normflows.NormalizingFlow):
     def __init__(
-            self,
-            base: nf.distributions.BaseDistribution,
-            num_layers: int = 4,
+        self,
+        base: nf.distributions.BaseDistribution,
+        num_layers: int = 4,
     ):
         flows = []
         for i in range(num_layers):
-            flows.append(nf.flows.Planar(shape=[1], act='leaky_relu'))
+            flows.append(nf.flows.Planar(shape=[1], act="leaky_relu"))
             # flows.append(nf.flows.AffineConstFlow(shape=[1]))
             # flows.append(nf.flows.Radial(shape=[1], z_0=None))
             # flows.append(nf.flows.Squeeze())

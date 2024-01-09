@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field, fields, asdict
+import networkx as nx
 import yaml
 import pathlib
 
@@ -23,16 +24,16 @@ class Configuration:
     n: int = 2
     k: int = 2
 
-    preparation: str = 'brick_wall_cr'
+    preparation: str = "brick_wall_cr"
     interaction: str = "local_rx"
-    detection: str = 'local_r'
+    detection: str = "local_r"
     loss_fi: str = "loss_cfi"
-    backend: str = 'ket'
-    
-    # optional circuit args    
+    backend: str = "ket"
+
+    # optional circuit args
     gamma_dephasing: float = 0.0
     n_ancilla: int = 0
-    
+
     # training circuit args
     n_phis: int = 100
     n_steps: int = 20000
@@ -40,7 +41,7 @@ class Configuration:
 
     phi_offset: float = 0.0
     phi_range: list[float] = field(default_factory=lambda: [-1.157, 1.157])
-    
+
     # sample circuit args
     n_shots: int = 5000
     n_shots_test: int = 1000
@@ -49,7 +50,9 @@ class Configuration:
     # train estimator args
     n_epochs: int = 1000
     batch_size: int = 50
-    n_grid: int = 100  # todo: make more general - not requiring matching training phis and grid
+    n_grid: int = (
+        100  # todo: make more general - not requiring matching training phis and grid
+    )
     nn_dims: list[int] = field(default_factory=lambda: [32, 32])
     lr_nn: float = 1e-3
     l2_regularization: float = 0.0  # L2 regularization for NN estimator
@@ -71,7 +74,7 @@ class Configuration:
             self.seed = time.time_ns()
 
         # if self.n_grid != self.n_phis:
-            # raise Warning("should be the same")
+        # raise Warning("should be the same")
 
         # convert all lists to jax.numpy arrays
         # for field in fields(self.__class__):
@@ -87,4 +90,3 @@ class Configuration:
         #         data[key] = val.tolist()
         with open(file, "w") as fid:
             yaml.dump(data, fid)
-

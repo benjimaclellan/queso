@@ -15,7 +15,9 @@ def copy_files_to_new_folder(base_folder, new_folder):
 
     # Ensure that the source folder exists
     if not base_folder.exists() or not base_folder.is_dir():
-        print(f"The source folder '{base_folder}' does not exist or is not a directory.")
+        print(
+            f"The source folder '{base_folder}' does not exist or is not a directory."
+        )
         return
 
     # Create a Path object for the new folder
@@ -26,7 +28,7 @@ def copy_files_to_new_folder(base_folder, new_folder):
         new_folder_path.mkdir(parents=True)
 
     # Iterate over all files in the base folder and copy them to the new folder
-    for file in base_folder.glob('*'):
+    for file in base_folder.glob("*"):
         if file.is_file():
             # Use shutil.copy to copy the file
             shutil.copy(str(file), str(new_folder_path / file.name))

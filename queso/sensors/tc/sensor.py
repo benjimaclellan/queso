@@ -1,14 +1,24 @@
 from functools import partial
 import time
 from tqdm import tqdm
-import itertools
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 import tensorcircuit as tc
-from tensorcircuit.quantum import sample_bin2int, sample_int2bin
 import jax
 import jax.numpy as jnp
+
+from queso.sensors.tc.detection import local_r, local_rx_ry_ry
+from queso.sensors.tc.interaction import local_rx, fourier_rx, single_rx
+from queso.sensors.tc.preparation import (
+    hardware_efficient_ansatz,
+    trapped_ion_ansatz,
+    photonic_graph_state_ansatz,
+)
+from queso.sensors.tc.preparation import (
+    brick_wall_cr,
+    brick_wall_rx_ry_cnot,
+    brick_wall_cr_ancillas,
+    brick_wall_cr_dephasing,
+    brick_wall_cr_depolarizing,
+)
 
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")
@@ -25,7 +35,7 @@ class Sensor:
         self.n = n
         self.k = k
 
-        backend = kwargs.get('backend', "ket")
+        backend = kwargs.get("backend", "ket")
         if backend == "ket":
             self._circ = tc.Circuit
         elif backend == "dm":
@@ -36,61 +46,16 @@ class Sensor:
         # tc.set_contractor(contractor)  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
 
         # default circuits
-        preparation = kwargs.get('preparation', "brick_wall_cr")
-        interaction = kwargs.get('interaction', "local_rx")
-        detection = kwargs.get('detection', "local_r")
+        preparation = kwargs.get("preparation", "brick_wall_cr")
+        interaction = kwargs.get("interaction", "local_rx")
+        detection = kwargs.get("detection", "local_r")
 
-        if preparation == "brick_wall_cr":
-            self.preparation = brick_wall_cr
-            self.theta = jnp.zeros([n, k, 6])
-        elif preparation == "brick_wall_cr_ancillas":
-            n_ancilla = kwargs.get('n_ancilla', n//2)
-            self.preparation = lambda c, theta, n, k: brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=n_ancilla)
-            self.theta = jnp.zeros([n, k, 6])
-        elif preparation == "brick_wall_rx_ry_cnot":
-            self.preparation = brick_wall_rx_ry_cnot
-            self.theta = jnp.zeros([n, k, 3])
-        elif preparation == "brick_wall_cr_dephasing":
-            gamma_dephasing = kwargs.get('gamma_dephasing', 0.0)
-            self.preparation = lambda c, theta, n, k: brick_wall_cr_dephasing(c, theta, n, k, gamma=gamma_dephasing)
-            self.theta = jnp.zeros([n, k, 6])
-                 
-        elif preparation == "brick_wall_cr_depolarizing":
-            gamma_dephasing = kwargs.get('gamma_dephasing', 0.0)
-            self.preparation = lambda c, theta, n, k: brick_wall_cr_depolarizing(c, theta, n, k, gamma=gamma_dephasing)
-            self.theta = jnp.zeros([n, k, 6])
-            
-        elif preparation == "local_r":
-            self.preparation = local_r
-            self.preparation = local_r
-            self.theta = jnp.zeros([n, 3])
-        else:
-            raise ValueError("Not a valid preparation layer.")
-
-        self.phi = jnp.array(0.0)
-        if interaction == "local_rx":
-            self.interaction = local_rx
-        elif interaction == "single_rx":
-            self.interaction = single_rx
-        elif interaction == "fourier_rx":
-            self.interaction = fourier_rx
-        else:
-            raise ValueError("Not a valid interaction layer.")
-
-        if detection == "local_r":
-            self.detection = local_r
-            self.mu = jnp.zeros([n, 3])
-        elif detection == "brick_wall_cr":
-            self.detection = brick_wall_cr
-            self.mu = jnp.zeros([n, k, 6])
-
-        elif detection == "local_rx_ry_ry":
-            self.detection = local_rx_ry_ry
-            self.mu = jnp.zeros([n, 3])
-        else:
-            raise ValueError("Not a valid detection layer.")
-
-        self.layers = dict(preparation=preparation, interaction=interaction, detection=detection)
+        self.preparation, self.theta = set_preparation(preparation, n, k, kwargs)
+        self.interaction, self.phi = set_interaction(interaction)
+        self.detection, self.mu = set_detection(detection, n, k)
+        self.layers = dict(
+            preparation=preparation, interaction=interaction, detection=detection
+        )
 
         return
 
@@ -116,7 +81,7 @@ class Sensor:
         c = self.detection(c, mu, self.n, self.k)
         return c.probability()
 
-    @partial(jax.jit, static_argnums=(0,), backend='cpu')
+    @partial(jax.jit, static_argnums=(0,), backend="cpu")
     def _sample(self, theta, phi, mu, key):
         c = self._circ(self.n)
         c = self.preparation(c, theta, self.n, self.k)
@@ -177,248 +142,87 @@ class Sensor:
             key = jax.random.PRNGKey(time.time_ns())
         keys = jax.random.split(key, phis.shape[0])
         data = [
-                self.sample(theta, phi, mu, key=key, n_shots=n_shots, verbose=verbose)
-                for (phi, key) in tqdm(zip(phis, keys), total=phis.size)
+            self.sample(theta, phi, mu, key=key, n_shots=n_shots, verbose=verbose)
+            for (phi, key) in tqdm(zip(phis, keys), total=phis.size)
         ]
         data = jnp.stack(data, axis=0)
         probs = jnp.stack([self.probs(theta, phi, mu) for phi in phis], axis=0)
         return data, probs
 
 
-# preparation layers
-def brick_wall_cr(c, theta, n, k):
-    for j in range(k):
-        for i in range(n):
-            c.r(
-                i,
-                theta=theta[i, j, 0],
-                alpha=theta[i, j, 1],
-                phi=theta[i, j, 2],
-            )
+def set_preparation(preparation, n, k, kwargs):
+    if preparation == "hardware_efficient_ansatz":
+        return hardware_efficient_ansatz, jnp.zeros([n, k + 1, 2])
 
-        for i in range(0, n - 1, 2):
-            c.cr(
-                i,
-                i + 1,
-                theta=theta[i, j, 3],
-                alpha=theta[i, j, 4],
-                phi=theta[i, j, 5],
-            )
+    elif preparation == "trapped_ion_ansatz":
+        return trapped_ion_ansatz, jnp.zeros([n, k + 1, 4])
 
-        for i in range(1, n - 1, 2):
-            c.cr(
-                i,
-                i + 1,
-                theta=theta[i, j, 3],
-                alpha=theta[i, j, 4],
-                phi=theta[i, j, 5],
-            )
-    c.barrier_instruction()
-    return c
-
-
-# preparation layers
-def brick_wall_rx_ry_cnot(c, theta, n, k):
-    for j in range(k):
-        for i in range(n):
-            c.rx(
-                i,
-                theta=theta[i, j, 0],
-            )
-            c.ry(
-                i,
-                theta=theta[i, j, 1],
-            )
-            c.ry(
-                i,
-                theta=theta[i, j, 2],
-            )
-
-        for i in range(0, n - 1, 2):
-            c.cnot(
-                i,
-                i + 1,
-            )
-
-        for i in range(1, n - 1, 2):
-            c.cnot(
-                i,
-                i + 1,
-            )
-    c.barrier_instruction()
-    return c
-
-
-def brick_wall_cr_ancillas(c, theta, n, k, n_ancilla=1):
-    for i in range(n-n_ancilla, n):
-        c.r(
-            i,
-            theta=theta[i, 0, 0],
-            alpha=theta[i, 0, 1],
-            phi=theta[i, 0, 2],
+    elif preparation == "photonic_graph_state_ansatz":
+        # graph_state = kwargs.get("graph_state")
+        return (
+            photonic_graph_state_ansatz,
+            jnp.zeros([n, 1, 3]),
         )
 
-    for j in range(k):
-        for i in range(n - n_ancilla):
-            c.r(
-                i,
-                theta=theta[i, j, 0],
-                alpha=theta[i, j, 1],
-                phi=theta[i, j, 2],
-            )
+    elif preparation == "brick_wall_cr":
+        return brick_wall_cr, jnp.zeros([n, k, 6])
 
-        for i in range(0, n-n_ancilla-1, 2):
-            c.cr(
-                i,
-                i + 1,
-                theta=theta[i, j, 3],
-                alpha=theta[i, j, 4],
-                phi=theta[i, j, 5],
-            )
-
-        for i in range(1, n-n_ancilla-1, 2):
-            c.cr(
-                i,
-                i + 1,
-                theta=theta[i, j, 3],
-                alpha=theta[i, j, 4],
-                phi=theta[i, j, 5],
-            )
-    c.barrier_instruction()
-    return c
-
-
-def brick_wall_cr_dephasing(c, theta, n, k, gamma=0.0):
-    for j in range(k):
-        for i in range(n):
-            c.r(
-                i,
-                theta=theta[i, j, 0],
-                alpha=theta[i, j, 1],
-                phi=theta[i, j, 2],
-            )
-
-        for i in range(0, n - 1, 2):
-            c.cr(
-                i,
-                i + 1,
-                theta=theta[i, j, 3],
-                alpha=theta[i, j, 4],
-                phi=theta[i, j, 5],
-            )
-
-        for i in range(1, n - 1, 2):
-            c.cr(
-                i,
-                i + 1,
-                theta=theta[i, j, 3],
-                alpha=theta[i, j, 4],
-                phi=theta[i, j, 5],
-            )
-        
-        for i in range(n):
-            c.phasedamping(i, gamma=gamma)
-    c.barrier_instruction()
-    return c
-
-
-
-def brick_wall_cr_depolarizing(c, theta, n, k, gamma=0.0):
-    for j in range(k):
-        for i in range(n):
-            c.r(
-                i,
-                theta=theta[i, j, 0],
-                alpha=theta[i, j, 1],
-                phi=theta[i, j, 2],
-            )
-
-        for i in range(0, n - 1, 2):
-            c.cr(
-                i,
-                i + 1,
-                theta=theta[i, j, 3],
-                alpha=theta[i, j, 4],
-                phi=theta[i, j, 5],
-            )
-
-        for i in range(1, n - 1, 2):
-            c.cr(
-                i,
-                i + 1,
-                theta=theta[i, j, 3],
-                alpha=theta[i, j, 4],
-                phi=theta[i, j, 5],
-            )
-        
-        for i in range(n):
-            c.depolarizing(i, px=gamma/3, py=gamma/3, pz=gamma/3)
-    c.barrier_instruction()
-    return c
-
-
-
-# interaction layers
-def local_rx(c, phi, n):
-    for i in range(n):
-        c.rx(i, theta=phi)
-    c.barrier_instruction()
-    return c
-
-
-def fourier_rx(c, phi, n):
-    for i in range(0, n, 2):
-        c.rx(i, theta=phi)
-    for i in range(1, n, 2):
-        c.rz(i, theta=-phi)
-    c.barrier_instruction()
-    return c
-
-
-def local_depolarizing(c, phi, n):
-    for i in range(n):
-        c.depolarizing(i, phi)
-    c.barrier_instruction()
-    return c
-
-
-def single_rx(c, phi, n):
-    c.rx(0, theta=phi)
-    c.barrier_instruction()
-    return c
-
-
-# detection layers
-def local_r(c, mu, n, k):
-    for i in range(n):
-        c.r(
-            i,
-            theta=mu[i, 0],
-            alpha=mu[i, 1],
-            phi=mu[i, 2],
+    elif preparation == "brick_wall_cr_ancillas":
+        n_ancilla = kwargs.get("n_ancilla", n // 2)
+        return (
+            lambda c, theta, n, k: brick_wall_cr_ancillas(
+                c, theta, n, k, n_ancilla=n_ancilla
+            ),
+            jnp.zeros([n, k, 6]),
         )
-    c.barrier_instruction()
-    return c
+    elif preparation == "brick_wall_rx_ry_cnot":
+        return brick_wall_rx_ry_cnot, jnp.zeros([n, k, 3])
+
+    elif preparation == "brick_wall_cr_dephasing":
+        gamma_dephasing = kwargs.get("gamma_dephasing", 0.0)
+        return (
+            lambda c, theta, n, k: brick_wall_cr_dephasing(
+                c, theta, n, k, gamma=gamma_dephasing
+            ),
+            jnp.zeros([n, k, 6]),
+        )
+
+    elif preparation == "brick_wall_cr_depolarizing":
+        gamma_dephasing = kwargs.get("gamma_dephasing", 0.0)
+        return (
+            lambda c, theta, n, k: brick_wall_cr_depolarizing(
+                c, theta, n, k, gamma=gamma_dephasing
+            ),
+            jnp.zeros([n, k, 6]),
+        )
+
+    elif preparation == "local_r":
+        return local_r, jnp.zeros([n, 3])
+
+    else:
+        raise ValueError("Not a valid preparation layer.")
 
 
-def local_rx_ry_ry(c, mu, n, k):
-    for i in range(n):
-        c.rx(i, theta=mu[i, 0])
-        c.ry(i,theta=mu[i, 1],)
-        c.ry(i,theta=mu[i, 2],)
-    c.barrier_instruction()
-    return c
+def set_interaction(interaction):
+    phi = jnp.array(0.0)
+
+    if interaction == "local_rx":
+        return local_rx, phi
+    elif interaction == "single_rx":
+        return single_rx, phi
+    elif interaction == "fourier_rx":
+        return fourier_rx, phi
+    else:
+        raise ValueError("Not a valid interaction layer.")
 
 
-# utilities for sampling
-def shots_to_counts(shots):
-    # shots = jnp.array(list(zip(*shots))[0]).astype("int8")
-    basis, count = jnp.unique(shots, return_counts=True, axis=0)
-    return {
-        "".join([str(j) for j in basis[i]]): count[i].item() for i in range(len(count))
-    }
+def set_detection(detection, n, k):
+    if detection == "local_r":
+        return local_r, jnp.zeros([n, 3])
+    elif detection == "brick_wall_cr":
+        return brick_wall_cr, jnp.zeros([n, k, 6])
 
-
-def counts_to_list(counts):
-    bin_str = ["".join(p) for p in itertools.product("01", repeat=n)]
-    return [counts.get(b, 0) for b in bin_str]
+    elif detection == "local_rx_ry_ry":
+        return local_rx_ry_ry, jnp.zeros([n, 3])
+    else:
+        raise ValueError("Not a valid detection layer.")

@@ -1,4 +1,4 @@
-#%%
+# %%
 import time
 import tqdm
 import matplotlib.pyplot as plt
@@ -18,7 +18,7 @@ from queso.io import IO
 from queso.configs import Configuration
 
 
-#%%
+# %%
 def benchmark_estimator(
     io: IO,
     config: Configuration,
@@ -26,14 +26,13 @@ def benchmark_estimator(
     plot: bool = False,
 ):
     print(f"Beginning to benchmark estimator.")
-    
 
-    #%%
+    # %%
     n_trials = config.n_trials
     n_sequences = jnp.array(config.n_sequences)
     n_grid = config.n_grid
 
-    #%%
+    # %%
     hf = h5py.File(io.path.joinpath("train_samples.h5"), "r")
     print(hf.keys())
     phis = jnp.array(hf.get("phis"))
@@ -60,22 +59,26 @@ def benchmark_estimator(
     n_phis = config.n_phis
     phi_range = (jnp.min(phis), jnp.max(phis))
 
-    #%%
+    # %%
     ckpt_dir = io.path.joinpath("ckpts")
-    ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.
+    ckptr = Checkpointer(
+        PyTreeCheckpointHandler()
+    )  # A stateless object, can be created on the fly.
     restored = ckptr.restore(ckpt_dir, item=None)
-    nn_dims = restored['nn_dims']
+    nn_dims = restored["nn_dims"]
 
-    #%%
+    # %%
     model = BayesianDNNEstimator(nn_dims)
 
-    #%%
+    # %%
     phis_true = phis_test
     n_sequence_max = jnp.max(n_sequences)
 
-    #%%
+    # %%
     def select_sample_sequence(shots, key):
-        shot_inds = jax.random.randint(key, shape=(n_sequence_max,), minval=0, maxval=shots.shape[1])
+        shot_inds = jax.random.randint(
+            key, shape=(n_sequence_max,), minval=0, maxval=shots.shape[1]
+        )
         # shots_phis = shots[phis_inds, :, :, :]
         sequences = shots[:, shot_inds, :]
         return sequences
@@ -87,20 +90,24 @@ def benchmark_estimator(
     sequences = jnp.stack([select_sample_sequence(shots, key) for key in keys], axis=0)
     assert sequences.shape == (n_trials, len(phis_true), n_sequence_max, n)
 
-    #%%
-    pred = model.apply({'params': restored['params']}, sequences)
+    # %%
+    pred = model.apply({"params": restored["params"]}, sequences)
     # T = 1
     # pred = nn.activation.softmax(pred / T, axis=-1)  # use temperature scaling to smooth
     pred = nn.activation.softmax(pred, axis=-1)
     print(pred.shape)
     assert pred.shape == (n_trials, len(phis_true), n_sequence_max, n_grid)
 
-    #%%
+    # %%
     def posterior_product(pred, n_sequence):
         # shape is of [n_trials, n_phis_true, n_sequences, n_grid|n_phis]
         tmp = pred[:, :, :n_sequence, :]
-        tmp = jnp.log(tmp).sum(axis=-2, keepdims=False)  # sum log posterior probs for each individual input sample
-        tmp = jnp.exp(tmp - tmp.max(axis=-1, keepdims=True))  # help with underflow in normalization
+        tmp = jnp.log(tmp).sum(
+            axis=-2, keepdims=False
+        )  # sum log posterior probs for each individual input sample
+        tmp = jnp.exp(
+            tmp - tmp.max(axis=-1, keepdims=True)
+        )  # help with underflow in normalization
         posteriors = tmp / tmp.sum(axis=-1, keepdims=True)
         return posteriors
 
@@ -121,7 +128,10 @@ def benchmark_estimator(
     @jax.jit
     def variance(posteriors, phis_estimates, grid):
         # over a euclidean space
-        variances = (posteriors * jnp.power(phis_estimates[:, :, :, None] - grid[None, None, None, :], 2)).sum(axis=-1)
+        variances = (
+            posteriors
+            * jnp.power(phis_estimates[:, :, :, None] - grid[None, None, None, :], 2)
+        ).sum(axis=-1)
 
         # over a circular space
         # vecs_est = jnp.exp(1j * phis_estimates[:, :, :, None])
@@ -132,14 +142,16 @@ def benchmark_estimator(
         # variances = (posteriors * jnp.power(diff, 2)).sum(axis=-1)
         return variances
 
-    posteriors = jnp.stack([posterior_product(pred, n_sequence) for n_sequence in n_sequences], axis=2)
+    posteriors = jnp.stack(
+        [posterior_product(pred, n_sequence) for n_sequence in n_sequences], axis=2
+    )
     assert posteriors.shape == (n_trials, len(phis_true), len(n_sequences), n_grid)
 
     phis_estimates = estimate(posteriors, grid)
     biases = bias(phis_estimates, phis_true)
     variances = variance(posteriors, phis_estimates, grid)
 
-    #%%
+    # %%
     hf = h5py.File(io.path.joinpath("estimates.h5"), "w")
     hf.create_dataset("phis_estimates", data=phis_estimates)
     hf.create_dataset("phis_true", data=phis_true)
@@ -283,9 +295,8 @@ def benchmark_estimator(
     # print(f"Finished benchmarking the estimator.")
 
 
-#%%
+# %%
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--folder", type=str, default="tmp")
     args = parser.parse_args()
@@ -293,7 +304,7 @@ if __name__ == "__main__":
 
     io = IO(folder=f"{folder}")
     print(io)
-    config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
+    config = Configuration.from_yaml(io.path.joinpath("config.yaml"))
     key = jax.random.PRNGKey(config.seed)
     print(f"Benchmarking NN: {folder} | Devices {jax.devices()} | Full path {io.path}")
     print(f"Config: {config}")

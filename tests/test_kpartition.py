@@ -10,14 +10,16 @@ import qutip as qt
 #     b = [lst[i] for i in range(n) if s[i] == 0]
 #     print(a, b)
 
-#%%
+# %%
 n = 6
 # rho = qt.ket2dm(qt.rand_ket(dims=[[2] * n, [1] * n]))
 # rho = qt.ket2dm(qt.tensor(n * [qt.basis(2, 0)]) + qt.tensor(n * [qt.basis(2, 1)])).unit()   # GHZ state
 # rho = qt.ket2dm(qt.tensor(n * [qt.basis(2, 0) + qt.basis(2, 1)])).unit()   # n-plus state
 # rho = qt.ket2dm(qt.tensor(n * [qt.basis(2, 0)])).unit()   # n-plus state
 
-ghz = qt.ket2dm(qt.tensor((n//2) * [qt.basis(2, 0)]) + qt.tensor((n//2) * [qt.basis(2, 1)])).unit()   # GHZ state
+ghz = qt.ket2dm(
+    qt.tensor((n // 2) * [qt.basis(2, 0)]) + qt.tensor((n // 2) * [qt.basis(2, 1)])
+).unit()  # GHZ state
 rho = qt.tensor(2 * [ghz]).unit()
 
 partitions = partition(list(range(n)))

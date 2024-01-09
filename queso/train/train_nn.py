@@ -14,11 +14,16 @@ import jax.numpy as jnp
 import optax
 from flax import linen as nn
 from flax.training import train_state, orbax_utils
-from orbax.checkpoint import PyTreeCheckpointer, Checkpointer, \
-    CheckpointManager, CheckpointManagerOptions, PyTreeCheckpointHandler
+from orbax.checkpoint import (
+    PyTreeCheckpointer,
+    Checkpointer,
+    CheckpointManager,
+    CheckpointManagerOptions,
+    PyTreeCheckpointHandler,
+)
 
 from queso.estimators.flax.dnn import BayesianDNNEstimator
-from queso.sensors.tc.sensor import sample_int2bin
+from queso.sensors.tc.utils import sample_int2bin
 from queso.io import IO
 from queso.configs import Configuration
 from queso.utils import get_machine_info
@@ -32,8 +37,7 @@ def train_nn(
     plot: bool = False,
     progress: bool = True,
 ):
-
-    #%%
+    # %%
     nn_dims = config.nn_dims + [config.n_grid]
     n_grid = config.n_grid
     lr = config.lr_nn
@@ -53,21 +57,23 @@ def train_nn(
     phis = jnp.array(hf.get("phis"))
     hf.close()
 
-    #%%
+    # %%
     n = shots.shape[2]
     n_shots = shots.shape[1]
     n_phis = shots.shape[0]
 
-    #%%
+    # %%
     assert n_shots % batch_size == 0
     n_batches = n_shots // batch_size
     n_steps = n_epochs * n_batches
 
-    #%%
+    # %%
     dphi = phis[1] - phis[0]
     phi_range = (jnp.min(phis), jnp.max(phis))
 
-    grid = (phi_range[1] - phi_range[0]) * jnp.arange(n_grid) / (n_grid - 1) + phi_range[0]
+    grid = (phi_range[1] - phi_range[0]) * jnp.arange(n_grid) / (
+        n_grid - 1
+    ) + phi_range[0]
     index = jnp.stack([jnp.argmin(jnp.abs(grid - phi)) for phi in phis])
 
     if n_phis != n_grid:
@@ -91,20 +97,20 @@ def train_nn(
     # sns.heatmap(yg, ax=ax)
     # plt.show()
 
-    #%%
+    # %%
     x_init = x[1:10, 1:10, :]
     print(model.tabulate(jax.random.PRNGKey(0), x_init))
 
     # %%
     def l2_loss(w, alpha):
-        return alpha * (w ** 2).mean()
+        return alpha * (w**2).mean()
 
     @jax.jit
     def train_step(state, batch):
         x_batch, y_batch = batch
 
         def loss_fn(params):
-            logits = state.apply_fn({'params': params}, x_batch)
+            logits = state.apply_fn({"params": params}, x_batch)
             # loss = optax.softmax_cross_entropy(
             #     logits,
             #     y_batch
@@ -113,11 +119,17 @@ def train_nn(
             if logit_norm:
                 eps = 1e-10
                 tau = 10.0
-                logits = (logits + eps) / (jnp.sqrt((logits ** 2 + eps).sum(axis=-1, keepdims=True))) / tau
+                logits = (
+                    (logits + eps)
+                    / (jnp.sqrt((logits**2 + eps).sum(axis=-1, keepdims=True)))
+                    / tau
+                )
 
             # standard cross-entropy
-            print('softmax', jax.nn.log_softmax(logits, axis=-1).shape)
-            loss = -jnp.sum(y_batch[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
+            print("softmax", jax.nn.log_softmax(logits, axis=-1).shape)
+            loss = -jnp.sum(
+                y_batch[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1
+            ).mean(axis=(0, 1))
 
             # cross-entropy with ReLUmax instead of softmax
             # log_relumax = jnp.log(jax.nn.relu(logits) / jnp.sum(jax.nn.relu(logits), axis=-1, keepdims=True))
@@ -131,8 +143,7 @@ def train_nn(
             # loss = -jnp.sum(yg[:, None, :] * jax.nn.log_softmax(logits, axis=-1), axis=-1).mean(axis=(0, 1))
 
             loss += sum(
-                l2_loss(w, alpha=l2_regularization)
-                for w in jax.tree_leaves(params)
+                l2_loss(w, alpha=l2_regularization) for w in jax.tree_leaves(params)
             )
             return loss
 
@@ -146,12 +157,14 @@ def train_nn(
     def create_train_state(model, init_key, x, learning_rate):
         if from_checkpoint:
             ckpt_dir = io.path.joinpath("ckpts")
-            ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.
+            ckptr = Checkpointer(
+                PyTreeCheckpointHandler()
+            )  # A stateless object, can be created on the fly.
             restored = ckptr.restore(ckpt_dir, item=None)
-            params = restored['params']
+            params = restored["params"]
             print(f"Loading parameters from checkpoint: {ckpt_dir}")
         else:
-            params = model.init(init_key, x)['params']
+            params = model.init(init_key, x)["params"]
             print(f"Random initialization of parameters")
 
         # print("Initial parameters", params)
@@ -160,20 +173,22 @@ def train_nn(
             init_value=lr,
             end_value=lr**2,
             power=1,
-            transition_steps=n_steps//4,
-            transition_begin=3 * n_steps//2,
+            transition_steps=n_steps // 4,
+            transition_begin=3 * n_steps // 2,
         )
         tx = optax.adam(learning_rate=schedule)
         # tx = optax.adamw(learning_rate=learning_rate, weight_decay=1e-5)
 
-        state = train_state.TrainState.create(apply_fn=model.apply, params=params, tx=tx)
+        state = train_state.TrainState.create(
+            apply_fn=model.apply, params=params, tx=tx
+        )
         return state
 
     init_key = jax.random.PRNGKey(time.time_ns())
     state = create_train_state(model, init_key, x_init, learning_rate=lr)
     # del init_key
 
-    #%%
+    # %%
     x_batch = x[:, 0:batch_size, :]
     y_batch = y
     batch = (x_batch, y_batch)
@@ -183,7 +198,9 @@ def train_nn(
     # %%
     keys = jax.random.split(key, (n_epochs))
     metrics = []
-    pbar = tqdm.tqdm(total=n_epochs * n_batches, disable=(not progress), mininterval=0.333)
+    pbar = tqdm.tqdm(
+        total=n_epochs * n_batches, disable=(not progress), mininterval=0.333
+    )
     for i in range(n_epochs):
         # shuffle shots
         # subkeys = jax.random.split(keys[i], n_phis)
@@ -197,24 +214,26 @@ def train_nn(
             state, loss = train_step(state, batch)
             if progress:
                 pbar.update()
-                pbar.set_description(f"Epoch {i} | Batch {j:04d} | Loss: {loss:.10f}", refresh=False)
-            metrics.append(dict(step=i*n_batches + j, loss=loss))
+                pbar.set_description(
+                    f"Epoch {i} | Batch {j:04d} | Loss: {loss:.10f}", refresh=False
+                )
+            metrics.append(dict(step=i * n_batches + j, loss=loss))
 
     pbar.close()
     metrics = pd.DataFrame(metrics)
 
-    #%%
+    # %%
     hf = h5py.File(io.path.joinpath("nn.h5"), "w")
     hf.create_dataset("grid", data=grid)
     hf.close()
 
-    #%% compute posterior
+    # %% compute posterior
     # approx likelihood from relative frequencies
     freqs = counts / counts.sum(axis=1, keepdims=True)
     likelihood = freqs
 
     bit_strings = sample_int2bin(jnp.arange(2**n), n)
-    pred = model.apply({'params': state.params}, bit_strings)
+    pred = model.apply({"params": state.params}, bit_strings)
     pred = jax.nn.softmax(pred, axis=-1)
     posterior = pred
 
@@ -258,18 +277,22 @@ def train_nn(
     # restored = checkpoint_manager.restore(0)
 
     # %%
-    ckpt = {'params': state.params, 'nn_dims': nn_dims}
+    ckpt = {"params": state.params, "nn_dims": nn_dims}
     ckpt_dir = io.path.joinpath("ckpts")
 
-    ckptr = Checkpointer(PyTreeCheckpointHandler())  # A stateless object, can be created on the fly.
-    ckptr.save(ckpt_dir, ckpt, save_args=orbax_utils.save_args_from_target(ckpt), force=True)
+    ckptr = Checkpointer(
+        PyTreeCheckpointHandler()
+    )  # A stateless object, can be created on the fly.
+    ckptr.save(
+        ckpt_dir, ckpt, save_args=orbax_utils.save_args_from_target(ckpt), force=True
+    )
     restored = ckptr.restore(ckpt_dir, item=None)
 
     print(f"Finished training the estimator.")
 
-    #%%
+    # %%
     if plot:
-        #%% plot prior
+        # %% plot prior
         # fig, ax = plt.subplots()
         # ax.stem(prior)
         # fig.show()
@@ -283,27 +306,43 @@ def train_nn(
         io.save_figure(fig, filename="nn-loss.png")
 
         # %% run prediction on all possible inputs
-        bit_strings = sample_int2bin(jnp.arange(2 ** n), n)
-        pred = model.apply({'params': state.params}, bit_strings)
+        bit_strings = sample_int2bin(jnp.arange(2**n), n)
+        pred = model.apply({"params": state.params}, bit_strings)
         pred = jax.nn.softmax(pred, axis=-1)
 
         fig, axs = plt.subplots(nrows=3, figsize=[9, 6], sharex=True)
-        colors = sns.color_palette('deep', n_colors=bit_strings.shape[0])
-        markers = cycle(["o", "D", 's', "v", "^", "<", ">", ])
+        colors = sns.color_palette("deep", n_colors=bit_strings.shape[0])
+        markers = cycle(
+            [
+                "o",
+                "D",
+                "s",
+                "v",
+                "^",
+                "<",
+                ">",
+            ]
+        )
         for i in range(bit_strings.shape[0]):
             ax = axs[0]
-            xdata = jnp.linspace(phi_range[0], phi_range[1], pred.shape[1], endpoint=False)
-            ax.plot(xdata,
-                    pred[i, :],
-                    ls='',
-                    marker=next(markers),
-                    color=colors[i],
-                    label=r"Pr($\phi_j | "+"b_{"+str(i)+"}$)")
+            xdata = jnp.linspace(
+                phi_range[0], phi_range[1], pred.shape[1], endpoint=False
+            )
+            ax.plot(
+                xdata,
+                pred[i, :],
+                ls="",
+                marker=next(markers),
+                color=colors[i],
+                label=r"Pr($\phi_j | " + "b_{" + str(i) + "}$)",
+            )
 
-            xdata = jnp.linspace(phi_range[0], phi_range[1], counts.shape[0], endpoint=False)
+            xdata = jnp.linspace(
+                phi_range[0], phi_range[1], counts.shape[0], endpoint=False
+            )
             # if not jnp.all(jnp.isnan(probs)).item():
             #     axs[1].plot(xdata, probs[:, i], color=colors[i])
-            axs[2].plot(xdata, freqs[:, i], color=colors[i], ls='--', alpha=0.3)
+            axs[2].plot(xdata, freqs[:, i], color=colors[i], ls="--", alpha=0.3)
 
         axs[-1].set(xlabel=r"$\phi_j$")
         axs[0].set(ylabel=r"Posterior distribution, Pr($\phi_j | b_i$)")
@@ -312,9 +351,8 @@ def train_nn(
         plt.show()
 
 
-#%%
+# %%
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--folder", type=str, default="tmp")
     args = parser.parse_args()
@@ -322,7 +360,7 @@ if __name__ == "__main__":
 
     io = IO(folder=f"{folder}")
     print(io)
-    config = Configuration.from_yaml(io.path.joinpath('config.yaml'))
+    config = Configuration.from_yaml(io.path.joinpath("config.yaml"))
     key = jax.random.PRNGKey(config.seed)
     print(f"Training NN: {folder} | Devices {jax.devices()} | Full path {io.path}")
     print(f"Config: {config}")

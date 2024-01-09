@@ -28,6 +28,7 @@ def sample_state(
 
     # %%
     if state == "ghz":
+
         def circuit(n, phi):
             c = tc.Circuit(n)
             c.h(0)
@@ -38,6 +39,7 @@ def sample_state(
             for i in range(n):
                 c.h(i)
             return c
+
     else:
         raise ValueError
 
@@ -56,9 +58,7 @@ def sample_state(
         if key is None:
             key = jax.random.PRNGKey(time.time_ns())
         keys = jax.random.split(key, n_shots)
-        shots = jnp.array([_sample(n, phi, key) for key in keys]).astype(
-            "int8"
-        )
+        shots = jnp.array([_sample(n, phi, key) for key in keys]).astype("int8")
         return shots
 
     def sample_over_phases(n, phis, n_shots, key=None):
@@ -98,7 +98,7 @@ def sample_state(
 
 if __name__ == "__main__":
     n = 1
-    state = 'ghz'
+    state = "ghz"
 
     io = IO(folder=f"calibration-samples-n{n}-{state}", include_date=True)
     io.path.mkdir(parents=True, exist_ok=True)
