@@ -7,7 +7,6 @@ import subprocess
 from math import pi
 import platform
 import numpy as np
-import networkx as nx
 
 
 current_os = platform.system()
@@ -45,16 +44,6 @@ for (ansatz, n) in itertools.product(ansatzes, ns):
     config = copy.deepcopy(base)
     config.preparation = ansatz
 
-    # if ansatz == "photonic_graph_state_ansatz":
-    #     # use a bipartite graph (optimal QFI, see Shettel et al.)
-    #     graph = nx.Graph()
-    #     nodes_a, nodes_b = [i for i in range(0, n // 2)], [i for i in range(n//2, n)]
-    #     graph.add_nodes_from(nodes_a, bipartite=0)
-    #     graph.add_nodes_from(nodes_b, bipartite=1)
-    #     graph.add_edges_from(list(itertools.product(nodes_a, nodes_b)))
-    #
-    #     config.graph_state = graph
-
     config.n = n
     config.k = n
     config.n_grid = 250
@@ -64,9 +53,9 @@ for (ansatz, n) in itertools.product(ansatzes, ns):
     prefix = f"{config.preparation}"
     folder = f"2024-01-08_hardware_ansatzes/n{config.n}_k{config.k}_{config.preparation}"
 
-    config.train_circuit = False
-    config.sample_circuit_training_data = False
-    config.sample_circuit_testing_data = False
+    config.train_circuit = True
+    config.sample_circuit_training_data = True
+    config.sample_circuit_testing_data = True
     config.train_nn = True
     config.benchmark_estimator = True
 
