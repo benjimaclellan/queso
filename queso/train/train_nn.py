@@ -37,6 +37,26 @@ def train_nn(
     plot: bool = False,
     progress: bool = True,
 ):
+    """
+    Trains a neural network based on the provided configuration.
+
+    This function initializes a BayesianDNNEstimator, sets up the optimizer and loss function, and then performs the training steps.
+    It also saves the training results and metadata, and optionally plots the training progress.
+
+    Args:
+        io (IO): An instance of the IO class for handling input/output operations.
+        config (Configuration): An instance of the Configuration class containing the settings for the training.
+        key (jax.random.PRNGKey): A random number generator key from JAX.
+        plot (bool, optional): If True, plots of the training progress are generated and saved. Defaults to False.
+        progress (bool, optional): If True, a progress bar is displayed during training. Defaults to True.
+
+    Returns:
+        None
+
+    Raises:
+        Warning: If the grid and training data do not match.
+    """
+
     # %%
     nn_dims = config.nn_dims + [config.n_grid]
     n_grid = config.n_grid

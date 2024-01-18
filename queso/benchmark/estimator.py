@@ -25,6 +25,22 @@ def benchmark_estimator(
     key: jax.random.PRNGKey = None,
     plot: bool = False,
 ):
+    """
+    Benchmarks the estimator.
+
+    This function benchmarks the estimator by running a series of tests based on the provided configuration.
+    It calculates the posterior product, estimates the bias and variance, and saves the results in an HDF5 file.
+    Optionally, it can also generate plots for the results.
+
+    Args:
+        io (IO): An instance of the IO class for handling input/output operations.
+        config (Configuration): An instance of the Configuration class containing the settings for the benchmarking process.
+        key (jax.random.PRNGKey, optional): A random number generator key from JAX. If not provided, a new key is generated based on the current time.
+        plot (bool, optional): A flag indicating whether to generate plots for the results. Defaults to False.
+
+    Returns:
+        None
+    """
     print(f"Beginning to benchmark estimator.")
 
     # %%

@@ -22,6 +22,25 @@ def train_circuit(
     plot: bool = False,
     progress: bool = True,
 ):
+    """
+    Trains a quantum circuit based on the provided configuration.
+
+    This function initializes a sensor, sets up the optimizer and loss function, and then performs the training steps.
+    It also saves the training results and metadata, and optionally plots the training progress.
+
+    Args:
+        io (IO): An instance of the IO class for handling input/output operations.
+        config (Configuration): An instance of the Configuration class containing the settings for the training.
+        key (jax.random.PRNGKey): A random number generator key from JAX.
+        plot (bool, optional): If True, plots of the training progress are generated and saved. Defaults to False.
+        progress (bool, optional): If True, a progress bar is displayed during training. Defaults to True.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If the specified Fisher Information loss function is not recognized.
+    """
     # %%
     n = config.n
     k = config.k

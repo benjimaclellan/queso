@@ -1,6 +1,6 @@
 
 site_name: Queso
-site_description: Queso - Designing variational quantum sensing protocols
+site_description: Queso - Design of variational quantum sensing protocols
 
 use_directory_urls: false  # good for opening HTML files directly, but should be 'true' for deployment
 
@@ -44,7 +44,10 @@ plugins:
 nav:
   - Introduction: index.md
   - Tutorials: tutorials.md
-  - How to guides: how-to-guides.md
+  - How to guides:
+      - Welcome: tutorials.md
+      - Sensing circuit: examples/optimize_fisher_info.ipynb
+
   - Reference: reference.md
   - Explanation: explanation.md
 

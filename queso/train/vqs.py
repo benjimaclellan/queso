@@ -13,6 +13,20 @@ from queso.benchmark.estimator import benchmark_estimator
 
 #%%
 def vqs(io: IO, config: Configuration):
+    """
+    Executes the Variational Quantum Sensing (VQS) workflow.
+
+    This function performs a series of operations based on the provided configuration.
+    It can train a quantum circuit, sample from the circuit, train a neural network, and benchmark an estimator.
+    Each operation is optional and controlled by the configuration.
+
+    Args:
+        io (IO): An instance of the IO class for handling input/output operations.
+        config (Configuration): An instance of the Configuration class containing the settings for the VQS workflow.
+
+    Returns:
+        None
+    """
     # %%
     key = jax.random.PRNGKey(config.seed)
     progress = True
