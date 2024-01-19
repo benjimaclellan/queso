@@ -10,7 +10,7 @@ import pathlib
 # %%
 @dataclass
 class Configuration:
-    folder: str = "tmp"
+    # folder: str = "tmp"
     seed: int = None
 
     train_circuit: bool = False
@@ -38,7 +38,7 @@ class Configuration:
     n_phis: int = 100
     n_steps: int = 20000
     lr_circ: float = 1e-3
-
+    metrics: list[str] = field(default_factory=lambda: ['entropy_vn', 'qfi'])
     phi_offset: float = 0.0
     phi_range: list[float] = field(default_factory=lambda: [-1.157, 1.157])
 
@@ -83,10 +83,10 @@ class Configuration:
         #         val = jnp.array(val)
         #         setattr(self, field.name, val)
 
-    def to_yaml(self, file):
-        data = asdict(self)
-        # for key, val in data.items():
-        #     if isinstance(val, jnp.ndarray):
-        #         data[key] = val.tolist()
-        with open(file, "w") as fid:
-            yaml.dump(data, fid)
+    # def to_yaml(self, file):
+    #     data = asdict(self)
+    #     # for key, val in data.items():
+    #     #     if isinstance(val, jnp.ndarray):
+    #     #         data[key] = val.tolist()
+    #     with open(file, "w") as fid:
+    #         yaml.dump(data, fid)

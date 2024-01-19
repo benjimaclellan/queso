@@ -193,6 +193,22 @@ class IO:
             print(f"{current_time()} | Loaded from {full_path} successfully.")
         return df
 
+    def save_yaml(self, data, filename):
+        """
+        Save dictionary to YAML file.
+
+        Args:
+            filename (str): Name of the file from which data should be saved.
+
+        """
+
+        full_path = self.path.joinpath(filename)
+        os.makedirs(full_path.parent, exist_ok=True)
+        with open(full_path, "w") as fid:
+            yaml.dump(data, fid)
+        if self.verbose:
+            print(f"{current_time()} | Saved to {full_path} successfully.")
+
     def save_figure(self, fig, filename):
         """
         Save a figure (image datatype can be specified as part of filename).

@@ -109,11 +109,19 @@ def train_circuit(
     # val, grads = loss_val_grad(params, phi)
 
     # %%
-    losses, vn_ent_train = [], []
+    def metrics_callback(metrics: dict, params, phi):
+        for metric in metrics.keys():
+            if metric == "entropy_vn":
+                metrics[metric].append(sensor.entanglement(params["theta"], phi))
+            elif metric == "qfi":
+                metrics[metric].append(sensor.qfi(params["theta"], phi))
+
+    metrics = {metric: [] for metric in config.metrics}
+    losses = []
     for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
         val, params, updates, opt_state = step(params, opt_state)
         losses.append(-val)
-        vn_ent_train.append(sensor.entanglement(params["theta"], phi))
+        metrics_callback(metrics, params, phi)
         if progress:
             pbar.set_description(f"Step {i} | FI: {-val:.10f}")
 
@@ -128,7 +136,8 @@ def train_circuit(
     hf.create_dataset("theta", data=theta)
     hf.create_dataset("mu", data=mu)
     hf.create_dataset("fi_train", data=fi_train)
-    hf.create_dataset("vn_ent_train", data=vn_ent_train)
+    for metric, arr in metrics.items():
+        hf.create_dataset(metric, data=arr)
     hf.close()
 
     # %% compute other quantities of interest and save
@@ -164,7 +173,15 @@ def train_circuit(
         axs[0].plot(losses)
         axs[0].axhline(n**2, ls="--", alpha=0.5)
         axs[0].set(ylabel="Fisher Information")
-        axs[1].plot(vn_ent_train)
+        try:
+            axs[0].plot(metrics['qfi'])
+        finally:
+            pass
+
+        try:
+            axs[1].plot(metrics['entropy_vn'])
+        finally:
+            pass
         axs[1].set(ylabel="Entropy of entanglement", xlabel="Optimization Step")
         io.save_figure(fig, filename="fi-entropy-optimization")
         fig.show()

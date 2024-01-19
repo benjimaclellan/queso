@@ -16,6 +16,7 @@ dependencies = [
     "jax",  # differentiable programming
     "flax",  # neural network library
     "tensorcircuit",  # quantum circuits
+    "qiskit",
 #    "torch",
     "optax",  # optimization management
     "python-dotenv",  # local environment variables

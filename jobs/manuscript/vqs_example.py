@@ -21,17 +21,19 @@ from queso.io import IO
 from queso.train.vqs import vqs
 from queso.configs import Configuration
 
-base = Configuration()
 
-folders = {}
-ansatzes = [
+ansatze = [
     "hardware_efficient_ansatz",
 ]
 ns = [4, ]
+loss_funcs = [
+    "loss_cfi",
+    # "loss_qfi",
+]
 
-for (ansatz, n, loss_fi) in itertools.product(ansatzes, ns, ["loss_qfi", "loss_cfi"]):
+for (ansatz, n, loss_fi) in itertools.product(ansatze, ns, loss_funcs):
     print(n, ansatz)
-    config = copy.deepcopy(base)
+    config = Configuration()
     config.preparation = ansatz
 
     prefix = f"{config.preparation}"
@@ -47,7 +49,7 @@ for (ansatz, n, loss_fi) in itertools.product(ansatzes, ns, ["loss_qfi", "loss_c
     config.k = n
     config.n_grid = 250
 
-    config.seed = 74
+    config.seed = 744
 
     config.interaction = 'local_rx'
     config.detection = 'local_r'
@@ -70,5 +72,5 @@ for (ansatz, n, loss_fi) in itertools.product(ansatzes, ns, ["loss_qfi", "loss_c
     config.batch_size = 1000
 
     io = IO(path=data_path, folder=folder)
-    config.to_yaml(io.path.joinpath('config.yaml'))
+    io.save_yaml(config, 'config.yaml')
     vqs(io, config)
