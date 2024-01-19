@@ -13,26 +13,26 @@ class Configuration:
     folder: str = "tmp"
     seed: int = None
 
-    train_circuit: bool = True
-    sample_circuit: bool = True
-    sample_circuit_training_data: bool = True
-    sample_circuit_testing_data: bool = True
-    train_nn: bool = True
-    benchmark_estimator: bool = True
+    train_circuit: bool = False
+    sample_circuit: bool = False
+    sample_circuit_training_data: bool = False
+    sample_circuit_testing_data: bool = False
+    train_nn: bool = False
+    benchmark_estimator: bool = False
 
     # circuit args
     n: int = 2
     k: int = 2
 
-    preparation: str = "brick_wall_cr"
+    preparation: str = "hardware_efficient_ansatz"
     interaction: str = "local_rx"
     detection: str = "local_r"
     loss_fi: str = "loss_cfi"
     backend: str = "ket"
 
     # optional circuit args
-    gamma_dephasing: float = 0.0
-    n_ancilla: int = 0
+    gamma_dephasing: float = None
+    n_ancilla: int = None
 
     # training circuit args
     n_phis: int = 100

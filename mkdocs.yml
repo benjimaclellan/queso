@@ -8,10 +8,12 @@ docs_dir: docs
 
 
 nav:
-  - Introduction: index.md
-  - Tutorials: tutorials.md
+  - Introduction:
+      - Installation: install.md
+  - Tutorials:
+      - Fisher information: tutorials/fisher_info.ipynb
   - How to guides:
-      - Welcome: tutorials.md
+      - Welcome: how-to-guides.md
       - Sensing circuit: examples/optimize_fisher_info.ipynb
 
   - Reference:
