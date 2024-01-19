@@ -139,3 +139,5 @@ paths.yaml
 
 *.out
 *.err
+
+paths.env

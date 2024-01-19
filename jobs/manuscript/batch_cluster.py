@@ -23,17 +23,19 @@ base = Configuration()
 
 folders = {}
 ansatzes = [
-    "hardware_efficient_ansatz",
+    # "hardware_efficient_ansatz",
+    # "trapped_ion_ansatz",
+    'photonic_graph_state_ansatz',
 ]
 ns = [4, ]
 
-for (ansatz, n, loss_fi) in itertools.product(ansatzes, ns, ["loss_qfi", "loss_cfi"]):
+for (ansatz, n) in itertools.product(ansatzes, ns):
     print(n, ansatz)
     config = copy.deepcopy(base)
     config.preparation = ansatz
 
     prefix = f"{config.preparation}"
-    folder = f"2024-01_hardware_ansatzes/n{config.n}_{loss_fi}/{config.preparation}"
+    folder = f"2024-01-08_hardware_ansatzes/n{config.n}_k{config.k}_{config.preparation}"
 
     config.train_circuit = True
     config.sample_circuit_training_data = False
@@ -49,7 +51,8 @@ for (ansatz, n, loss_fi) in itertools.product(ansatzes, ns, ["loss_qfi", "loss_c
 
     config.interaction = 'local_rx'
     config.detection = 'local_r'
-    config.loss_fi = loss_fi
+    config.loss_fi = "loss_qfi"
+    # config.loss_fi = "loss_cfi"
 
     config.n_shots = 1000
     config.n_shots_test = 10000
@@ -68,5 +71,26 @@ for (ansatz, n, loss_fi) in itertools.product(ansatzes, ns, ["loss_qfi", "loss_c
 
     jobname = f"{prefix}n{config.n}k{config.k}"
 
-    io = IO(path=data_path, folder=folder)
-    vqs(io, config)
+    if os.getenv("CLUSTER", "false") == "false":
+        io = IO(path=data_path, folder=folder)
+        vqs(io, config)
+
+    else:
+        path = pathlib.Path(data_path).joinpath(folder)
+        path.mkdir(parents=True, exist_ok=True)
+        config.to_yaml(path.joinpath('config.yaml'))
+        print(path.name)
+        # Use subprocess to call the sbatch command with the batch script, parameters, and Slurm time argument
+        subprocess.run([
+            # "pwd"
+            "sbatch",
+            "--time=0:30:00",
+            "--account=def-rgmelko",
+            "--mem=4000",
+            # f"--gpus-per-node=1",
+            f"--job-name={jobname}.job",
+            f"--output=out/{jobname}.out",
+            f"--error=out/{jobname}.err",
+            "submit.sh", str(folder)
+        ]
+        )
