@@ -8,13 +8,20 @@ name = "queso"
 version = "0.0.0"
 requires-python = ">=3.9"
 dependencies = [
-    "h5py",
+    "h5py",  # data format for saving
     "matplotlib",
-    "polars",
+    "polars",  # post-analysis dataframes
+    "seaborn",
     "numpy",
-    "jax",
-    "torch",
-    "optax",
+    "jax",  # differentiable programming
+    "flax",  # neural network library
+    "tensorcircuit",  # quantum circuits
+#    "torch",
+    "optax",  # optimization management
+    "python-dotenv",  # local environment variables
+    "prettytable",
+    "psutil",
+    "GPUtil",
 ]
 
 

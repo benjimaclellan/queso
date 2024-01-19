@@ -7,6 +7,7 @@ import json
 import string
 import random
 import yaml
+import h5py
 
 
 def current_time():
@@ -40,7 +41,6 @@ class IO:
         io.save_df(df, filename="dataframe.txt")
     """
     default_path = os.getenv("DATA_PATH", pathlib.Path(__file__).parent.parent.joinpath("data"))
-
 
     def __init__(
         self,
@@ -286,15 +286,22 @@ class IO:
             print(f"{current_time()} | Loaded from {full_path} successfully.")
         return df
 
-    # def new_h5_file(self, filename):
-    #     """
-    #     :param filename: name of the text file to which we want to save the numpy array
-    #     """
-    #     full_path = self.path.joinpath(filename)
-    #     os.makedirs(full_path.parent, exist_ok=True)
-    #     hf = h5py.File("test.h5", 'w')
-    #     if self.verbose:
-    #         print(f"{current_time()} | New H5 file at {full_path}.")
+    def save_h5(self, filename):
+        """
+        Initialize an H5 file to save datasets into.
+
+        Args:
+            filename (str): Name of the file from which data should be saved.
+
+        Returns:
+            h5py.File: H5 file.
+        """
+        full_path = self.path.joinpath(filename)
+        os.makedirs(full_path.parent, exist_ok=True)
+        hf = h5py.File(full_path, 'w')
+        if self.verbose:
+            print(f"{current_time()} | Saving HDF5 file at {full_path}.")
+        return hf
 
     @staticmethod
     def _save_json(variable, path):

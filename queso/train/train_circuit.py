@@ -124,7 +124,7 @@ def train_circuit(
     if config.loss_fi == "loss_cfi":
         mu = params["mu"]
 
-    hf = h5py.File(io.path.joinpath("circ.h5"), "w")
+    hf = io.save_h5("circ.h5")
     hf.create_dataset("theta", data=theta)
     hf.create_dataset("mu", data=mu)
     hf.create_dataset("fi_train", data=fi_train)

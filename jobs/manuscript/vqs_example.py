@@ -9,15 +9,17 @@ import platform
 import numpy as np
 from dotenv import load_dotenv
 import pathlib
+import jax
 
 env_path = pathlib.Path(__file__).parent.parent.parent.joinpath('paths.env')
 load_dotenv(env_path)
 sys.path.append(os.getenv("MODULE_PATH"))
 data_path = os.getenv("DATA_PATH")
+jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE", "cpu"))[0])
 
 from queso.io import IO
 from queso.train.vqs import vqs
-from queso.configs import Configuration#
+from queso.configs import Configuration
 
 base = Configuration()
 
@@ -33,7 +35,7 @@ for (ansatz, n, loss_fi) in itertools.product(ansatzes, ns, ["loss_qfi", "loss_c
     config.preparation = ansatz
 
     prefix = f"{config.preparation}"
-    folder = f"2024-01_hardware_ansatzes/n{config.n}_{loss_fi}/{config.preparation}"
+    folder = f"2024-01_vqs-example-data/n{config.n}_{loss_fi}"
 
     config.train_circuit = True
     config.sample_circuit_training_data = False
@@ -45,12 +47,13 @@ for (ansatz, n, loss_fi) in itertools.product(ansatzes, ns, ["loss_qfi", "loss_c
     config.k = n
     config.n_grid = 250
 
-    config.seed = 122344
+    config.seed = 74
 
     config.interaction = 'local_rx'
     config.detection = 'local_r'
     config.loss_fi = loss_fi
 
+    config.lr_circ = 0.5e-3
     config.n_shots = 1000
     config.n_shots_test = 10000
     config.n_phis = 250
@@ -66,7 +69,6 @@ for (ansatz, n, loss_fi) in itertools.product(ansatzes, ns, ["loss_qfi", "loss_c
     config.nn_dims = [64, 64, 64]
     config.batch_size = 1000
 
-    jobname = f"{prefix}n{config.n}k{config.k}"
-
     io = IO(path=data_path, folder=folder)
+    config.to_yaml(io.path.joinpath('config.yaml'))
     vqs(io, config)
