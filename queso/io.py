@@ -9,31 +9,6 @@ import random
 import yaml
 
 
-def _default_data_path():
-    config = pathlib.Path(__file__).parent.parent.joinpath("paths.yaml")
-    # print(config)
-    try:
-        with open(config, "r") as fid:
-            file = yaml.safe_load(fid)
-            default_path = file["data_path"]
-            # print(file)
-    except:
-        default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
-    return default_path
-
-
-def _default_fig_path():
-    config = pathlib.Path(__file__).parent.parent.joinpath("paths.yaml")
-    # print(config)
-    try:
-        with open(config, "r") as fid:
-            file = yaml.safe_load(fid)
-            default_path = file["fig_path"]
-    except:
-        default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
-    return default_path
-
-
 def current_time():
     """
     Returns the current date and time in a consistent format.
@@ -64,9 +39,8 @@ class IO:
         io = IO.create_new_save_folder(folder="subfolder", include_date=True, include_uuid=True)
         io.save_df(df, filename="dataframe.txt")
     """
-    # default save path always points to `data/` no matter where this repository is located
-    # default_path = pathlib.Path(__file__).parent.parent.joinpath("data")
-    default_path = _default_data_path()
+    default_path = os.getenv("DATA_PATH", pathlib.Path(__file__).parent.parent.joinpath("data"))
+
 
     def __init__(
         self,

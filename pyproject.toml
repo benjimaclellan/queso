@@ -16,3 +16,6 @@ dependencies = [
     "torch",
     "optax",
 ]
+
+
+a = ["mkdocs", "mkdocstrings-python", "mkdocs-markdownextradata-plugin", "mkdocs-jupyter"]

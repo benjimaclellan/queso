@@ -3,42 +3,8 @@ site_name: Queso
 site_description: Queso - Design of variational quantum sensing protocols
 
 use_directory_urls: false  # good for opening HTML files directly, but should be 'true' for deployment
-
-theme:
-  name: material
-
-#  logo: img/oqd-logo.png
-
-  palette:
-  - media: '(prefers-color-scheme: light)'
-    scheme: default
-    primary: teal
-    accent: orange
-    toggle:
-      icon: material/lightbulb
-      name: Switch to dark mode
-  - media: '(prefers-color-scheme: dark)'
-    scheme: slate
-    primary: teal
-    accent: orange
-    toggle:
-      icon: material/lightbulb-outline
-      name: Switch to light mode
-
-  features:
-  - search.suggest
-  - search.highlight
-  - content.tabs.link
-  - navigation.indexes
-  - content.tooltips
-  - navigation.path
-  - content.code.annotate
-  - content.code.copy
-  - content.code.select
-#  - navigation.tabs
-
-plugins:
-  - mkdocstrings
+repo_url: https://github.com/benjimaclellan/queso
+docs_dir: docs
 
 
 nav:
@@ -48,14 +14,91 @@ nav:
       - Welcome: tutorials.md
       - Sensing circuit: examples/optimize_fisher_info.ipynb
 
-  - Reference: reference.md
-  - Explanation: explanation.md
+  - Reference:
+      - Sensor circuit: reference/sensors.md
+      - Neural network estimator: reference/networks.md
 
+
+
+theme:
+  name: material
+
+#  logo: img/oqd-logo.png
+
+  palette:
+    - media: '(prefers-color-scheme: light)'
+      scheme: default
+      primary: blue grey
+      accent: amber
+      toggle:
+        icon: material/lightbulb
+        name: Switch to dark mode
+    - media: '(prefers-color-scheme: dark)'
+      scheme: slate
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  favicon: assets/favicon.png
+  icon:
+    logo: logo
+
+  features:
+    - announce.dismiss
+#    - content.action.edit
+#    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    # - content.code.select
+    # - content.tabs.link
+    - content.tooltips
+    # - header.autohide
+    # - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    # - navigation.instant
+    # - navigation.instant.prefetch
+    # - navigation.instant.progress
+    # - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    # - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+
+plugins:
+  - search
+#  - markdownextradata:
+#      folder: examples
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_root_heading: yes
+  - mkdocs-jupyter:
+      ignore_h1_titles: True
+      include_source: True
+#  - mknotebooks:
+#      execute: false
+#      timeout: 100
+#      preamble: "/examples"
+#      allow_errors: True
 
 markdown_extensions:
   - toc:
       permalink: true
-      toc_depth: 4
+      toc_depth: 3
+      baselevel: 1
+      title: "Table of contents"
 
   # for code snippets/syntax highlighting
   - pymdownx.highlight:
@@ -64,17 +107,18 @@ markdown_extensions:
       pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
+  - pymdownx.superfences
 
   # for notes/admonitions
   - admonition
   - pymdownx.details
 
-  # for flow diagrams
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
+#  # for flow diagrams
+#  - pymdownx.superfences:
+#      custom_fences:
+#        - name: mermaid
+#          class: mermaid
+#          format: !!python/name:pymdownx.superfences.fence_code_format
 
   - pymdownx.arithmatex:
       generic: true

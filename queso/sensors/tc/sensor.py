@@ -26,6 +26,32 @@ tc.set_contractor("auto")  # “auto”, “greedy”, “branch”, “plain”
 
 
 class Sensor:
+    """
+    The Sensor class represents a quantum sensor. It is initialized with the number of qubits (n) and the number of layers (k) in the quantum circuit.
+
+    The class provides methods for creating the quantum circuit, calculating the quantum state, probabilities, and quantum Fisher information (QFI), sampling measurements, and more.
+
+    Attributes:
+        n (int): The number of qubits in the quantum circuit.
+        k (int): The number of layers in the quantum circuit.
+        preparation (function): The function to prepare the quantum state.
+        interaction (function): The function to apply the interaction Hamiltonian.
+        detection (function): The function to apply the detection Hamiltonian.
+        theta (jax.numpy.ndarray): The parameters for the preparation function.
+        phi (float): The parameter for the interaction function.
+        mu (jax.numpy.ndarray): The parameters for the detection function.
+        layers (dict): A dictionary containing the names of the preparation, interaction, and detection layers.
+
+    Methods:
+        circuit(theta, phi, mu): Returns the quantum circuit.
+        state(theta, phi): Returns the quantum state.
+        probs(theta, phi, mu): Returns the probabilities of the quantum state.
+        sample(theta, phi, mu, key=None, n_shots=100, verbose=False): Returns samples of measurements.
+        qfi(theta, phi): Returns the quantum Fisher information.
+        cfi(theta, phi, mu): Returns the classical Fisher information.
+        entanglement(theta, phi): Returns the entanglement entropy.
+        sample_over_phases(theta, phis, mu, n_shots, key=None, verbose=False): Returns samples of measurements over different phases.
+    """
     def __init__(
         self,
         n,
@@ -151,6 +177,23 @@ class Sensor:
 
 
 def set_preparation(preparation, n, k, kwargs):
+    """
+    Sets the preparation layer for the quantum circuit based on the provided parameters.
+
+    Args:
+        preparation (str): The name of the preparation layer to be used.
+        n (int): The number of qubits in the quantum circuit.
+        k (int): The number of layers in the quantum circuit.
+        kwargs (dict): Additional arguments for specific preparation layers.
+
+    Returns:
+        function: The function representing the preparation layer.
+        jax.numpy.ndarray: The parameters for the preparation function.
+
+    Raises:
+        ValueError: If the provided preparation layer name is not valid.
+    """
+
     if preparation == "hardware_efficient_ansatz":
         return hardware_efficient_ansatz, jnp.zeros([n, k + 1, 2])
 
