@@ -1,4 +1,5 @@
 import time
+import os
 import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -41,6 +42,8 @@ def train_circuit(
     Raises:
         ValueError: If the specified Fisher Information loss function is not recognized.
     """
+    jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE_TRAIN_CIRC", "cpu"))[0])
+
     # %%
     n = config.n
     k = config.k
@@ -60,7 +63,7 @@ def train_circuit(
     # %%
     print(f"Initializing sensor n={n}, k={k}")
     sensor = Sensor(n, k, **kwargs)
-    phi = jnp.array(0.0)
+    phi = jnp.array(config.phi_center)
     theta = jax.random.uniform(key, shape=sensor.theta.shape)
     mu = jax.random.uniform(key, shape=sensor.mu.shape)
 

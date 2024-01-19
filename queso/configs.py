@@ -39,7 +39,7 @@ class Configuration:
     n_steps: int = 20000
     lr_circ: float = 1e-3
     metrics: list[str] = field(default_factory=lambda: ['entropy_vn', 'qfi'])
-    phi_offset: float = 0.0
+    phi_center: float = 0.0
     phi_range: list[float] = field(default_factory=lambda: [-1.157, 1.157])
 
     # sample circuit args

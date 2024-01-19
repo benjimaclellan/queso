@@ -60,10 +60,10 @@ for n_ancilla in (4,):
     config.n_shots = 1000
     config.n_shots_test = 10000
     config.n_phis = 200
-    config.phi_offset = 0.0
-    config.phi_range = [-pi/2 + config.phi_offset, pi/2 + config.phi_offset]
+    config.phi_center = 0.0
+    config.phi_range = [-pi / 2 + config.phi_center, pi / 2 + config.phi_center]
 
-    config.phis_test = (np.linspace(-pi/3, pi/3, 6) + config.phi_offset).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
+    config.phis_test = (np.linspace(-pi/3, pi/3, 6) + config.phi_center).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
     config.n_sequences = np.logspace(0, 3, 10, dtype='int').tolist()
     config.n_epochs = 10000
     config.lr_nn = 1e-4

@@ -1,5 +1,6 @@
 # %%
 import time
+import os
 import tqdm
 import matplotlib.pyplot as plt
 from itertools import cycle
@@ -41,6 +42,8 @@ def benchmark_estimator(
     Returns:
         None
     """
+    jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE_BENCHMARK_NN", "cpu"))[0])
+
     print(f"Beginning to benchmark estimator.")
 
     # %%
@@ -249,66 +252,66 @@ def benchmark_estimator(
     #     io.save_figure(fig, 'all_trials_one_phase.pdf')
     #     del fig
     #
-    # #%% plot posterior, bias, and variance for one phase
-    # for k in range(phis_true.shape[0]):
-    #     fig, axs = plt.subplots(nrows=3, figsize=(6.5, 6.0))
-    #     colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
-    #     markers = ["o", "D", 's', "v", "^", "<", ">", ]
-    #     axs[0].axvline(phis_true[k], color='black', ls='--', alpha=1.0, lw=2)
-    #
-    #     for i, n_sequence in enumerate(n_sequences):
-    #         ax = axs[0]
-    #         p = posteriors[1, k, i, :]
-    #         ax.plot(
-    #             grid,
-    #             p / jnp.max(p),
-    #             ls=':',
-    #             marker=markers[i % len(markers)],
-    #             color=colors[i],
-    #             # alpha=(0.1 + i / len(n_sequences) * 0.8),
-    #             alpha=(i+1) / len(n_sequences),
-    #             markersize=3,
-    #             label=r"$\phi_{true}=$" + f"{phis_true[k] / jnp.pi:0.2f}$\pi$",
-    #         )
-    #
-    #     line_kwargs = dict(color='grey', alpha=0.6, ls='--')
-    #     ax = axs[1]
-    #     ax.errorbar(
-    #         n_sequences,
-    #         biases[:, k, :].mean(axis=0),
-    #         xerr=None,
-    #         yerr=jnp.var(biases[:, k, :], axis=0),
-    #         color=colors[0],
-    #         ls=':',
-    #         marker=markers[0],
-    #     )
-    #     ax.axhline(0, **line_kwargs)
-    #     ax.set(xscale="log")
-    #
-    #     ax = axs[2]
-    #     ax.plot(
-    #         n_sequences,
-    #         variances[:, k, :].mean(axis=0),
-    #         color=colors[0],
-    #         ls=':',
-    #         marker=markers[0],
-    #     )
-    #     ax.plot(n_sequences, 1/(n_sequences * fi), label='CRB', **line_kwargs)
-    #     ax.plot(n_sequences, 1/(n_sequences * n), label='SQL', **dict(color='black', alpha=0.8, ls=':'))
-    #     ax.plot(n_sequences, 1/(n_sequences * n**2), label='HL', **dict(color='black', alpha=0.8, ls=':'))
-    #     ax.set(xscale="log", yscale='log')
-    #     ax.legend()
-    #
-    #     axs[0].set(xlabel="$\phi_j$", ylabel=r"p($\phi_j | \vec{s}$)")
-    #     axs[1].set(xlabel="Sequence length, $m$", ylabel=r"Bias, $\langle \hat{\varphi} - \varphi \rangle$")
-    #     axs[2].set(xlabel="Sequence length, $m$", ylabel=r"Variance, $\langle \Delta^2 \hat{\phi} \rangle$")
-    #
-    #     io.save_figure(fig, filename=f"bias-variance/{k}_{phis_true[k].item()}.png")
-    #     fig.tight_layout()
-    #     plt.show()
-    #
-    #
-    # print(f"Finished benchmarking the estimator.")
+    #%% plot posterior, bias, and variance for one phase
+    for k in range(phis_true.shape[0]):
+        fig, axs = plt.subplots(nrows=3, figsize=(6.5, 6.0))
+        colors = sns.color_palette('crest', n_colors=n_sequences.shape[0])
+        markers = ["o", "D", 's', "v", "^", "<", ">", ]
+        axs[0].axvline(phis_true[k], color='black', ls='--', alpha=1.0, lw=2)
+
+        for i, n_sequence in enumerate(n_sequences):
+            ax = axs[0]
+            p = posteriors[1, k, i, :]
+            ax.plot(
+                grid,
+                p / jnp.max(p),
+                ls=':',
+                marker=markers[i % len(markers)],
+                color=colors[i],
+                # alpha=(0.1 + i / len(n_sequences) * 0.8),
+                alpha=(i+1) / len(n_sequences),
+                markersize=3,
+                label=r"$\phi_{true}=$" + f"{phis_true[k] / jnp.pi:0.2f}$\pi$",
+            )
+
+        line_kwargs = dict(color='grey', alpha=0.6, ls='--')
+        ax = axs[1]
+        ax.errorbar(
+            n_sequences,
+            biases[:, k, :].mean(axis=0),
+            xerr=None,
+            yerr=jnp.var(biases[:, k, :], axis=0),
+            color=colors[0],
+            ls=':',
+            marker=markers[0],
+        )
+        ax.axhline(0, **line_kwargs)
+        ax.set(xscale="log")
+
+        ax = axs[2]
+        ax.plot(
+            n_sequences,
+            variances[:, k, :].mean(axis=0),
+            color=colors[0],
+            ls=':',
+            marker=markers[0],
+        )
+        ax.plot(n_sequences, 1/(n_sequences * fi), label='CRB', **line_kwargs)
+        ax.plot(n_sequences, 1/(n_sequences * n), label='SQL', **dict(color='black', alpha=0.8, ls=':'))
+        ax.plot(n_sequences, 1/(n_sequences * n**2), label='HL', **dict(color='black', alpha=0.8, ls=':'))
+        ax.set(xscale="log", yscale='log')
+        ax.legend()
+
+        axs[0].set(xlabel="$\phi_j$", ylabel=r"p($\phi_j | \vec{s}$)")
+        axs[1].set(xlabel="Sequence length, $m$", ylabel=r"Bias, $\langle \hat{\varphi} - \varphi \rangle$")
+        axs[2].set(xlabel="Sequence length, $m$", ylabel=r"Variance, $\langle \Delta^2 \hat{\phi} \rangle$")
+
+        io.save_figure(fig, filename=f"bias-variance/{k}_{phis_true[k].item()}.png")
+        fig.tight_layout()
+        plt.show()
+
+
+    print(f"Finished benchmarking the estimator.")
 
 
 # %%

@@ -9,11 +9,13 @@ import platform
 import numpy as np
 from dotenv import load_dotenv
 import pathlib
+import jax
 
 env_path = pathlib.Path(__file__).parent.parent.parent.joinpath('paths.env')
 load_dotenv(env_path)
 sys.path.append(os.getenv("MODULE_PATH"))
 data_path = os.getenv("DATA_PATH")
+jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE", "cpu"))[0])
 
 from queso.io import IO
 from queso.train.vqs import vqs
@@ -23,8 +25,8 @@ base = Configuration()
 
 folders = {}
 ansatzes = [
-    # "hardware_efficient_ansatz",
-    # "trapped_ion_ansatz",
+    "hardware_efficient_ansatz",
+    "trapped_ion_ansatz",
     'photonic_graph_state_ansatz',
 ]
 ns = [4, ]
@@ -35,13 +37,13 @@ for (ansatz, n) in itertools.product(ansatzes, ns):
     config.preparation = ansatz
 
     prefix = f"{config.preparation}"
-    folder = f"2024-01-08_hardware_ansatzes/n{config.n}_k{config.k}_{config.preparation}"
+    folder = f"hardware_ansatz/{config.preparation}/n{config.n}_k{config.k}"
 
     config.train_circuit = True
-    config.sample_circuit_training_data = False
-    config.sample_circuit_testing_data = False
-    config.train_nn = False
-    config.benchmark_estimator = False
+    config.sample_circuit_training_data = True
+    config.sample_circuit_testing_data = True
+    config.train_nn = True
+    config.benchmark_estimator = True
 
     config.n = n
     config.k = n
@@ -51,8 +53,7 @@ for (ansatz, n) in itertools.product(ansatzes, ns):
 
     config.interaction = 'local_rx'
     config.detection = 'local_r'
-    config.loss_fi = "loss_qfi"
-    # config.loss_fi = "loss_cfi"
+    config.loss_fi = "loss_cfi"
 
     config.n_shots = 1000
     config.n_shots_test = 10000
@@ -70,16 +71,13 @@ for (ansatz, n) in itertools.product(ansatzes, ns):
     config.batch_size = 1000
 
     jobname = f"{prefix}n{config.n}k{config.k}"
+    io = IO(path=data_path, folder=folder)
 
     if os.getenv("CLUSTER", "false") == "false":
-        io = IO(path=data_path, folder=folder)
         vqs(io, config)
 
     else:
-        path = pathlib.Path(data_path).joinpath(folder)
-        path.mkdir(parents=True, exist_ok=True)
-        config.to_yaml(path.joinpath('config.yaml'))
-        print(path.name)
+        io.save_yaml(config, 'config.yaml')
         # Use subprocess to call the sbatch command with the batch script, parameters, and Slurm time argument
         subprocess.run([
             # "pwd"

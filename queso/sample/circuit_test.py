@@ -1,4 +1,5 @@
 import time
+import os
 import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -35,6 +36,8 @@ def sample_circuit_testing(
         n_ancilla=config.n_ancilla,
         gamma_dephasing=config.gamma_dephasing,
     )
+    jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE_SAMPLE_CIRC", "cpu"))[0])
+
     # %%
     print(f"Initializing sensor n={n}, k={k}")
     sensor = Sensor(n, k, **kwargs)

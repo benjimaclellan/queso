@@ -87,9 +87,9 @@ config.n_shots = 1000
 config.n_shots_test = 10000
 config.n_phis = 100
 config.n_grid = 100
-config.phi_offset = pi/2/n
-config.phi_range = [-pi/2/n + config.phi_offset, pi/2/n + config.phi_offset]
-config.phis_test = (np.linspace(-pi/3/n, pi/3/n, 6) + config.phi_offset).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
+config.phi_center = pi / 2 / n
+config.phi_range = [-pi / 2 / n + config.phi_center, pi / 2 / n + config.phi_center]
+config.phis_test = (np.linspace(-pi/3/n, pi/3/n, 6) + config.phi_center).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
 
 config.to_yaml(io.path.joinpath("config.yaml"))
 

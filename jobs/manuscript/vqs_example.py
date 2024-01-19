@@ -15,7 +15,7 @@ env_path = pathlib.Path(__file__).parent.parent.parent.joinpath('paths.env')
 load_dotenv(env_path)
 sys.path.append(os.getenv("MODULE_PATH"))
 data_path = os.getenv("DATA_PATH")
-jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE", "cpu"))[0])
+# jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE", "cpu"))[0])
 
 from queso.io import IO
 from queso.train.vqs import vqs
@@ -37,13 +37,13 @@ for (ansatz, n, loss_fi) in itertools.product(ansatze, ns, loss_funcs):
     config.preparation = ansatz
 
     prefix = f"{config.preparation}"
-    folder = f"2024-01_vqs-example-data/n{config.n}_{loss_fi}"
+    folder = f"vqs-example-data/n{config.n}_{loss_fi}"
 
-    config.train_circuit = True
+    config.train_circuit = False
     config.sample_circuit_training_data = False
     config.sample_circuit_testing_data = False
     config.train_nn = False
-    config.benchmark_estimator = False
+    config.benchmark_estimator = True
 
     config.n = n
     config.k = n
@@ -59,9 +59,10 @@ for (ansatz, n, loss_fi) in itertools.product(ansatze, ns, loss_funcs):
     config.n_shots = 1000
     config.n_shots_test = 10000
     config.n_phis = 250
-    config.phi_range = [-pi/2/n, pi/2/n]
+    config.phi_center = pi/2/n
+    config.phi_range = [-pi/2/n + config.phi_center, pi/2/n + config.phi_center]
 
-    config.phis_test = np.linspace(-pi/3/n, pi/3/n, 5).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
+    config.phis_test = np.linspace(-pi/3/n + config.phi_center, pi/3/n + config.phi_center, 5).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
     config.n_sequences = np.logspace(0, 3, 10, dtype='int').tolist()
     config.n_epochs = 1000
     config.lr_nn = 0.5e-4

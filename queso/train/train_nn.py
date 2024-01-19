@@ -1,4 +1,5 @@
 import time
+import os
 import tqdm
 import matplotlib.pyplot as plt
 from itertools import cycle
@@ -56,6 +57,7 @@ def train_nn(
     Raises:
         Warning: If the grid and training data do not match.
     """
+    jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE_TRAIN_NN", "cpu"))[0])
 
     # %%
     nn_dims = config.nn_dims + [config.n_grid]

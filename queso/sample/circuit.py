@@ -1,4 +1,5 @@
 import time
+import os
 import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -23,6 +24,9 @@ def sample_circuit(
     plot: bool = False,
     progress: bool = True,
 ):
+    jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE_SAMPLE_CIRC", "cpu"))[0])
+
+
     n = config.n
     k = config.k
     phi_range = config.phi_range
