@@ -5,6 +5,13 @@ def local_rx(c, phi, n):
     return c
 
 
+def local_rz(c, phi, n):
+    for i in range(n):
+        c.rz(i, theta=phi)
+    c.barrier_instruction()
+    return c
+
+
 def fourier_rx(c, phi, n):
     for i in range(0, n, 2):
         c.rx(i, theta=phi)

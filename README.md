@@ -18,7 +18,7 @@
 </div>
 
 <p align="center" style="font-size:20px">
-    The design and optimization of quantum sensing protocols using variational approaches.
+    The design and optimization of quantum sensing protocols using variational methods.
 </p>
 
 
@@ -41,10 +41,10 @@ sensor.qfi(theta, phi)
 sensor.cfi(theta, phi, mu)
 sensor.state(theta, phi, mu)
 
-shots = sensor.sample(theta, phi, mu, n_shots=10)
+data = sensor.sample(theta, phi, mu, n_shots=10)
 
 estimator = BayesianDNNEstimator()
-posterior = estimator(shots)
+posterior = estimator(data)
 ```
 
 ## Installation
@@ -52,6 +52,10 @@ posterior = estimator(shots)
 Quantum circuit simulations are done with [`tensorcircuit`](https://github.com/tencent-quantum-lab/tensorcircuit) 
 with [JAX](https://github.com/google/jax) as the differentiable programming backend.
 Neural networks are also built on top of JAX using the [`flax`](https://github.com/google/flax) library.
+
+## Citing
+Preprint to be submitted soon. 
+
 
 ## Acknowledgements
 This project is supported by the Perimeter Institute Quantum Intelligence Lab and the 

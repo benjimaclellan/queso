@@ -59,7 +59,7 @@ for (n, seed, phi_center) in zip(ns, seeds, phi_centers):
     config.seed = seed
     config.n_grid = 250
 
-    config.interaction = 'local_rx'
+    config.interaction = 'local_rz'
     config.detection = 'local_r'
     config.loss_fi = "loss_cfi"
 

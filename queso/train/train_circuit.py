@@ -9,6 +9,7 @@ import argparse
 import jax
 import jax.numpy as jnp
 import optax
+import tensorcircuit as tc
 
 from queso.sensors.tc.sensor import Sensor
 from queso.io import IO
@@ -95,7 +96,6 @@ def train_circuit(
         return val, params, updates, opt_state
 
     # %%
-
     if config.loss_fi == "loss_cfi":
         loss = loss_cfi
         params = {"theta": theta, "mu": mu}
@@ -119,15 +119,31 @@ def train_circuit(
                 metrics[metric].append(sensor.entanglement(params["theta"], phi))
             elif metric == "qfi":
                 metrics[metric].append(sensor.qfi(params["theta"], phi))
+            elif metric == "ghz_fidelity":
+                state = sensor.state(params['theta'], phi)
+                if len(state.shape) == 1:  # ket
+                    fid = 0.5 * jnp.abs(state[0] + state[-1]) ** 2
+                elif len(state.shape) == 2:  # density matrix
+                    fid = 0.5 * (state[0, 0] + state[-1, 0] + state[0, -1] + state[-1, -1])
+                else:
+                    raise RuntimeError("State should always have 1 or 2 dims.")
+                metrics[metric].append(fid)
 
+    #%%
     metrics = {metric: [] for metric in config.metrics}
     losses = []
-    for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
-        val, params, updates, opt_state = step(params, opt_state)
-        losses.append(-val)
+    if (sensor.theta is None) and (sensor.mu is None):
+        print("No circuit parameters, skipping optimization loop.")
+        losses = jnp.array(-loss(params, phi))
         metrics_callback(metrics, params, phi)
-        if progress:
-            pbar.set_description(f"Step {i} | FI: {-val:.10f}")
+
+    else:
+        for i in (pbar := tqdm.tqdm(range(n_steps), disable=(not progress))):
+            val, params, updates, opt_state = step(params, opt_state)
+            losses.append(-val)
+            metrics_callback(metrics, params, phi)
+            if progress:
+                pbar.set_description(f"Step {i} | FI: {-val:.10f}")
 
     losses = jnp.array(losses)
     fi_train = losses  # set FI to the losses
@@ -173,21 +189,24 @@ def train_circuit(
 
     if plot:
         # %% visualize
-        fig, axs = plt.subplots(ncols=1, nrows=2, sharex=True)
-        axs[0].plot(losses)
-        axs[0].axhline(n**2, ls="--", alpha=0.5)
-        axs[0].set(ylabel="Fisher Information")
+        fig, ax = plt.subplots(ncols=1, nrows=1, sharex=True)
+        ax.plot(losses)
+        ax.axhline(n**2, ls="--", alpha=0.5)
+        ax.set(ylabel="Fisher Information")
         try:
-            axs[0].plot(metrics['qfi'])
-        finally:
+            ax.plot(metrics['qfi'])
+        except:
             pass
+        io.save_figure(fig, filename="fisher-info-optimization")
 
+        fig, axs = plt.subplots(ncols=1, nrows=len(metrics.keys()), sharex=True)
         try:
-            axs[1].plot(metrics['entropy_vn'])
-        finally:
+            for i, (metric, vals) in enumerate(metrics.items()):
+                axs[i].plot(vals, label=metric)
+                axs[i].legend()
+        except:
             pass
-        axs[1].set(ylabel="Entropy of entanglement", xlabel="Optimization Step")
-        io.save_figure(fig, filename="fi-entropy-optimization")
+        axs[-1].set(xlabel="Optimization Step")
         fig.show()
 
         # #%%

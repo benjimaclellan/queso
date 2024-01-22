@@ -5,12 +5,19 @@ import tensorcircuit as tc
 import jax
 import jax.numpy as jnp
 
-from queso.sensors.tc.detection import local_r, local_rx_ry_ry
-from queso.sensors.tc.interaction import local_rx, fourier_rx, single_rx
+from queso.sensors.tc.detection import (
+    local_r,
+    local_rx_ry_ry,
+    computational_bases,
+    hadamard_bases,
+)
+from queso.sensors.tc.interaction import local_rx, local_rz, fourier_rx, single_rx
 from queso.sensors.tc.preparation import (
     hardware_efficient_ansatz,
     trapped_ion_ansatz,
     photonic_graph_state_ansatz,
+    hardware_efficient_ansatz_dephasing,
+    ghz_dephasing,
 )
 from queso.sensors.tc.preparation import (
     brick_wall_cr,
@@ -60,7 +67,7 @@ class Sensor:
     ):
         self.n = n
         self.k = k
-
+        self.kwargs = kwargs
         backend = kwargs.get("backend", "ket")
         if backend == "ket":
             self._circ = tc.Circuit
@@ -72,8 +79,8 @@ class Sensor:
         # tc.set_contractor(contractor)  # “auto”, “greedy”, “branch”, “plain”, “tng”, “custom”
 
         # default circuits
-        preparation = kwargs.get("preparation", "brick_wall_cr")
-        interaction = kwargs.get("interaction", "local_rx")
+        preparation = kwargs.get("preparation", "hardware_efficient_ansatz")
+        interaction = kwargs.get("interaction", "local_rz")
         detection = kwargs.get("detection", "local_r")
 
         self.preparation, self.theta = set_preparation(preparation, n, k, kwargs)
@@ -148,12 +155,16 @@ class Sensor:
     def cfi(self, theta, phi, mu):
         pr = self.probs(theta, phi, mu)
         dpr = jax.jacrev(self.probs, argnums=1, holomorphic=False)(theta, phi, mu)
-        fi = jnp.sum((jnp.power(dpr, 2) / pr))
+        # fi = jnp.sum((jnp.power(dpr, 2) / pr))
+        fi = jnp.nansum((jnp.power(dpr, 2) / pr))  # todo: check if removing nans helps/hurts numerical stability
         return fi
 
     @partial(jax.jit, static_argnums=(0,))
     def entanglement(self, theta, phi):
-        state = self.state(theta, phi)
+        # state = self.state(theta, phi)
+        c = self._circ(self.n)
+        c = self.preparation(c, theta, self.n, self.k)
+        state = c.state()
         rho_A = tc.quantum.reduced_density_matrix(
             state, [i for i in range(self.n // 2)]
         )
@@ -196,6 +207,20 @@ def set_preparation(preparation, n, k, kwargs):
 
     if preparation == "hardware_efficient_ansatz":
         return hardware_efficient_ansatz, jnp.zeros([n, k + 1, 2])
+
+    elif preparation == "hardware_efficient_ansatz_dephasing":
+        gamma = kwargs.get("gamma")
+        return (
+            lambda c, theta, n, k: hardware_efficient_ansatz_dephasing(c, theta, n, k, gamma=gamma),
+            jnp.zeros([n, k + 1, 2])
+        )
+
+    elif preparation == "ghz_dephasing":
+        gamma_dephasing = kwargs.get("gamma_dephasing")
+        return (
+            lambda c, theta, n, k: ghz_dephasing(c, theta, n, k, gamma=gamma_dephasing),
+            jnp.array([])
+        )
 
     elif preparation == "trapped_ion_ansatz":
         return trapped_ion_ansatz, jnp.zeros([n, k + 1, 4])
@@ -251,6 +276,8 @@ def set_interaction(interaction):
 
     if interaction == "local_rx":
         return local_rx, phi
+    if interaction == "local_rz":
+        return local_rz, phi
     elif interaction == "single_rx":
         return single_rx, phi
     elif interaction == "fourier_rx":
@@ -262,6 +289,13 @@ def set_interaction(interaction):
 def set_detection(detection, n, k):
     if detection == "local_r":
         return local_r, jnp.zeros([n, 3])
+
+    elif detection == "computational_bases":
+        return computational_bases, jnp.array([])
+
+    elif detection == "hadamard_bases":
+        return hadamard_bases, jnp.array([])
+
     elif detection == "brick_wall_cr":
         return brick_wall_cr, jnp.zeros([n, k, 6])
 

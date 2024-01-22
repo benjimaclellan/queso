@@ -259,3 +259,55 @@ def brick_wall_cr_depolarizing(c, theta, n, k, gamma=0.0):
             c.depolarizing(i, px=gamma / 3, py=gamma / 3, pz=gamma / 3)
     c.barrier_instruction()
     return c
+
+
+def hardware_efficient_ansatz_dephasing(c, theta, n, k, gamma):
+    """ """
+    for j in range(k):
+        for i in range(n):
+            c.ry(
+                i,
+                theta=theta[i, j, 0],
+            )
+            c.rz(
+                i,
+                theta=theta[i, j, 1],
+            )
+
+        for i in range(0, n - 1, 2):
+            c.cz(
+                i,
+                i + 1,
+            )
+        for i in range(1, n - 1, 2):
+            c.cz(
+                i,
+                i + 1,
+            )
+
+    for i in range(n):
+        c.ry(
+            i,
+            theta=theta[i, k, 0],
+        )
+        c.rz(
+            i,
+            theta=theta[i, k, 1],
+        )
+    c.barrier_instruction()
+    return c
+
+
+def ghz_dephasing(c, theta, n, k, gamma=0.0):
+    """
+    A non-parameterized circuit ansatz which has a dephasing channel after each two-qubit interaction.
+    """
+    c.h(0)
+    for i in range(0, n-1):
+        c.cnot(
+            i, i+1
+        )
+        c.phasedamping(i, gamma=gamma)
+        c.phasedamping(i+1, gamma=gamma)
+    c.barrier_instruction()
+    return c

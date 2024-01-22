@@ -51,7 +51,7 @@ for (ansatz, n, loss_fi) in itertools.product(ansatze, ns, loss_funcs):
 
     config.seed = 744
 
-    config.interaction = 'local_rx'
+    config.interaction = 'local_rz'
     config.detection = 'local_r'
     config.loss_fi = loss_fi
 

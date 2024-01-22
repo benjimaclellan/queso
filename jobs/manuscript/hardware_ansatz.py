@@ -24,7 +24,7 @@ from queso.configs import Configuration#
 
 ansatzes = [
     "hardware_efficient_ansatz",
-    # "trapped_ion_ansatz",
+    "trapped_ion_ansatz",
     'photonic_graph_state_ansatz',
 ]
 n = 4
@@ -50,7 +50,7 @@ for (ansatz, phi_center, seed) in zip(ansatzes, phi_centers, seeds):
     config.seed = seed
     config.n_grid = 250
 
-    config.interaction = 'local_rx'
+    config.interaction = 'local_rz'
     config.detection = 'local_r'
     config.loss_fi = "loss_cfi"
 
