@@ -24,9 +24,22 @@ from queso.configs import Configuration#
 
 folders = {}
 ansatz = "hardware_efficient_ansatz"
-ns = [2, 4, 6, 8, 10]
+ns = [
+    # 2,
+    # 4,
+    # 6,
+    # 8,
+    10
+]
 phi_centers = [np.pi/2/n for n in ns]
-seeds = [0, 0, 0, 0, 0]
+seeds = [
+    # 0,
+    # 0,
+    # 0,
+    # 0,
+    123
+]
+
 for (n, seed, phi_center) in zip(ns, seeds, phi_centers):
     print(n, ansatz)
     config = Configuration()
@@ -67,9 +80,10 @@ for (n, seed, phi_center) in zip(ns, seeds, phi_centers):
     config.batch_size = 1000
 
     jobname = f"{prefix}n{config.n}k{config.k}"
-    io = IO(path=data_path, folder=folder)
+    io = IO(path=data_path, folder=folder, include_date=True)
 
     if os.getenv("CLUSTER", "false") == "false":
+        io.save_yaml(config, 'config.yaml')
         vqs(io, config)
 
     else:

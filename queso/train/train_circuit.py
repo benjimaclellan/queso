@@ -68,9 +68,10 @@ def train_circuit(
     mu = jax.random.uniform(key, shape=sensor.mu.shape)
 
     # %%
+    print(f"plot = {plot}")
     if plot:
         try:
-            fig = sensor.circuit(theta, phi, mu).draw(output="mpl")
+            fig = sensor.circuit(theta, phi, mu).draw(**dict(output="mpl"))
             io.save_figure(fig, filename="circuit")
             fig.show()
         except:
