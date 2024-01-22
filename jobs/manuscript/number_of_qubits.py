@@ -22,16 +22,12 @@ from queso.train.vqs import vqs
 from queso.configs import Configuration#
 
 
-ansatzes = [
-    "hardware_efficient_ansatz",
-    # "trapped_ion_ansatz",
-    'photonic_graph_state_ansatz',
-]
-n = 4
-phi_centers = [np.pi/2/n, np.pi/2/n, np.pi/2/n]
-seeds = [1, 2, 3]
-
-for (ansatz, phi_center, seed) in zip(ansatzes, phi_centers, seeds):
+folders = {}
+ansatz = "hardware_efficient_ansatz"
+ns = [2, 4, 6, 8, 10]
+phi_centers = [np.pi/2/n for n in ns]
+seeds = [0, 0, 0, 0, 0]
+for (n, seed, phi_center) in zip(ns, seeds, phi_centers):
     print(n, ansatz)
     config = Configuration()
     config.preparation = ansatz
@@ -39,9 +35,9 @@ for (ansatz, phi_center, seed) in zip(ansatzes, phi_centers, seeds):
     config.k = n
 
     prefix = f"{config.preparation}"
-    folder = f"hardware_ansatz/{config.preparation}/n{config.n}_k{config.k}"
+    folder = f"number_of_qubits/n{config.n}"
 
-    config.train_circuit = False
+    config.train_circuit = True
     config.sample_circuit_training_data = True
     config.sample_circuit_testing_data = True
     config.train_nn = True
@@ -58,11 +54,11 @@ for (ansatz, phi_center, seed) in zip(ansatzes, phi_centers, seeds):
     config.n_shots_test = 10000
     config.n_phis = 250
     config.phi_center = phi_center
-    config.phi_range = [-pi / 2 / n + config.phi_center, pi / 2 / n + config.phi_center]
+    config.phi_range = [-pi/2/n + config.phi_center, pi/2/n + config.phi_center]
 
-    config.phis_test = np.linspace(-pi / 3 / n + config.phi_center, pi / 3 / n + config.phi_center, 5).tolist()
+    config.phis_test = np.linspace(-pi/3/n + config.phi_center, pi/3/n + config.phi_center, 5).tolist()
     config.n_sequences = np.logspace(0, 3, 10, dtype='int').tolist()
-    config.n_epochs = 1000
+    config.n_epochs = 2000
     config.lr_nn = 1.0e-3
     config.l2_regularization = 0.001
 

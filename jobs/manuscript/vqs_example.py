@@ -35,18 +35,18 @@ for (ansatz, n, loss_fi) in itertools.product(ansatze, ns, loss_funcs):
     print(n, ansatz)
     config = Configuration()
     config.preparation = ansatz
+    config.n = n
+    config.k = n
 
     prefix = f"{config.preparation}"
     folder = f"vqs-example-data/n{config.n}_{loss_fi}"
 
     config.train_circuit = False
     config.sample_circuit_training_data = False
-    config.sample_circuit_testing_data = False
+    config.sample_circuit_testing_data = True
     config.train_nn = False
     config.benchmark_estimator = True
 
-    config.n = n
-    config.k = n
     config.n_grid = 250
 
     config.seed = 744
@@ -64,9 +64,9 @@ for (ansatz, n, loss_fi) in itertools.product(ansatze, ns, loss_funcs):
 
     config.phis_test = np.linspace(-pi/3/n + config.phi_center, pi/3/n + config.phi_center, 5).tolist()  # [-0.4 * pi, -0.1 * pi, -0.5 * pi/n/2]
     config.n_sequences = np.logspace(0, 3, 10, dtype='int').tolist()
-    config.n_epochs = 1000
-    config.lr_nn = 0.5e-4
-    config.l2_regularization = 0.1
+    config.n_epochs = 3000
+    config.lr_nn = 1.0e-3
+    config.l2_regularization = 0.01
 
     # config.n_grid = 500
     config.nn_dims = [64, 64, 64]
