@@ -39,7 +39,10 @@ config_vqs = Configuration(
 gammas = [0.01]
 for i, gamma in enumerate(gammas):
     ios = []
-    for config in (config_ghz, config_vqs):
+    for config in (
+            config_ghz,
+            config_vqs
+    ):
         config.backend = "dm"
         # folder = f"ghz_comparison/n{n}/{config.preparation}_gamma{gamma}"
         folder = f"ghz_comparison/n{n}/{config.preparation}_gamma_{i}"
@@ -52,6 +55,7 @@ for i, gamma in enumerate(gammas):
         config.train_nn = False
         config.benchmark_estimator = False
 
+        config.n_steps = 10
         config.gamma_dephasing = gamma
 
         config.metrics = ['entropy_vn', 'ghz_fidelity']
@@ -62,5 +66,5 @@ for i, gamma in enumerate(gammas):
         print(io.path)
         ios.append(io)
 
-    vqs(ios[0], config_vqs)
-    ghz_comparison(ios[1], config_ghz)
+    ghz_comparison(ios[0], config_ghz)
+    vqs(ios[1], config_vqs)
