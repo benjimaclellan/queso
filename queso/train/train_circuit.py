@@ -194,10 +194,12 @@ def train_circuit(
         ax.axhline(n**2, ls="--", alpha=0.5)
         ax.set(ylabel="Fisher Information")
         try:
+            ax.plot(fi_train)
             ax.plot(metrics['qfi'])
         except:
             pass
         io.save_figure(fig, filename="fisher-info-optimization")
+        fig.show()
 
         fig, axs = plt.subplots(ncols=1, nrows=len(metrics.keys()), sharex=True)
         try:

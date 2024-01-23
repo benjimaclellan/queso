@@ -29,20 +29,25 @@ config_ghz = Configuration(
     seed=123,
 )
 config_vqs = Configuration(
-    n=n, k=4,
-    preparation="hardware_efficient_ansatz",
+    n=n, k=1,
+    preparation="ghz_local_rotation_dephasing",
     interaction="local_rz",
     detection="local_r",
     seed=123,
 )
-# gammas = jnp.logspace(-4, -0.5, 10)
-gammas = [0.01]
+# gammas = jnp.logspace(-3.5, -0.5, 8)
+gammas = [
+    0.001
+]
+
+#%%
 for i, gamma in enumerate(gammas):
     ios = []
     for config in (
             config_ghz,
             config_vqs
     ):
+        #%%
         config.backend = "dm"
         # folder = f"ghz_comparison/n{n}/{config.preparation}_gamma{gamma}"
         folder = f"ghz_comparison/n{n}/{config.preparation}_gamma_{i}"
@@ -55,7 +60,7 @@ for i, gamma in enumerate(gammas):
         config.train_nn = False
         config.benchmark_estimator = False
 
-        config.n_steps = 10
+        # config.n_steps = 10
         config.gamma_dephasing = gamma
 
         config.metrics = ['entropy_vn', 'ghz_fidelity']

@@ -35,6 +35,7 @@ def ghz_comparison(
     gamma = config.gamma_dephasing
 
     fig = sensor.circuit(theta, phi, mu).draw(**dict(output='mpl'))
+    # fig = sensor.circuit(theta, phi, mu).draw(**dict(output='iqp'))
 
     cfi = sensor.cfi(theta, phi, mu)
     # qfi = sensor.qfi(theta, phi)
@@ -59,6 +60,8 @@ def ghz_comparison(
         entropy_vn=sensor.entanglement(theta, phi)
     )
     print(metrics)
+
+    fig.show()
     io.save_figure(fig, filename="circuit.png")
 
     hf = io.save_h5('circ.h5')

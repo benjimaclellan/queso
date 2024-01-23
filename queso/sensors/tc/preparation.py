@@ -261,8 +261,44 @@ def brick_wall_cr_depolarizing(c, theta, n, k, gamma=0.0):
     return c
 
 
+def ghz_local_rotation_dephasing(c, theta, n, k, gamma):
+    for i in range(0, n-1):
+        c.r(
+            i,
+            theta=theta[i, 0, 0],
+            alpha=theta[i, 0, 1],
+            phi=theta[i, 0, 2]
+        )
+
+        c.r(
+            i+1,
+            theta=theta[i, 1, 0],
+            alpha=theta[i, 1, 1],
+            phi=theta[i, 1, 2]
+        )
+
+        c.cnot(
+            i,
+            i + 1,
+        )
+
+        c.phasedamping(i, gamma=gamma)
+        c.phasedamping(i + 1, gamma=gamma)
+
+    c.r(
+        n-1,
+        theta=theta[n-1, 0, 0],
+        alpha=theta[n-1, 0, 1],
+        phi=theta[n-1, 0, 2]
+    )
+    c.barrier_instruction()
+    return c
+
+
 def hardware_efficient_ansatz_dephasing(c, theta, n, k, gamma):
-    """ """
+    """
+
+    """
     for j in range(k):
         for i in range(n):
             c.ry(
@@ -279,11 +315,15 @@ def hardware_efficient_ansatz_dephasing(c, theta, n, k, gamma):
                 i,
                 i + 1,
             )
+            c.phasedamping(i, gamma=gamma)
+            c.phasedamping(i + 1, gamma=gamma)
         for i in range(1, n - 1, 2):
             c.cz(
                 i,
                 i + 1,
             )
+            c.phasedamping(i, gamma=gamma)
+            c.phasedamping(i + 1, gamma=gamma)
 
     for i in range(n):
         c.ry(
@@ -302,12 +342,20 @@ def ghz_dephasing(c, theta, n, k, gamma=0.0):
     """
     A non-parameterized circuit ansatz which has a dephasing channel after each two-qubit interaction.
     """
+    # c.h(0)
+    # for i in range(0, n-1):
+    #     c.cnot(
+    #         i, i+1
+    #     )
+    #     c.phasedamping(i, gamma=gamma)
+    #     c.phasedamping(i+1, gamma=gamma)
+    # c.barrier_instruction()
     c.h(0)
-    for i in range(0, n-1):
+    for i in range(1, n):
         c.cnot(
-            i, i+1
+            0, i
         )
+        c.phasedamping(0, gamma=gamma)
         c.phasedamping(i, gamma=gamma)
-        c.phasedamping(i+1, gamma=gamma)
     c.barrier_instruction()
     return c

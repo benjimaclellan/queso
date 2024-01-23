@@ -5,27 +5,9 @@ import tensorcircuit as tc
 import jax
 import jax.numpy as jnp
 
-from queso.sensors.tc.detection import (
-    local_r,
-    local_rx_ry_ry,
-    computational_bases,
-    hadamard_bases,
-)
-from queso.sensors.tc.interaction import local_rx, local_rz, fourier_rx, single_rx
-from queso.sensors.tc.preparation import (
-    hardware_efficient_ansatz,
-    trapped_ion_ansatz,
-    photonic_graph_state_ansatz,
-    hardware_efficient_ansatz_dephasing,
-    ghz_dephasing,
-)
-from queso.sensors.tc.preparation import (
-    brick_wall_cr,
-    brick_wall_rx_ry_cnot,
-    brick_wall_cr_ancillas,
-    brick_wall_cr_dephasing,
-    brick_wall_cr_depolarizing,
-)
+from queso.sensors.tc.detection import *
+from queso.sensors.tc.interaction import *
+from queso.sensors.tc.preparation import *
 
 backend = tc.set_backend("jax")
 tc.set_dtype("complex128")
@@ -209,10 +191,17 @@ def set_preparation(preparation, n, k, kwargs):
         return hardware_efficient_ansatz, jnp.zeros([n, k + 1, 2])
 
     elif preparation == "hardware_efficient_ansatz_dephasing":
-        gamma = kwargs.get("gamma")
+        gamma = kwargs.get("gamma_dephasing")
         return (
             lambda c, theta, n, k: hardware_efficient_ansatz_dephasing(c, theta, n, k, gamma=gamma),
             jnp.zeros([n, k + 1, 2])
+        )
+
+    elif preparation == "ghz_local_rotation_dephasing":
+        gamma_dephasing = kwargs.get("gamma_dephasing")
+        return (
+            lambda c, theta, n, k: ghz_local_rotation_dephasing(c, theta, n, k, gamma=gamma_dephasing),
+            jnp.zeros([n, 2, 2])
         )
 
     elif preparation == "ghz_dephasing":
