@@ -18,6 +18,7 @@ dependencies = [
     "tensorcircuit",  # quantum circuits
     "qiskit",
     "pylatexenc",
+    "pyyaml",
 #    "torch",
     "optax",  # optimization management
     "python-dotenv",  # local environment variables
