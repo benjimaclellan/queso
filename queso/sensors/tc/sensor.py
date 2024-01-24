@@ -74,6 +74,16 @@ class Sensor:
 
         return
 
+    def init_params(self, key=None):
+        if key is None:
+            key = jax.random.PRNGKey(time.time_ns())
+        keys = jax.random.split(key, 3)
+        return (
+            jax.random.uniform(keys[0], self.theta.shape),
+            jax.random.uniform(keys[0], self.phi.shape),
+            jax.random.uniform(keys[0], self.mu.shape),
+        )
+
     def circuit(self, theta, phi, mu):
         c = self._circ(self.n)
         c = self.preparation(c, theta, self.n, self.k)

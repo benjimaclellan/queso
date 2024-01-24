@@ -24,6 +24,23 @@ def sample_circuit_testing(
     plot: bool = False,
     progress: bool = True,
 ):
+    """
+    Samples a quantum circuit for testing based on the provided configuration and random key.
+
+    This function initializes a sensor with the given configuration, samples the circuit,
+    and saves the sampled data in an HDF5 file. The data is for testing estimators.
+
+    Args:
+        io (IO): An IO object for handling file operations.
+        config (Configuration): A Configuration object containing the parameters for the circuit.
+        key (jax.random.PRNGKey): A random key for JAX operations.
+        plot (bool, optional): If True, plots the true probabilities and relative frequencies. Defaults to False.
+        progress (bool, optional): If True, displays progress information. Defaults to True.
+
+    Returns:
+        None
+    """
+
     n = config.n
     k = config.k
     phis_test = jnp.array(config.phis_test)

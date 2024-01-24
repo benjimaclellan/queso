@@ -9,16 +9,18 @@ docs_dir: docs
 
 nav:
   - Introduction:
-      - Installation: install.md
+      - Welcome: index.md
   - Tutorials:
       - Fisher information: tutorials/fisher_info.ipynb
   - How to guides:
-      - Welcome: how-to-guides.md
+#      - Welcome: how-to-guides.md
       - Sensing circuit: examples/optimize_fisher_info.ipynb
 
   - Reference:
-      - Sensor circuit: reference/sensors.md
-      - Neural network estimator: reference/networks.md
+      - Sensors: reference/sensors.md
+      - Sampling: reference/sample.md
+      - Neural networks: reference/networks.md
+      - Training: reference/training.md
 
 
 

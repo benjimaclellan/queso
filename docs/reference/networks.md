@@ -1,3 +1,3 @@
 
 # Neural network estimators
-:::queso.estimators
+:::queso.estimators.flax.dnn.BayesianDNNEstimator

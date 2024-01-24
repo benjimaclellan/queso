@@ -24,6 +24,22 @@ def sample_circuit(
     plot: bool = False,
     progress: bool = True,
 ):
+    """
+    Samples a quantum circuit based on the provided configuration and random key.
+
+    This function initializes a sensor with the given configuration, samples the circuit,
+    and optionally plots the results. The sampled data is saved in an HDF5 file.
+
+    Args:
+        io (IO): An IO object for handling file operations.
+        config (Configuration): A Configuration object containing the parameters for the circuit.
+        key (jax.random.PRNGKey): A random key for JAX operations.
+        plot (bool, optional): If True, plots the true probabilities and relative frequencies. Defaults to False.
+        progress (bool, optional): If True, displays progress information. Defaults to True.
+
+    Returns:
+        None
+    """
     jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE_SAMPLE_CIRC", "cpu"))[0])
 
 
