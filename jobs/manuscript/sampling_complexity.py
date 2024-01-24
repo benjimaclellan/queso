@@ -16,13 +16,17 @@ data_path = os.getenv("DATA_PATH")
 folders = {}
 ansatz = "hardware_efficient_ansatz"
 n = 4
-phi_center = np.pi/2/n
+phi_center = 0.35  # np.pi/4/n
 seeds = [1, 2, 3, 4, 5]
 n_runs = 1
 dataset_sizes = [
+    1000,
     10,
     50,
     100,
+    500,
+    # 1000,
+    5000,
 ]
 
 config = Configuration(
@@ -31,7 +35,7 @@ config = Configuration(
     preparation="hardware_efficient_ansatz",
     interaction="local_rz",
     detection="local_r",
-    seed=20,
+    seed=201,
     train_circuit=True,
     sample_circuit_testing_data=True,
     sample_circuit_training_data=False,
@@ -39,9 +43,11 @@ config = Configuration(
 )
 config.n_shots_test = 10000
 config.n_phis = 250
-config.phi_center = phi_center
+config.phi_fi = 0.0  # phi_center
+config.phi_center = 0.18  # phi_center
 config.phi_range = [-pi/2/n + config.phi_center, pi/2/n + config.phi_center]
-config.phis_test = np.linspace(-pi/3/n + config.phi_center, pi/3/n + config.phi_center, 5).tolist()
+# config.phi_range = [-pi/2/n + config.phi_center, pi/2/n + config.phi_center]
+config.phis_test = np.linspace(-pi/3/n + config.phi_center, pi/3/n + config.phi_center, 9).tolist()
 
 folder = "sampling_complexity"
 io_base = IO(path=data_path, folder=f"{folder}/circuit")
@@ -74,7 +80,7 @@ for (n_shots, seed) in zip(dataset_sizes, seeds):
         config.n_grid = 250
         config.batch_size = 1000
         config.n_shots = n_shots
-        config.batch_size = n_shots
+        config.batch_size = np.min([n_shots, 1000]).astype("int")
 
         io = IO(path=data_path, folder=folder)
 

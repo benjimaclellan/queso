@@ -101,7 +101,10 @@ def get_machine_info():
 
     uname = platform.uname()
     svmem = psutil.virtual_memory()
-    gpus = GPUtil.getGPUs()
+    try:
+        gpus = GPUtil.getGPUs()
+    except ValueError as e:
+        gpus = None
 
     info = dict(
         system=uname.system,

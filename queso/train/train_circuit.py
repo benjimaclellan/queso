@@ -64,7 +64,7 @@ def train_circuit(
     # %%
     print(f"Initializing sensor n={n}, k={k}")
     sensor = Sensor(n, k, **kwargs)
-    phi = jnp.array(config.phi_center)
+    phi = jnp.array(config.phi_fi)
     theta = jax.random.uniform(key, shape=sensor.theta.shape)
     mu = jax.random.uniform(key, shape=sensor.mu.shape)
 

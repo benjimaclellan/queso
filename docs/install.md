@@ -2,8 +2,11 @@
 Install 
 
 It is often easiest to install `jax` and CUDA via `conda`.
-Use a conda environment.
+Installing locally can lead to challenges.
 
-`pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html`
+https://github.com/google/jax/discussions/6843
 
-`conda install cuda -c nvidia`
+``` 
+pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+conda install -c nvidia cuda-nvcc
+```
