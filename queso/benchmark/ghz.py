@@ -1,19 +1,27 @@
+import os
+
 import jax
 import jax.numpy as jnp
+import h5py
 import matplotlib.pyplot as plt
 from math import pi
 from queso.io import IO
 import tensorcircuit as tc
+from dotenv import load_dotenv, find_dotenv
 
 from queso.train.vqs import vqs
 from queso.configs import Configuration
 from queso.sensors.tc.sensor import Sensor
+from queso.sample.circuit import sample_circuit
+from queso.sample.circuit_test import sample_circuit_testing
 
+load_dotenv(find_dotenv())
 
 #%%
 def ghz_comparison(
     io: IO,
     config: Configuration,
+    key: jax.random.PRNGKey
 ):
     #%%
     sensor = Sensor(
@@ -69,3 +77,45 @@ def ghz_comparison(
     for metric, arr in metrics.items():
         hf.create_dataset(metric, data=arr)
     hf.close()
+
+    if config.sample_circuit_training_data:
+        sample_circuit(
+            io=io,
+            config=config,
+            key=key,
+        )
+
+    if config.sample_circuit_testing_data:
+        sample_circuit_testing(
+            io=io,
+            config=config,
+            key=key,
+        )
+
+    #%%
+    hf = h5py.File(io.path.joinpath("train_samples.h5"), "r")
+    shots = jnp.array(hf.get("shots"))
+    counts = jnp.array(hf.get("counts"))
+    probs = jnp.array(hf.get("probs"))
+    phis = jnp.array(hf.get("phis"))
+    hf.close()
+
+    #%%
+
+if __name__ == "__main__":
+    io = IO(path=os.getenv("DATA_PATH"), folder="test_ghz")
+    config = Configuration(
+        n=4,
+        preparation="ghz_dephasing",
+        interaction="local_rz",
+        detection="hadamard_bases",
+        seed=123,
+        gamma_dephasing=0.0,
+    )
+    key = jax.random.PRNGKey(config.seed)
+
+    ghz_comparison(
+        io=io,
+        config=config,
+        key=key
+    )
