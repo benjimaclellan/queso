@@ -9,6 +9,7 @@ import pandas as pd
 import h5py
 import argparse
 import warnings
+from dotenv import load_dotenv, find_dotenv
 
 import jax
 import jax.numpy as jnp
@@ -18,20 +19,17 @@ from queso.io import IO
 from queso.configs import Configuration
 from queso.utils import get_machine_info
 
+load_dotenv(find_dotenv())
+
 
 # %%
 def ghz_estimator(
     io: IO,
     config: Configuration,
-    key: jax.random.PRNGKey,
     plot: bool = False,
     progress: bool = True,
 ):
     n_grid = config.n_grid
-    lr = config.lr_nn
-    l2_regularization = config.l2_regularization
-    from_checkpoint = config.from_checkpoint
-    logit_norm = False
 
     # %% extract data from H5 file
     t0 = time.time()
@@ -48,10 +46,6 @@ def ghz_estimator(
     n_shots = shots.shape[1]
     n_phis = shots.shape[0]
 
-    # %%
-    assert n_shots % batch_size == 0
-    n_batches = n_shots // batch_size
-    n_steps = n_epochs * n_batches
 
     # %%
     dphi = phis[1] - phis[0]
@@ -67,7 +61,18 @@ def ghz_estimator(
 
     labels = jax.nn.one_hot(index, num_classes=n_grid)
 
-    model = BayesianDNNEstimator(nn_dims)
-
     x = shots
     y = labels
+
+
+#%%
+if __name__ == "__main__":
+    #%%
+    io = IO(path=os.getenv("DATA_PATH"), folder="test_ghz")
+    config = Configuration.from_yaml(io.path.joinpath("config.yaml"))
+    #%%
+    ghz_estimator(
+        io=io,
+        config=config,
+
+    )
