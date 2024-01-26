@@ -355,7 +355,9 @@ def ghz_dephasing(c, theta, n, k, gamma=0.0):
         c.cnot(
             0, i
         )
-        c.phasedamping(0, gamma=gamma)
-        c.phasedamping(i, gamma=gamma)
+        c.depolarizing(0, px=gamma / 3, py=gamma / 3, pz=gamma / 3)
+        c.depolarizing(i, px=gamma / 3, py=gamma / 3, pz=gamma / 3)
+        # c.phasedamping(0, gamma=gamma)
+        # c.phasedamping(i, gamma=gamma)
     c.barrier_instruction()
     return c

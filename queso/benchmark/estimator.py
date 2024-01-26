@@ -1,6 +1,8 @@
 # %%
 import time
 import os
+import typing
+
 import tqdm
 import matplotlib.pyplot as plt
 from itertools import cycle
@@ -17,6 +19,62 @@ from orbax.checkpoint import Checkpointer, PyTreeCheckpointHandler
 from queso.estimators.flax.dnn import BayesianDNNEstimator
 from queso.io import IO
 from queso.configs import Configuration
+
+
+def select_sample_sequence(shots, key: jax.random.PRNGKey, n_sequence_max: typing.Union[int, jnp.array]):
+    shot_inds = jax.random.randint(
+        key, shape=(n_sequence_max,), minval=0, maxval=shots.shape[1]
+    )
+    # shots_phis = shots[phis_inds, :, :, :]
+    sequences = shots[:, shot_inds, :]
+    return sequences
+
+
+def estimate(posteriors, grid):
+    return grid[jnp.argmax(posteriors, axis=-1)]
+
+
+def posterior_product(pred, n_sequence):
+    # shape is of [n_trials, n_phis_true, n_sequences, n_grid|n_phis]
+    tmp = pred[:, :, :n_sequence, :]
+    tmp = jnp.log(tmp).sum(
+        axis=-2, keepdims=False
+    )  # sum log posterior probs for each individual input sample
+    tmp = jnp.exp(
+        tmp - tmp.max(axis=-1, keepdims=True)
+    )  # help with underflow in normalization
+    posteriors = tmp / tmp.sum(axis=-1, keepdims=True)
+    return posteriors
+
+
+@jax.jit
+def bias(phis_estimates, phis_true):
+    # bias in Euclidean space
+    biases = phis_estimates - phis_true[None, :, None]
+
+    # bias on a circular manifold
+    # vecs_true = jnp.exp(1j * phis_true[None, :, None])
+    # vecs_est = jnp.exp(1j * phis_estimates)
+    # biases = jnp.arccos(vecs_true.real * vecs_est.real + vecs_true.imag * vecs_est.imag)
+    return biases
+
+
+@jax.jit
+def variance(posteriors, phis_estimates, grid):
+    # over a euclidean space
+    variances = (
+            posteriors
+            * jnp.power(phis_estimates[:, :, :, None] - grid[None, None, None, :], 2)
+    ).sum(axis=-1)
+
+    # over a circular space
+    # vecs_est = jnp.exp(1j * phis_estimates[:, :, :, None])
+    # vecs_out = jnp.exp(1j * phis[None, None, None, :])
+    # tmp = jnp.clip(vecs_out.real * vecs_est.real + vecs_out.imag * vecs_est.imag, -1, 1)
+    # diff = jnp.arccos(tmp)
+    # # print(jnp.count_nonzero(jnp.isnan(diff)))
+    # variances = (posteriors * jnp.power(diff, 2)).sum(axis=-1)
+    return variances
 
 
 # %%
@@ -94,19 +152,11 @@ def benchmark_estimator(
     n_sequence_max = jnp.max(n_sequences)
 
     # %%
-    def select_sample_sequence(shots, key):
-        shot_inds = jax.random.randint(
-            key, shape=(n_sequence_max,), minval=0, maxval=shots.shape[1]
-        )
-        # shots_phis = shots[phis_inds, :, :, :]
-        sequences = shots[:, shot_inds, :]
-        return sequences
-
     if key is None:
         key = jax.random.PRNGKey(time.time_ns())
     keys = jax.random.split(key, n_trials)
 
-    sequences = jnp.stack([select_sample_sequence(shots, key) for key in keys], axis=0)
+    sequences = jnp.stack([select_sample_sequence(shots, key, n_sequence_max) for key in keys], axis=0)
     assert sequences.shape == (n_trials, len(phis_true), n_sequence_max, n)
 
     # %%
@@ -118,49 +168,6 @@ def benchmark_estimator(
     assert pred.shape == (n_trials, len(phis_true), n_sequence_max, n_grid)
 
     # %%
-    def posterior_product(pred, n_sequence):
-        # shape is of [n_trials, n_phis_true, n_sequences, n_grid|n_phis]
-        tmp = pred[:, :, :n_sequence, :]
-        tmp = jnp.log(tmp).sum(
-            axis=-2, keepdims=False
-        )  # sum log posterior probs for each individual input sample
-        tmp = jnp.exp(
-            tmp - tmp.max(axis=-1, keepdims=True)
-        )  # help with underflow in normalization
-        posteriors = tmp / tmp.sum(axis=-1, keepdims=True)
-        return posteriors
-
-    def estimate(posteriors, grid):
-        return grid[jnp.argmax(posteriors, axis=-1)]
-
-    @jax.jit
-    def bias(phis_estimates, phis_true):
-        # bias in Euclidean space
-        biases = phis_estimates - phis_true[None, :, None]
-
-        # bias on a circular manifold
-        # vecs_true = jnp.exp(1j * phis_true[None, :, None])
-        # vecs_est = jnp.exp(1j * phis_estimates)
-        # biases = jnp.arccos(vecs_true.real * vecs_est.real + vecs_true.imag * vecs_est.imag)
-        return biases
-
-    @jax.jit
-    def variance(posteriors, phis_estimates, grid):
-        # over a euclidean space
-        variances = (
-            posteriors
-            * jnp.power(phis_estimates[:, :, :, None] - grid[None, None, None, :], 2)
-        ).sum(axis=-1)
-
-        # over a circular space
-        # vecs_est = jnp.exp(1j * phis_estimates[:, :, :, None])
-        # vecs_out = jnp.exp(1j * phis[None, None, None, :])
-        # tmp = jnp.clip(vecs_out.real * vecs_est.real + vecs_out.imag * vecs_est.imag, -1, 1)
-        # diff = jnp.arccos(tmp)
-        # # print(jnp.count_nonzero(jnp.isnan(diff)))
-        # variances = (posteriors * jnp.power(diff, 2)).sum(axis=-1)
-        return variances
-
     posteriors = jnp.stack(
         [posterior_product(pred, n_sequence) for n_sequence in n_sequences], axis=2
     )
