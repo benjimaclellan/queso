@@ -38,7 +38,7 @@ def ghz_comparison(
     n = config.n
     theta = sensor.theta
     # phi = jnp.array(0.0)
-    phi = config.phi_center
+    phi = config.phi_fi
     mu = sensor.mu
     gamma = config.gamma_dephasing
 
@@ -100,6 +100,7 @@ def ghz_comparison(
     phis = jnp.array(hf.get("phis"))
     hf.close()
 
+
     #%%
 
 if __name__ == "__main__":
@@ -111,9 +112,11 @@ if __name__ == "__main__":
         detection="hadamard_bases",
         seed=123,
         gamma_dephasing=0.0,
+        backend="ket",
+        phi_fi=0.1,
     )
     key = jax.random.PRNGKey(config.seed)
-
+    io.save_yaml(config, "config.yaml")
     ghz_comparison(
         io=io,
         config=config,

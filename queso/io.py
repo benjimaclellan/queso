@@ -8,6 +8,7 @@ import string
 import random
 import yaml
 import h5py
+from dataclasses import dataclass, field, fields, asdict
 
 
 def current_time():
@@ -205,7 +206,10 @@ class IO:
         full_path = self.path.joinpath(filename)
         os.makedirs(full_path.parent, exist_ok=True)
         with open(full_path, "w") as fid:
-            yaml.dump(data, fid)
+            _data = asdict(data)
+            # with open(file, "w") as fid:
+            yaml.dump(_data, fid)
+
         if self.verbose:
             print(f"{current_time()} | Saved to {full_path} successfully.")
 
