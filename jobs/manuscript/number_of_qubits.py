@@ -7,13 +7,11 @@ import subprocess
 from math import pi
 import platform
 import numpy as np
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 import pathlib
 import jax
 
-env_path = pathlib.Path(__file__).parent.parent.parent.joinpath('paths.env')
-load_dotenv(env_path)
-sys.path.append(os.getenv("MODULE_PATH"))
+load_dotenv(find_dotenv())
 data_path = os.getenv("DATA_PATH")
 jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE", "cpu"))[0])
 
@@ -25,22 +23,29 @@ from queso.configs import Configuration#
 folders = {}
 ansatz = "hardware_efficient_ansatz"
 ns = [
-    # 2,
-    # 4,
-    # 6,
-    # 8,
+    2,
+    4,
+    6,
+    8,
     10
 ]
-phi_centers = [np.pi/2/n for n in ns]
+phi_fis = [np.pi/2/n for n in ns]
+phi_centers = [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+]
 seeds = [
-    # 0,
-    # 0,
-    # 0,
-    # 0,
+    2,
+    2,
+    3,
+    4,
     123
 ]
 
-for (n, seed, phi_center) in zip(ns, seeds, phi_centers):
+for (n, seed, phi_center, phi_fi) in zip(ns, seeds, phi_centers, phi_fis):
     print(n, ansatz)
     config = Configuration()
     config.preparation = ansatz
@@ -67,6 +72,7 @@ for (n, seed, phi_center) in zip(ns, seeds, phi_centers):
     config.n_shots_test = 10000
     config.n_phis = 250
     config.phi_center = phi_center
+    config.phi_fi = phi_fi
     config.phi_range = [-pi/2/n + config.phi_center, pi/2/n + config.phi_center]
 
     config.phis_test = np.linspace(-pi/3/n + config.phi_center, pi/3/n + config.phi_center, 5).tolist()
@@ -80,7 +86,7 @@ for (n, seed, phi_center) in zip(ns, seeds, phi_centers):
     config.batch_size = 1000
 
     jobname = f"{prefix}n{config.n}k{config.k}"
-    io = IO(path=data_path, folder=folder, include_date=True)
+    io = IO(path=data_path, folder=folder, include_date=False)
 
     if os.getenv("CLUSTER", "false") == "false":
         io.save_yaml(config, 'config.yaml')
