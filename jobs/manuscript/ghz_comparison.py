@@ -18,7 +18,7 @@ jax.config.update("jax_default_device", jax.devices(os.getenv("DEFAULT_DEVICE", 
 from queso.io import IO
 from queso.train.vqs import vqs
 from queso.configs import Configuration
-from queso.benchmark.ghz import ghz_comparison
+from queso.benchmark.ghz import ghz_protocol
 
 n = 4
 config_ghz = Configuration(
@@ -27,19 +27,28 @@ config_ghz = Configuration(
     interaction="local_rz",
     detection="hadamard_bases",
     seed=123,
+    sample_circuit_testing_data=True,
+    benchmark_estimator=True,
 )
 config_vqs = Configuration(
     n=n, k=1,
-    preparation="ghz_local_rotation_dephasing",
+    # preparation="ghz_local_rotation_dephasing",
+    preparation="hardware_efficient_ansatz",
     interaction="local_rz",
     detection="local_r",
     seed=123,
+    train_circuit=True,
+    sample_circuit_training_data=True,
+    sample_circuit_testing_data=True,
+    train_nn=True,
 )
 # gammas = jnp.logspace(-3.5, -0.5, 8)
 gammas = [
-    0.001
+    0.001,
+    0.1
 ]
 
+include_date = False
 #%%
 for i, gamma in enumerate(gammas):
     ios = []
@@ -49,27 +58,22 @@ for i, gamma in enumerate(gammas):
     ):
         #%%
         config.backend = "dm"
-        # folder = f"ghz_comparison/n{n}/{config.preparation}_gamma{gamma}"
         folder = f"ghz_comparison/n{n}/{config.preparation}_gamma_{i}"
-        io = IO(path=data_path, folder=folder)
+        io = IO(path=data_path, folder=folder, include_date=include_date)
+
+        config.phi_fi = np.pi / 2 / n
         config.phi_center = np.pi / 2 / n
 
-        config.train_circuit = True
-        config.sample_circuit_training_data = False
-        config.sample_circuit_testing_data = False
-        config.train_nn = False
-        config.benchmark_estimator = False
-
-        # config.n_steps = 10
         config.gamma_dephasing = gamma
 
         config.metrics = ['entropy_vn', 'ghz_fidelity']
         config.phi_range = [-pi/2/n + config.phi_center, pi/2/n + config.phi_center]
+        config.phis_test = jnp.linspace(-pi / 3 / n + config.phi_center, pi / 3 / n + config.phi_center, 9).tolist()
 
         io.save_yaml(config, filename='config.yaml')
 
         print(io.path)
         ios.append(io)
 
-    ghz_comparison(ios[0], config_ghz)
+    ghz_protocol(ios[0], config_ghz)
     vqs(ios[1], config_vqs)
