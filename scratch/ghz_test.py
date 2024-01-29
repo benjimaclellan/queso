@@ -15,7 +15,7 @@ from queso.benchmark.estimator import select_sample_sequence, posterior_product,
 if __name__ == "__main__":
     #%%
     # gammas = jnp.logspace(-5, -0.5, 10)
-    n = 6
+    n = 4
     io = IO(path=os.getenv("DATA_PATH"), folder="test_ghz")
     config = Configuration(
         n=n,

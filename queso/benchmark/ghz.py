@@ -75,7 +75,8 @@ def ghz_protocol(
             metrics[metric] = fid
 
     hf = io.save_h5("circ.h5")
-    hf.create_dataset("fi_train", data=jnp.array(sensor.cfi(theta, phi, mu)))
+    fi_train = jnp.array([sensor.cfi(theta, phi + 0.1, mu)])
+    hf.create_dataset("fi_train", data=fi_train)
     for metric, arr in metrics.items():
         hf.create_dataset(metric, data=arr)
     hf.close()
@@ -173,6 +174,17 @@ def ghz_protocol(
         phis_estimates = estimate(posteriors, phis)
         biases = bias(phis_estimates, phis_true)
         variances = variance(posteriors, phis_estimates, phis)
+
+        #%%
+        hf = h5py.File(io.path.joinpath("estimates.h5"), "w")
+        hf.create_dataset("phis_estimates", data=phis_estimates)
+        hf.create_dataset("phis_true", data=phis_true)
+        hf.create_dataset("n_sequences", data=n_sequences)
+        hf.create_dataset("posteriors", data=posteriors)
+        hf.create_dataset("biases", data=biases)
+        hf.create_dataset("variances", data=variances)
+        hf.create_dataset("phis", data=phis)
+        hf.close()
 
         #%%
         for k in range(phis_true.shape[0]):
