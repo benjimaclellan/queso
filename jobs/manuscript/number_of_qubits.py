@@ -23,26 +23,36 @@ from queso.configs import Configuration#
 folders = {}
 ansatz = "hardware_efficient_ansatz"
 ns = [
-    2,
-    4,
-    6,
-    8,
-    10
+    # 2,
+    # 4,
+    # 6,
+    # 8,
+    # 10,
+    12,
 ]
-phi_fis = [np.pi/2/n for n in ns]
+phi_fis = [
+    # np.pi/2/2,
+    # np.pi/2/4,
+    # np.pi/2/6,
+    # np.pi/2/8,
+    # np.pi/2/10,
+    np.pi/2/12,
+]
 phi_centers = [
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
+    # 0.0,
+    # 0.0,
+    # np.pi/2/6,
+    # np.pi/2/6,
+    # np.pi/2/10,
+    np.pi/2/12,
 ]
 seeds = [
-    2,
-    2,
-    3,
-    4,
-    123
+    # 12,
+    # 12,
+    # 12,
+    # 12,
+    # 12,
+    12,
 ]
 
 for (n, seed, phi_center, phi_fi) in zip(ns, seeds, phi_centers, phi_fis):
