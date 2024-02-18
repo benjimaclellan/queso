@@ -1,6 +1,6 @@
 
 site_name: Queso
-site_description: Queso - Design of variational quantum sensing protocols
+site_description: Queso - Design and benchmarking of variational quantum sensors
 
 use_directory_urls: false  # good for opening HTML files directly, but should be 'true' for deployment
 repo_url: https://github.com/benjimaclellan/queso
@@ -10,11 +10,12 @@ docs_dir: docs
 nav:
   - Introduction:
       - Welcome: index.md
-  - Tutorials:
-      - Fisher information: tutorials/fisher_info.ipynb
-  - How to guides:
-#      - Welcome: how-to-guides.md
-      - Sensing circuit: examples/optimize_fisher_info.ipynb
+  - Tutorials and guides:
+      - Quantum sensing: tutorials/quantum_sensing.md
+      - Sensing circuits: tutorials/sensor.ipynb
+      - Circuit ansatze: tutorials/ansatze.ipynb
+      - Neural network estimators: tutorials/network_estimator.ipynb
+      - Bayesian inference: tutorials/bayesian_inference.ipynb
 
   - Reference:
       - Sensors: reference/sensors.md
@@ -88,14 +89,18 @@ plugins:
           options:
             docstring_style: google
             show_root_heading: yes
-  - mkdocs-jupyter:
-      ignore_h1_titles: True
-      include_source: True
-#  - mknotebooks:
-#      execute: false
-#      timeout: 100
-#      preamble: "/examples"
-#      allow_errors: True
+  
+  # - mkdocs-jupyter:
+      # ignore_h1_titles: True
+      # include_source: True
+
+  - mknotebooks:
+      execute: false
+      timeout: 100
+      preamble: "/examples"
+      allow_errors: True
+      enable_default_jupyter_cell_styling: false
+      enable_default_pandas_dataframe_styling: false
 
 markdown_extensions:
   - toc:
@@ -103,6 +108,8 @@ markdown_extensions:
       toc_depth: 3
       baselevel: 1
       title: "Table of contents"
+  - md_in_html  # image rendering
+  - attr_list
 
   # for code snippets/syntax highlighting
   - pymdownx.highlight:
