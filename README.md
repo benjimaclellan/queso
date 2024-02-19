@@ -1,6 +1,6 @@
-<h1 align="center">
-    Queso
-</h1>
+<div align="center">
+
+# ![Queso](docs/imgs/logo.png)
 
 <h2 align="center">
     Variational quantum sensing protocols
@@ -8,14 +8,15 @@
 
 <div align="center">
 
-[![GitHub Workflow Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/ki3-qbt/graph-compiler/actions)
-[![docs.rs](https://img.shields.io/badge/docs-passing-brightgreen)](https://github.com/ki3-qbt/graph-compiler/tree/gh-pages)
-
-[//]: # (![Coverage Status]&#40;/coverage-badge.svg&#41;)
+[![Documentation Status](https://readthedocs.org/projects/queso/badge/?version=latest)](https://queso.readthedocs.io/en/latest/?badge=latest)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 ![versions](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)
-
 </div>
+
+[//]: # ([![arXiv Paper]&#40;https://img.shields.io/badge/arXiv-2402.09285-red&#41;]&#40;https://arxiv.org/abs/2402.09285&#41;)
+
+
+
 
 <p align="center" style="font-size:20px">
     The design and optimization of quantum sensing protocols using variational methods.

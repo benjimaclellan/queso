@@ -28,4 +28,39 @@ dependencies = [
 ]
 
 
-a = ["mkdocs", "mkdocstrings-python", "mkdocs-markdownextradata-plugin", "mkdocs-jupyter"]
+description = "Queso: Variational quantum sensing protocols."
+readme = "README.md"
+keywords = ["quantum", "sensor", "optimization"]
+license = {text = "Apache 2.0"}
+
+authors = [
+    {name = "Benjamin MacLellan", email = "benjamin.maclellan@uwaterloo.ca"},
+]
+classifiers = [
+  # How mature is this project? Common values are
+  "Development Status :: 4 - Beta",
+
+  # Indicate who your project is intended for
+  "Intended Audience :: Science/Research ",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+
+  # Pick your license as you wish (see also "license" above)
+  "License :: OSI Approved :: Apache Software License",
+
+  # Specify the Python versions you support here.
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+]
+
+[project.optional-dependencies]
+docs = [
+    "pymdown-extensions",
+    "mkdocstrings",
+    "mkdocs-material",
+    "mkdocstrings-python",
+    "mknotebooks",
+    "mkdocs-minify-plugin",
+]

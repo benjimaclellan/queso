@@ -1,0 +1,6 @@
+pymdown-extensions
+mkdocstrings
+mkdocs-material
+mkdocstrings-python
+mknotebooks
+mkdocs-minify-plugin
