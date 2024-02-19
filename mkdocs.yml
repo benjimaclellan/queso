@@ -1,10 +1,15 @@
 
-site_name: Queso
+site_name: ""
 site_description: Queso - Design and benchmarking of variational quantum sensors
-
 use_directory_urls: false  # good for opening HTML files directly, but should be 'true' for deployment
+site_url: https://queso.readthedocs.io/en/latest/
 repo_url: https://github.com/benjimaclellan/queso
+repo_name: benjimaclellan/queso
 docs_dir: docs
+site_author: Benjamin MacLellan
+
+copyright: Copyright &copy; 2022 - 2024 Benjamin MacLellan
+
 
 
 nav:
@@ -25,32 +30,38 @@ nav:
 
 
 
+
 theme:
   name: material
 
-#  logo: img/oqd-logo.png
+  logo: imgs/logo.png
+  favicon: imgs/logo-square.png
+  icon:
+    logo: imgs/logo.png
 
   palette:
-    - media: '(prefers-color-scheme: light)'
-      scheme: default
-      primary: blue grey
-      accent: amber
+    - media: "(prefers-color-scheme)"
       toggle:
-        icon: material/lightbulb
-        name: Switch to dark mode
-    - media: '(prefers-color-scheme: dark)'
-      scheme: slate
-      primary: teal
-      accent: amber
-      toggle:
-        icon: material/lightbulb-outline
+        icon: material/link
         name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off
+        name: Switch to system preference
   font:
     text: Roboto
     code: Roboto Mono
-  favicon: assets/favicon.png
-  icon:
-    logo: logo
+
 
   features:
     - announce.dismiss
@@ -80,24 +91,17 @@ theme:
     - toc.follow
 
 plugins:
-  - search
-#  - markdownextradata:
-#      folder: examples
+  - search:
+      separator: '[\s\u200b\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
   - mkdocstrings:
       handlers:
         python:
           options:
             docstring_style: google
             show_root_heading: yes
-  
-  # - mkdocs-jupyter:
-      # ignore_h1_titles: True
-      # include_source: True
-
   - mknotebooks:
       execute: false
       timeout: 100
-      preamble: "/examples"
       allow_errors: True
       enable_default_jupyter_cell_styling: false
       enable_default_pandas_dataframe_styling: false
@@ -108,8 +112,6 @@ markdown_extensions:
       toc_depth: 3
       baselevel: 1
       title: "Table of contents"
-  - md_in_html  # image rendering
-  - attr_list
 
   # for code snippets/syntax highlighting
   - pymdownx.highlight:

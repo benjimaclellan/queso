@@ -1,8 +1,8 @@
 #
-<figure markdown>
-  ![queso logo](imgs/logo.png){ width="350" }
-  <figcaption></figcaption>
-</figure>
+
+<p align="center">
+  <img src=imgs/logo.png alt="Queso" width="500" />
+</p>
 
 
 ## Variational methods for programmable quantum sensors
@@ -20,10 +20,10 @@
 
 ## What does it do?
 Queso is a toolbox for designing, simulating, and benchmarking variational quantum sensing protocols.
-<figure markdown>
-  ![queso logo](imgs/fig1.png){ width="400" }
-  <figcaption></figcaption>
-</figure>
+<p align="center">
+  <img src=imgs/fig1.png alt="GraphiQ" width="400" />
+</p>
+
 
 ## Basic usage:
 ```py
