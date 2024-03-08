@@ -9,7 +9,7 @@
 [![Documentation Status](https://readthedocs.org/projects/queso/badge/?version=latest)](https://queso.readthedocs.io/en/latest/?badge=latest)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 ![versions](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)
-[![arXiv Paper](https://img.shields.io/badge/arXiv-red)](https://arxiv.org/)
+[![arXiv Paper](https://img.shields.io/badge/arXiv-2403.02394-red)](https://arxiv.org/abs/2403.02394)
 
 </div>
 
