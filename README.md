@@ -60,7 +60,16 @@ with [JAX](https://github.com/google/jax) as the differentiable programming back
 Neural networks are also built on top of JAX using the [`flax`](https://github.com/google/flax) library.
 
 ## Citing
-Preprint to be submitted soon. 
+```
+@article{maclellan2024endtoend,
+      title={End-to-end variational quantum sensing}, 
+      author={Benjamin MacLellan and Piotr Roztocki and Stefanie Czischek and Roger G. Melko},
+      year={2024},
+      eprint={2403.02394},
+      archivePrefix={arXiv},
+      primaryClass={quant-ph}
+}
+```
 
 
 ## Acknowledgements
