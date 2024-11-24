@@ -133,7 +133,7 @@ class Sensor:
             * jnp.real(
                 (
                     jnp.conj(dpsi[None, :]) @ dpsi[:, None]
-                    - jnp.abs(jnp.conj(dpsi[None, :]) @ psi[:, None])
+                    - jnp.abs(jnp.conj(dpsi[None, :]) @ psi[:, None])**2
                 )
             ).squeeze()
         )
